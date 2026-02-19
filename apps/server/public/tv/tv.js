@@ -172,7 +172,6 @@ let lastBoardRenderKey = null;
 // Attract Mode State
 // =============================================================================
 let attractModeActive = false;
-let hasEverConnected = false; // Track if we've ever connected to a room (for startup attract mode)
 let attractTipIndex = 0;
 let attractTipTimer = null;
 let attractIdleTimer = null;
@@ -2057,14 +2056,6 @@ async function initAttractMode() {
   attractTips = getTipsForContext("lobby", { limit: 8, shuffle: true });
   elAttractCreateBtn?.addEventListener("click", async () => {
     await exitAttractMode();
-    // If no room exists yet (startup), create one and connect
-    if (!roomCode) {
-      await ensureRoom();
-      connectStream();
-    } else {
-      // Coming from idle attract mode with existing room
-      await createNewRoom();
-    }
   });
 }
 
@@ -2082,7 +2073,7 @@ async function showAttractMode() {
   elAttractMode.classList.remove("hiding");
 
   if (elAttractQr) {
-    const baseUrl = `${location.protocol}//${location.host}/phone`;
+    const baseUrl = `${location.protocol}//${location.host}/phone${roomCode ? `?room=${roomCode}` : ""}`;
     try {
       elAttractQr.innerHTML = qrSvg(baseUrl, { margin: 4, label: "Join Catan" });
     } catch {
@@ -2154,9 +2145,6 @@ function stopAttractTipCarousel() {
 }
 
 function checkIdleForAttractMode() {
-  // Don't trigger idle attract if we haven't connected yet (startup attract mode handles this)
-  if (!hasEverConnected) return;
-
   const room = lastRoomState;
   const hasPlayers = Array.isArray(room?.players) && room.players.length > 0;
   const isInGame = room?.status === "in_game";
@@ -2499,7 +2487,6 @@ function connectStream() {
     }
     setTvStatus("LIVE");
     setConnectionOverlay(false);
-    hasEverConnected = true;
     renderScheduler.schedule();
 
     // Check if we should show or exit attract mode based on room state
@@ -2974,15 +2961,9 @@ async function initThemes() {
 
 await initThemes();
 
-// Check if joining an existing room via URL parameter
-const urlParams = new URL(location.href).searchParams;
-const roomFromUrl = urlParams.get("room");
-
-if (roomFromUrl) {
-  // Direct join - skip attract mode, go straight to room
-  await ensureRoom();
-  connectStream();
-} else {
-  // Fresh load - show attract mode as startup screen
-  showAttractMode();
-}
+// Create room and connect SSE, then show attract mode
+// The QR code will include the room code so phones can join directly
+// When first player joins, attract mode exits automatically via checkIdleForAttractMode()
+await ensureRoom();
+connectStream();
+showAttractMode();
