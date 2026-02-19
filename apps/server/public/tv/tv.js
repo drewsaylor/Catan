@@ -2618,7 +2618,7 @@ function render(room, prevRoom) {
 
   elSideTitle.textContent =
     mode === "in_game" && room.game?.phase === "game_over" ? "Game Over" : mode === "in_game" ? "Players" : "Lobby";
-  elJoinInfo.style.display = mode === "in_game" ? "none" : "";
+  elJoinInfo.style.display = mode === "in_game" || lobbyOverlayActive ? "none" : "";
   if (mode !== "in_game") renderJoinQr(joinUrl);
 
   if (elEndScreenCard) elEndScreenCard.style.display = isGameOver ? "" : "none";

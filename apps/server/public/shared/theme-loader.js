@@ -359,6 +359,17 @@ export function clearTextureCache() {
 // ============================================================================
 
 /**
+ * Converts a hex color to RGB string (e.g., "#0b0f1a" -> "11, 15, 26")
+ * @param {string} hex
+ * @returns {string | null}
+ */
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return null;
+  return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+}
+
+/**
  * Applies CSS variables to document root
  * @param {CssVars} cssVars
  */
@@ -369,6 +380,14 @@ function applyCssVars(cssVars) {
   for (const [key, value] of Object.entries(cssVars)) {
     if (typeof value === "string" && key.startsWith("--")) {
       root.style.setProperty(key, value);
+
+      // Derive RGB versions for bg0 and bg1 (used for rgba() in CSS)
+      if (key === "--bg0" || key === "--bg1") {
+        const rgb = hexToRgb(value);
+        if (rgb) {
+          root.style.setProperty(`${key}-rgb`, rgb);
+        }
+      }
     }
   }
 }

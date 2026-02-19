@@ -2,6 +2,8 @@
   color-scheme: dark;
   --bg0: #0b0f1a;
   --bg1: #121a2b;
+  --bg0-rgb: 11, 15, 26;
+  --bg1-rgb: 18, 26, 43;
   --card: rgba(255, 255, 255, 0.06);
   --card2: rgba(255, 255, 255, 0.1);
   --text: rgba(255, 255, 255, 0.92);
