@@ -1,0 +1,19 @@
+{
+  "id": "deep-sea",
+  "name": "Deep Sea",
+  "cssVars": {
+    "--bg0": "#020810",
+    "--bg1": "#041220",
+    "--accent-rgb": "40, 180, 220",
+    "--accent2-rgb": "120, 240, 180"
+  },
+  "world3d": {
+    "waterColor": "#062038",
+    "skyTint": "#010608",
+    "ambientIntensity": 0.52,
+    "tileRoughness": 0.88
+  },
+  "textures": {
+    "waterNormal": "/themes/deep-sea/textures/water-normal.png"
+  }
+}

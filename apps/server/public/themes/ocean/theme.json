@@ -1,0 +1,17 @@
+{
+  "id": "ocean",
+  "name": "Ocean",
+  "cssVars": {
+    "--bg0": "#06131c",
+    "--bg1": "#072634",
+    "--accent-rgb": "77, 219, 223",
+    "--accent2-rgb": "114, 165, 255"
+  },
+  "world3d": {
+    "waterColor": "#0a3854",
+    "skyTint": "#041622",
+    "ambientIntensity": 0.58,
+    "tileRoughness": 0.88
+  },
+  "textures": {}
+}

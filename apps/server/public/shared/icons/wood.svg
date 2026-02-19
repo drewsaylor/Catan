@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bark" x1="8" y1="16" x2="58" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#dcb78c" />
+      <stop offset="0.55" stop-color="#a26b3f" />
+      <stop offset="1" stop-color="#5b3118" />
+    </linearGradient>
+    <linearGradient id="barkHi" x1="10" y1="18" x2="52" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0.18)" />
+      <stop offset="1" stop-color="rgba(255,255,255,0)" />
+    </linearGradient>
+    <linearGradient id="cut" x1="40" y1="18" x2="60" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f6e0c5" />
+      <stop offset="1" stop-color="#9b6032" />
+    </linearGradient>
+    <linearGradient id="ring" x1="44" y1="18" x2="58" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(0,0,0,0.18)" />
+      <stop offset="1" stop-color="rgba(0,0,0,0.06)" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ground shadow -->
+  <ellipse cx="34" cy="54" rx="22" ry="7" fill="rgba(0,0,0,0.16)" />
+
+  <!-- Back log -->
+  <g transform="rotate(-10 32 34)" stroke="rgba(0,0,0,0.34)" stroke-width="2" stroke-linejoin="round">
+    <rect x="10" y="28" width="46" height="12.5" rx="6.25" fill="url(#bark)" />
+    <rect x="10" y="28" width="46" height="12.5" rx="6.25" fill="url(#barkHi)" opacity="0.9" />
+
+    <ellipse cx="10" cy="34.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+    <ellipse cx="56" cy="34.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+
+    <!-- Rings -->
+    <ellipse cx="56" cy="34.25" rx="3.9" ry="3.9" fill="none" stroke="url(#ring)" />
+    <ellipse cx="56" cy="34.25" rx="2.2" ry="2.2" fill="none" stroke="url(#ring)" />
+    <path d="M55.3 31.5c1.4 1.2 1.8 2.4 1 3.8" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+
+    <!-- Bark texture -->
+    <path d="M18 31.6c7-2.2 16-2.2 23 0" stroke="rgba(255,255,255,0.22)" stroke-linecap="round" />
+    <path d="M20 37.3c7 2 16 2 23 0" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+    <path d="M28 29.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+    <path d="M36 29.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+    <path d="M44 29.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+  </g>
+
+  <!-- Bottom log -->
+  <g transform="rotate(10 32 38)" stroke="rgba(0,0,0,0.34)" stroke-width="2" stroke-linejoin="round">
+    <rect x="7" y="36" width="49" height="12.5" rx="6.25" fill="url(#bark)" />
+    <rect x="7" y="36" width="49" height="12.5" rx="6.25" fill="url(#barkHi)" opacity="0.95" />
+
+    <ellipse cx="7" cy="42.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+    <ellipse cx="56" cy="42.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+
+    <!-- Rings -->
+    <ellipse cx="56" cy="42.25" rx="4.1" ry="4.1" fill="none" stroke="url(#ring)" />
+    <ellipse cx="56" cy="42.25" rx="2.4" ry="2.4" fill="none" stroke="url(#ring)" />
+    <path d="M55.5 39.4c1.5 1.3 1.9 2.6 1.1 4.1" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+
+    <!-- Knot + bark texture -->
+    <ellipse cx="24" cy="42" rx="2.2" ry="1.6" fill="rgba(0,0,0,0.10)" stroke="rgba(0,0,0,0.16)" />
+    <path d="M16 39.6c8-2.6 18-2.6 27 0" stroke="rgba(255,255,255,0.22)" stroke-linecap="round" />
+    <path d="M18 45.2c8 2.2 18 2.2 27 0" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+    <path d="M30 37.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+    <path d="M39 37.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+    <path d="M48 37.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+  </g>
+
+  <!-- Top log -->
+  <g stroke="rgba(0,0,0,0.34)" stroke-width="2" stroke-linejoin="round">
+    <rect x="14" y="18" width="38" height="12.5" rx="6.25" fill="url(#bark)" />
+    <rect x="14" y="18" width="38" height="12.5" rx="6.25" fill="url(#barkHi)" opacity="0.95" />
+
+    <ellipse cx="14" cy="24.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+    <ellipse cx="52" cy="24.25" rx="6.25" ry="6.25" fill="url(#cut)" />
+
+    <!-- Rings -->
+    <ellipse cx="52" cy="24.25" rx="3.7" ry="3.7" fill="none" stroke="url(#ring)" />
+    <ellipse cx="52" cy="24.25" rx="2.1" ry="2.1" fill="none" stroke="url(#ring)" />
+    <path d="M51.3 21.6c1.3 1.1 1.7 2.3 1 3.6" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+
+    <!-- Bark texture -->
+    <path d="M22 21.6c6-2 13-2 19 0" stroke="rgba(255,255,255,0.22)" stroke-linecap="round" />
+    <path d="M23 27.4c6 2 13 2 19 0" stroke="rgba(0,0,0,0.18)" stroke-linecap="round" />
+    <path d="M31 19.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+    <path d="M39 19.8v8.9" stroke="rgba(0,0,0,0.10)" stroke-linecap="round" />
+  </g>
+</svg>

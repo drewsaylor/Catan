@@ -1,0 +1,17 @@
+{
+  "id": "classic-night",
+  "name": "Classic Night",
+  "cssVars": {
+    "--bg0": "#08090d",
+    "--bg1": "#0e1018",
+    "--accent-rgb": "160, 170, 195",
+    "--accent2-rgb": "255, 220, 140"
+  },
+  "world3d": {
+    "waterColor": "#101520",
+    "skyTint": "#050608",
+    "ambientIntensity": 0.45,
+    "tileRoughness": 0.92
+  },
+  "textures": {}
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ember",
+  "name": "Ember",
+  "cssVars": {
+    "--bg0": "#170c0a",
+    "--bg1": "#2b1410",
+    "--accent-rgb": "255, 140, 64",
+    "--accent2-rgb": "199, 121, 255"
+  },
+  "world3d": {
+    "waterColor": "#2d1f1a",
+    "skyTint": "#1a0a08",
+    "ambientIntensity": 0.55,
+    "tileRoughness": 0.9
+  },
+  "textures": {}
+}

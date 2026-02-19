@@ -1,0 +1,10 @@
+node_modules/
+build/
+dist/
+data/
+*.min.js
+v1 Roadmap/
+v2 Roadmap/
+v3 Roadmap/
+asset-prompts/
+tools/

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="rock" x1="14" y1="10" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4a5666" />
+      <stop offset="0.55" stop-color="#242c38" />
+      <stop offset="1" stop-color="#0b0f1a" />
+    </linearGradient>
+    <linearGradient id="rockHi" x1="16" y1="12" x2="44" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0.22)" />
+      <stop offset="1" stop-color="rgba(255,255,255,0)" />
+    </linearGradient>
+    <linearGradient id="metalGold" x1="16" y1="18" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe08a" />
+      <stop offset="0.55" stop-color="#ffd166" />
+      <stop offset="1" stop-color="#a46a3b" />
+    </linearGradient>
+    <linearGradient id="metalSilver" x1="18" y1="18" x2="52" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d9ecff" />
+      <stop offset="1" stop-color="#6f86a0" />
+    </linearGradient>
+    <linearGradient id="gemBlue" x1="34" y1="18" x2="54" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a7f0ff" />
+      <stop offset="0.55" stop-color="#5fd3ff" />
+      <stop offset="1" stop-color="#1b6cf0" />
+    </linearGradient>
+    <linearGradient id="gemPurple" x1="22" y1="22" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f1dcff" />
+      <stop offset="0.55" stop-color="#b089ff" />
+      <stop offset="1" stop-color="#5b2cff" />
+    </linearGradient>
+    <linearGradient id="gemGreen" x1="12" y1="32" x2="34" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f0ffb0" />
+      <stop offset="0.55" stop-color="#c9ff4f" />
+      <stop offset="1" stop-color="#39d98a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ground shadow -->
+  <ellipse cx="33" cy="56" rx="18" ry="6" fill="rgba(0,0,0,0.18)" />
+
+  <!-- Rock -->
+  <path
+    d="M24 10h14l11 10 5 17-11 17-23-2L8 37l4-17 12-10Z"
+    fill="url(#rock)"
+    stroke="rgba(0,0,0,0.36)"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+  <path d="M18 22l11-9 12 7-10 6-13-4Z" fill="rgba(255,255,255,0.10)" />
+  <path d="M14 40l18 12 18-12-18-7-18 7Z" fill="rgba(0,0,0,0.18)" />
+  <path d="M18 18c3.2-3 8.6-5.8 13-5.8" stroke="url(#rockHi)" stroke-width="2.2" stroke-linecap="round" />
+
+  <!-- Metallic veins -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 28c6-6 12-8 20-6 6 1.4 11 5.2 16 5.2" stroke="url(#metalGold)" stroke-width="4.2" />
+    <path d="M16 44c4-3.2 8-4.2 13-3.2 6 1.2 10 4.2 16 4.2" stroke="url(#metalSilver)" stroke-width="3.6" />
+    <path d="M14 28c6-6 12-8 20-6 6 1.4 11 5.2 16 5.2" stroke="rgba(255,255,255,0.20)" stroke-width="1.6" />
+  </g>
+
+  <!-- Gems -->
+  <g stroke="rgba(0,0,0,0.30)" stroke-width="2" stroke-linejoin="round">
+    <!-- Blue gem -->
+    <path d="M44 20l5-3 6 3 1 7-6 5-7-2-2-7 3-3Z" fill="url(#gemBlue)" />
+    <path d="M46 22l4-2 4 2-4 3-4-3Z" fill="rgba(255,255,255,0.22)" />
+    <path d="M45 28l5 3 5-4-5-2-5 3Z" fill="rgba(0,0,0,0.16)" />
+
+    <!-- Purple gem -->
+    <path d="M26 26l6-4 7 4 1 7-7 6-8-3-1-7 2-3Z" fill="url(#gemPurple)" />
+    <path d="M28 28l4-2 5 2-5 3-4-3Z" fill="rgba(255,255,255,0.20)" />
+    <path d="M27 34l6 3 6-4-6-2-6 3Z" fill="rgba(0,0,0,0.16)" />
+
+    <!-- Green gem -->
+    <path d="M14 36l6-4 7 4 1 7-7 6-8-3-1-7 2-3Z" fill="url(#gemGreen)" />
+    <path d="M16 38l4-2 5 2-5 3-4-3Z" fill="rgba(255,255,255,0.20)" />
+    <path d="M15 44l6 3 6-4-6-2-6 3Z" fill="rgba(0,0,0,0.16)" />
+  </g>
+
+  <!-- Glints -->
+  <g fill="rgba(255,255,255,0.78)">
+    <path d="M52 21l0.8 2.2 2.2 0.8-2.2 0.8-0.8 2.2-0.8-2.2-2.2-0.8 2.2-0.8 0.8-2.2Z" />
+    <path d="M22 40l0.7 1.8 1.8 0.7-1.8 0.7-0.7 1.8-0.7-1.8-1.8-0.7 1.8-0.7 0.7-1.8Z" opacity="0.65" />
+  </g>
+</svg>

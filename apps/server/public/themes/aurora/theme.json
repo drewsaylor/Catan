@@ -1,0 +1,17 @@
+{
+  "id": "aurora",
+  "name": "Aurora",
+  "cssVars": {
+    "--bg0": "#0b0f1a",
+    "--bg1": "#121a2b",
+    "--accent-rgb": "95, 211, 255",
+    "--accent2-rgb": "201, 255, 79"
+  },
+  "world3d": {
+    "waterColor": "#1a4a6e",
+    "skyTint": "#0a1428",
+    "ambientIntensity": 0.62,
+    "tileRoughness": 0.85
+  },
+  "textures": {}
+}

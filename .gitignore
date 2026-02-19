@@ -1,0 +1,19 @@
+node_modules
+.DS_Store
+apps/server/data
+
+# Claude Code local settings
+.claude/
+
+# Environment files (future-proofing)
+.env
+.env.*
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE settings
+.vscode/
+.idea/

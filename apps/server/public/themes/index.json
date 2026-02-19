@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "themes": [
+    {
+      "id": "aurora",
+      "name": "Aurora",
+      "description": "Cool blues with soft northern lights accent.",
+      "path": "/themes/aurora/theme.json"
+    },
+    {
+      "id": "ember",
+      "name": "Ember",
+      "description": "Warm reds and oranges with volcanic heat.",
+      "path": "/themes/ember/theme.json"
+    },
+    {
+      "id": "ocean",
+      "name": "Ocean",
+      "description": "Deep blue tones inspired by the open sea.",
+      "path": "/themes/ocean/theme.json"
+    },
+    {
+      "id": "classic-night",
+      "name": "Classic Night",
+      "description": "Darker, subtle tones for late-night sessions.",
+      "path": "/themes/classic-night/theme.json"
+    },
+    {
+      "id": "neon-arcade",
+      "name": "Neon Arcade",
+      "description": "Bright accents, high contrast retro vibes.",
+      "path": "/themes/neon-arcade/theme.json"
+    },
+    {
+      "id": "deep-sea",
+      "name": "Deep Sea",
+      "description": "Strong water/ocean vibe with underwater atmosphere.",
+      "path": "/themes/deep-sea/theme.json"
+    }
+  ]
+}

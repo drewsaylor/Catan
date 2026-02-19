@@ -1,0 +1,17 @@
+{
+  "id": "neon-arcade",
+  "name": "Neon Arcade",
+  "cssVars": {
+    "--bg0": "#0a0012",
+    "--bg1": "#140022",
+    "--accent-rgb": "255, 0, 200",
+    "--accent2-rgb": "0, 255, 180"
+  },
+  "world3d": {
+    "waterColor": "#1a0030",
+    "skyTint": "#08000f",
+    "ambientIntensity": 0.68,
+    "tileRoughness": 0.75
+  },
+  "textures": {}
+}

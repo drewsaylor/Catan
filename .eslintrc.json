@@ -1,0 +1,54 @@
+{
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "extends": ["eslint:recommended"],
+  "globals": {
+    "window": "readonly",
+    "document": "readonly",
+    "console": "readonly",
+    "process": "readonly",
+    "fetch": "readonly",
+    "URL": "readonly",
+    "URLSearchParams": "readonly",
+    "sessionStorage": "readonly",
+    "localStorage": "readonly",
+    "requestAnimationFrame": "readonly",
+    "cancelAnimationFrame": "readonly",
+    "setTimeout": "readonly",
+    "clearTimeout": "readonly",
+    "setInterval": "readonly",
+    "clearInterval": "readonly",
+    "HTMLElement": "readonly",
+    "EventSource": "readonly",
+    "Blob": "readonly",
+    "TextEncoder": "readonly",
+    "Map": "readonly",
+    "Set": "readonly",
+    "WeakMap": "readonly",
+    "Promise": "readonly",
+    "queueMicrotask": "readonly",
+    "confirm": "readonly",
+    "alert": "readonly",
+    "location": "readonly",
+    "navigator": "readonly",
+    "performance": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "prefer-const": "warn",
+    "no-var": "warn",
+    "eqeqeq": ["warn", "smart"],
+    "no-console": "off",
+    "no-control-regex": "off",
+    "no-extra-boolean-cast": "warn",
+    "no-inner-declarations": "warn"
+  }
+}
