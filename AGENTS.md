@@ -10,7 +10,8 @@
 - `packages/game-engine/`: game state machine (phases, legality checks, trade offer state).
 - `packages/shared/`: shared helpers (resources, normalization).
 - `roadmaps/`: versioned roadmaps and planning documents.
-- Docs: `README.md`, `AGENTS.md`.
+- `docs/`: detailed documentation (architecture, testing, environment variables).
+- Docs: `README.md`, `AGENTS.md`, `CLAUDE.md`.
 
 ## Build, Test, and Development Commands
 
