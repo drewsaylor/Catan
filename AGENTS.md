@@ -2,20 +2,19 @@
 
 ## Project Structure & Module Organization
 
-- `Catan/`: Catan LAN prototype (TV + phones).
-  - `Catan/apps/server/server.js`: Node HTTP server (API + SSE + static hosting). In-memory rooms/state.
-  - `Catan/apps/server/public/`: client assets
-    - `tv/`: TV screen UI
-    - `phone/`: phone controller UI
-    - `shared/`: shared UI utilities + CSS + board renderer
-  - `Catan/packages/game-engine/`: game state machine (phases, legality checks, trade offer state).
-  - `Catan/packages/shared/`: shared helpers (resources, normalization).
-  - Docs: `Catan/README.md`, `Catan/PLAN.md`.
-- `air-proxy-sidecar.py`: unrelated utility script; keep changes scoped unless asked.
+- `apps/server/server.js`: Node HTTP server (API + SSE + static hosting). In-memory rooms/state.
+- `apps/server/public/`: client assets
+  - `tv/`: TV screen UI
+  - `phone/`: phone controller UI
+  - `shared/`: shared UI utilities + CSS + board renderer
+- `packages/game-engine/`: game state machine (phases, legality checks, trade offer state).
+- `packages/shared/`: shared helpers (resources, normalization).
+- `roadmaps/`: versioned roadmaps and planning documents.
+- Docs: `README.md`, `AGENTS.md`.
 
 ## Build, Test, and Development Commands
 
-From `Catan/`:
+From the project root:
 
 - `npm run dev`: starts the server (defaults to port `3000`).
 - `PORT=3001 npm run dev`: run on a different port.
@@ -35,14 +34,14 @@ Open:
 
 - No automated test runner is set up yet.
 - Before opening a PR, do a manual smoke test: create a room on TV, join 3–4 phones, complete setup placements, roll dice, build, and trade.
-- If adding tests, prefer engine-level tests (deterministic) under `Catan/packages/game-engine/` using Node’s built-in `node:test`.
+- If adding tests, prefer engine-level tests (deterministic) under `packages/game-engine/` using Node’s built-in `node:test`.
 
 ## Commit & Pull Request Guidelines
 
 - No Git history was found in this workspace; use Conventional Commits going forward:
   - Example: `feat(catan): add robber discard flow`
   - Example: `fix(server): validate trade acceptance resources`
-- PRs: include a brief description, steps to test, and screenshots/GIFs for UI changes. Keep changes focused and update `Catan/README.md`/`Catan/PLAN.md` when behavior changes.
+- PRs: include a brief description, steps to test, and screenshots/GIFs for UI changes. Keep changes focused and update `README.md` or docs in `roadmaps/` when behavior changes.
 
 ## Security & Configuration Tips
 

@@ -190,4 +190,4 @@ sudo systemctl restart catan-lan
 
 ## Roadmap
 
-- See `v1 Roadmap/README.md`
+- See `roadmaps/` for versioned roadmaps and planning documents
