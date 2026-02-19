@@ -204,6 +204,9 @@ const elHelpList = qs("#helpList");
 const elTipsCard = qs("#tipsCard");
 const elPhoneTabs = qs("#phoneTabs");
 const elHowToPlayBtn = qs("#howToPlayBtn");
+const elRuleBookBtn = qs("#ruleBookBtn");
+const elRuleBookBackdrop = qs("#ruleBookBackdrop");
+const elRuleBookCloseBtn = qs("#ruleBookCloseBtn");
 const elFeedbackModal = qs("#feedbackModal");
 const elFeedbackStars = qs("#feedbackStars");
 const elFeedbackComment = qs("#feedbackComment");
@@ -498,6 +501,34 @@ function closeSettings() {
   const restore = focusBeforeSettings && document.contains(focusBeforeSettings) ? focusBeforeSettings : elSettingsBtn;
   focusBeforeSettings = null;
   requestAnimationFrame(() => restore?.focus());
+}
+
+let focusBeforeRuleBook = null;
+
+function isRuleBookOpen() {
+  if (!elRuleBookBackdrop) return false;
+  return elRuleBookBackdrop.style.display !== "none";
+}
+
+function openRuleBook() {
+  if (!elRuleBookBackdrop) return;
+  focusBeforeRuleBook = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  elRuleBookBackdrop.style.display = "";
+  requestAnimationFrame(() => {
+    elRuleBookBackdrop.classList.add("show");
+    elRuleBookCloseBtn?.focus();
+  });
+}
+
+function closeRuleBook() {
+  if (!elRuleBookBackdrop) return;
+  elRuleBookBackdrop.classList.remove("show");
+  setTimeout(() => {
+    elRuleBookBackdrop.style.display = "none";
+    const restore = focusBeforeRuleBook && document.contains(focusBeforeRuleBook) ? focusBeforeRuleBook : elRuleBookBtn;
+    focusBeforeRuleBook = null;
+    requestAnimationFrame(() => restore?.focus());
+  }, 180);
 }
 
 function isHelpOpen() {
@@ -3490,6 +3521,15 @@ elSettingsBtn?.addEventListener("click", () => openSettings());
 elSettingsCloseBtn?.addEventListener("click", () => closeSettings());
 elSettingsBackdrop?.addEventListener("click", (ev) => {
   if (ev.target === elSettingsBackdrop) closeSettings();
+});
+
+elRuleBookBtn?.addEventListener("click", () => {
+  closeSettings();
+  openRuleBook();
+});
+elRuleBookCloseBtn?.addEventListener("click", () => closeRuleBook());
+elRuleBookBackdrop?.addEventListener("click", (ev) => {
+  if (ev.target === elRuleBookBackdrop) closeRuleBook();
 });
 
 elHelpBtn?.addEventListener("click", () => openHelp());

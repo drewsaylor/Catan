@@ -583,6 +583,9 @@
             <label for="musicVolume">Music volume</label>
             <input id="musicVolume" type="range" min="0" max="100" value="60" />
           </div>
+
+          <div class="spacer"></div>
+          <button class="btn" id="ruleBookBtn">Rule Book</button>
         </div>
       </div>
     </div>
@@ -695,6 +698,117 @@
         color: var(--muted);
       }
     </style>
+
+    <div id="ruleBookBackdrop" class="quickRefBackdrop" style="display:none;">
+      <div class="quickRefPanel" role="dialog" aria-modal="true" aria-labelledby="ruleBookTitle">
+        <div class="quickRefHeader">
+          <h2 id="ruleBookTitle" class="quickRefTitle">Rule Book</h2>
+          <button class="btn quickRefCloseBtn" id="ruleBookCloseBtn">Close</button>
+        </div>
+        <div class="quickRefContent">
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Overview</h3>
+            <ul class="quickRefList">
+              <li>Be the first player to reach the Victory Point (VP) target to win.</li>
+              <li>Earn VP by building settlements (1 VP), cities (2 VP), holding Longest Road (2 VP), Largest Army (2 VP), and VP development cards.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Setup</h3>
+            <ul class="quickRefList">
+              <li>Each player places 2 settlements and 2 roads during setup.</li>
+              <li>Round 1: Players place in turn order. Round 2: Reverse order.</li>
+              <li>Settlements cannot be placed adjacent to another settlement.</li>
+              <li>Roads must connect to your settlement.</li>
+              <li>After Round 2, you receive starting resources from your second settlement's adjacent hexes.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Turn Structure</h3>
+            <ul class="quickRefList">
+              <li><strong>Roll Dice:</strong> Roll two dice. All players with settlements/cities on hexes matching the number receive resources.</li>
+              <li><strong>Trade:</strong> Propose trades with other players or trade with the bank.</li>
+              <li><strong>Build:</strong> Spend resources to build roads, settlements, cities, or buy development cards.</li>
+              <li><strong>End Turn:</strong> Pass play to the next player.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Resources</h3>
+            <ul class="quickRefList">
+              <li><strong>Wood:</strong> From forest hexes. Used for roads and settlements.</li>
+              <li><strong>Brick:</strong> From hill hexes. Used for roads and settlements.</li>
+              <li><strong>Sheep:</strong> From pasture hexes. Used for settlements and dev cards.</li>
+              <li><strong>Wheat:</strong> From field hexes. Used for settlements, cities, and dev cards.</li>
+              <li><strong>Ore:</strong> From mountain hexes. Used for cities and dev cards.</li>
+              <li>Desert hexes produce nothing.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Building</h3>
+            <ul class="quickRefList">
+              <li><strong>Road (1 Wood + 1 Brick):</strong> Place on an edge connected to your network. Needed for Longest Road.</li>
+              <li><strong>Settlement (1 Wood + 1 Brick + 1 Sheep + 1 Wheat):</strong> Place on a vertex connected to your road, not adjacent to another settlement. Worth 1 VP. Produces 1 resource per adjacent hex.</li>
+              <li><strong>City (2 Wheat + 3 Ore):</strong> Upgrade an existing settlement. Worth 2 VP. Produces 2 resources per adjacent hex.</li>
+              <li><strong>Development Card (1 Sheep + 1 Wheat + 1 Ore):</strong> Draw from the deck. Cannot be played the same turn purchased.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Trading</h3>
+            <ul class="quickRefList">
+              <li><strong>Player Trade:</strong> On your turn, propose trades with any combination of resources. Other players can accept or decline.</li>
+              <li><strong>Bank Trade (4:1):</strong> Trade 4 of any one resource for 1 of any other.</li>
+              <li><strong>3:1 Port:</strong> If you have a settlement/city on a 3:1 port, trade any 3 of one resource for 1 of any other.</li>
+              <li><strong>2:1 Port:</strong> Trade 2 of the specific resource shown for 1 of any other.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Development Cards</h3>
+            <ul class="quickRefList">
+              <li><strong>Knight:</strong> Move the robber and steal from an adjacent player. Counts toward Largest Army.</li>
+              <li><strong>Road Building:</strong> Place 2 roads for free.</li>
+              <li><strong>Year of Plenty:</strong> Take any 2 resources from the bank.</li>
+              <li><strong>Monopoly:</strong> Name a resource. All players must give you all cards of that type.</li>
+              <li><strong>Victory Point:</strong> Worth 1 VP. Kept hidden until you win.</li>
+              <li>You may only play 1 development card per turn (except VP cards).</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">The Robber</h3>
+            <ul class="quickRefList">
+              <li><strong>Rolling 7:</strong> No resources are produced. Instead, the robber activates.</li>
+              <li><strong>Discard Rule:</strong> Any player with 8 or more resource cards must discard half (rounded down).</li>
+              <li><strong>Move Robber:</strong> The current player moves the robber to any hex (not where it was).</li>
+              <li><strong>Steal:</strong> Steal 1 random card from a player with a settlement/city on that hex.</li>
+              <li>While the robber is on a hex, it does not produce resources.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Special Bonuses</h3>
+            <ul class="quickRefList">
+              <li><strong>Longest Road (2 VP):</strong> Awarded to the first player with 5+ continuous road segments. If another player builds a longer road, they take it.</li>
+              <li><strong>Largest Army (2 VP):</strong> Awarded to the first player who plays 3+ Knight cards. If another player plays more knights, they take it.</li>
+            </ul>
+          </div>
+
+          <div class="quickRefSection">
+            <h3 class="quickRefHeading">Winning</h3>
+            <ul class="quickRefList">
+              <li>The first player to reach or exceed the VP target on their turn wins.</li>
+              <li>Hidden VP cards are revealed when claiming victory.</li>
+              <li>The game ends immediately when a winner is declared.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="notifyBanner" class="notifyBanner" aria-live="polite" aria-atomic="true">
       <div id="notifyTitle" class="notifyTitle"></div>
