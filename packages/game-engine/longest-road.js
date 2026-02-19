@@ -73,7 +73,8 @@ export function computeLongestRoadLengthsByPlayerId(game) {
   }
 
   const roads = game?.structures?.roads && typeof game.structures.roads === "object" ? game.structures.roads : {};
-  const settlements = game?.structures?.settlements && typeof game.structures.settlements === "object" ? game.structures.settlements : {};
+  const settlements =
+    game?.structures?.settlements && typeof game.structures.settlements === "object" ? game.structures.settlements : {};
 
   for (const pid of turnOrder) {
     out[pid] = computeLongestRoadLengthForPlayer({ edgeById, roads, settlements }, pid);
@@ -107,4 +108,3 @@ export function computeLongestRoadAward(game) {
     minLength: LONGEST_ROAD_MIN_LENGTH
   };
 }
-

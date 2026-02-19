@@ -586,7 +586,8 @@ export function createBoardView(container, board) {
 
     const playerColorById = new Map((players || []).map((p) => [p.playerId, p.color]));
     const roads = structures?.roads && typeof structures.roads === "object" ? structures.roads : {};
-    const settlements = structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
+    const settlements =
+      structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
 
     for (const h of hexes) {
       const el = hexEls.get(h.id);

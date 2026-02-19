@@ -507,7 +507,10 @@ function computeHints(game) {
       const pid = currentPlayerId(game);
       const remaining = clampNonNegativeInt(game.devRoadBuilding?.roadsRemaining ?? 0);
       return {
-        prompt: remaining > 0 ? `Road Building: place ${remaining} road${remaining === 1 ? "" : "s"}.` : "Road Building: place roads.",
+        prompt:
+          remaining > 0
+            ? `Road Building: place ${remaining} road${remaining === 1 ? "" : "s"}.`
+            : "Road Building: place roads.",
         expected: "DEV_ROAD_BUILDING_PLACE_ROAD",
         legalVertexIds: [],
         legalEdgeIds: legalRoadBuildEdgeIds(game, pid),
@@ -515,7 +518,14 @@ function computeHints(game) {
       };
     }
     if (game.subphase === "main") {
-      return { prompt: "Main phase", expected: null, legalVertexIds: [], legalEdgeIds: [], legalHexIds: [], bankTradeAvailable: true };
+      return {
+        prompt: "Main phase",
+        expected: null,
+        legalVertexIds: [],
+        legalEdgeIds: [],
+        legalHexIds: [],
+        bankTradeAvailable: true
+      };
     }
   }
 
@@ -525,7 +535,14 @@ function computeHints(game) {
 export { PRESET_META };
 export { EVENT_TYPES, EVENT_IDS, getEventById };
 
-export function createNewGame({ playerIds, presetId, gameMode = "classic", houseRules = null, boardSeed = null, variants = null }) {
+export function createNewGame({
+  playerIds,
+  presetId,
+  gameMode = "classic",
+  houseRules = null,
+  boardSeed = null,
+  variants = null
+}) {
   let normalizedBoardSeed = boardSeed == null ? null : String(boardSeed).trim();
   if (presetId === "random-balanced") {
     if (!normalizedBoardSeed) normalizedBoardSeed = crypto.randomBytes(8).toString("hex");
@@ -607,25 +624,31 @@ export function getPublicGameSnapshot(game) {
   const victoryPointsToWin = game.victoryPointsToWin ?? DEFAULT_VICTORY_POINTS_TO_WIN;
   const settings = isPlainObject(game.settings)
     ? { ...game.settings, gameMode: normalizeGameMode(game.settings?.gameMode), victoryPointsToWin }
-    : { gameMode: victoryPointsToWin === QUICK_VICTORY_POINTS_TO_WIN ? "quick" : "classic", victoryPointsToWin, houseRules: null };
+    : {
+        gameMode: victoryPointsToWin === QUICK_VICTORY_POINTS_TO_WIN ? "quick" : "classic",
+        victoryPointsToWin,
+        houseRules: null
+      };
 
   // Normalize variants for public snapshot
-  const variants = game.variants && typeof game.variants === "object"
-    ? {
-        eventDeckEnabled: !!game.variants.eventDeckEnabled,
-        speedTradeEnabled: !!game.variants.speedTradeEnabled
-      }
-    : { eventDeckEnabled: false, speedTradeEnabled: false };
+  const variants =
+    game.variants && typeof game.variants === "object"
+      ? {
+          eventDeckEnabled: !!game.variants.eventDeckEnabled,
+          speedTradeEnabled: !!game.variants.speedTradeEnabled
+        }
+      : { eventDeckEnabled: false, speedTradeEnabled: false };
 
   // Include current event details if active
-  const currentEvent = game.currentEvent && typeof game.currentEvent === "object"
-    ? {
-        id: game.currentEvent.id,
-        name: game.currentEvent.name,
-        description: game.currentEvent.description,
-        shortText: game.currentEvent.shortText
-      }
-    : null;
+  const currentEvent =
+    game.currentEvent && typeof game.currentEvent === "object"
+      ? {
+          id: game.currentEvent.id,
+          name: game.currentEvent.name,
+          description: game.currentEvent.description,
+          shortText: game.currentEvent.shortText
+        }
+      : null;
 
   return {
     presetId: game.presetId,
@@ -686,7 +709,9 @@ export function applyAction(game, action, actorPlayerId) {
     playedKnightsByPlayerId: { ...(game.playedKnightsByPlayerId || {}) },
     devCardPlayedThisTurn: !!game.devCardPlayedThisTurn,
     devRoadBuilding: game.devRoadBuilding ? { ...game.devRoadBuilding } : null,
-    setup: game.setup ? { ...game.setup, settlementsPlacedByPlayerId: { ...game.setup.settlementsPlacedByPlayerId } } : null,
+    setup: game.setup
+      ? { ...game.setup, settlementsPlacedByPlayerId: { ...game.setup.settlementsPlacedByPlayerId } }
+      : null,
     tradeOffers: (game.tradeOffers || []).map((o) => ({
       ...o,
       give: { ...(o.give || {}) },
@@ -734,7 +759,9 @@ export function applyAction(game, action, actorPlayerId) {
       nextGame.devDiscard.push(card);
 
       if (card === "knight") {
-        nextGame.playedKnightsByPlayerId[actorPlayerId] = clampNonNegativeInt((nextGame.playedKnightsByPlayerId[actorPlayerId] ?? 0) + 1);
+        nextGame.playedKnightsByPlayerId[actorPlayerId] = clampNonNegativeInt(
+          (nextGame.playedKnightsByPlayerId[actorPlayerId] ?? 0) + 1
+        );
         const count = clampNonNegativeInt(nextGame.playedKnightsByPlayerId[actorPlayerId] ?? 0);
         nextGame.log.push(
           makeLogEntry({
@@ -747,7 +774,11 @@ export function applyAction(game, action, actorPlayerId) {
         maybeUpdateLargestArmy(nextGame, actorPlayerId);
         if (nextGame.phase === "game_over") return { game: nextGame, privateUpdates: [] };
         nextGame.subphase = "robber_move";
-        nextGame.robber = { discardRequiredByPlayerId: {}, discardSubmittedByPlayerId: {}, eligibleVictimPlayerIds: [] };
+        nextGame.robber = {
+          discardRequiredByPlayerId: {},
+          discardSubmittedByPlayerId: {},
+          eligibleVictimPlayerIds: []
+        };
         return { game: nextGame, privateUpdates: [] };
       }
 
@@ -772,7 +803,8 @@ export function applyAction(game, action, actorPlayerId) {
         const total = sumResourceCounts(take);
         if (total !== 2) return { error: { code: "BAD_DEV_SELECTION" } };
         for (const r of RESOURCE_TYPES) {
-          if (clampNonNegativeInt(nextGame.bank?.[r] ?? 0) < clampNonNegativeInt(take[r] ?? 0)) return { error: { code: "BANK_EMPTY" } };
+          if (clampNonNegativeInt(nextGame.bank?.[r] ?? 0) < clampNonNegativeInt(take[r] ?? 0))
+            return { error: { code: "BANK_EMPTY" } };
         }
 
         for (const r of RESOURCE_TYPES) {
@@ -818,7 +850,8 @@ export function applyAction(game, action, actorPlayerId) {
       const edgeId = String(action.edgeId || "");
       const edge = nextGame.board.edges.find((e) => e.id === edgeId);
       if (!edge) return { error: { code: "BAD_EDGE" } };
-      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads) return { error: { code: "OUT_OF_PIECES_ROAD" } };
+      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads)
+        return { error: { code: "OUT_OF_PIECES_ROAD" } };
       if (!isLegalRoadBuild(nextGame, actorPlayerId, edge)) return { error: { code: "ILLEGAL_PLACEMENT" } };
 
       nextGame.structures.roads[edgeId] = { playerId: actorPlayerId };
@@ -851,7 +884,8 @@ export function applyAction(game, action, actorPlayerId) {
       const edgeId = String(action.edgeId || "");
       const edge = nextGame.board.edges.find((e) => e.id === edgeId);
       if (!edge) return { error: { code: "BAD_EDGE" } };
-      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads) return { error: { code: "OUT_OF_PIECES_ROAD" } };
+      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads)
+        return { error: { code: "OUT_OF_PIECES_ROAD" } };
       if (!isLegalRoadBuild(nextGame, actorPlayerId, edge)) return { error: { code: "ILLEGAL_PLACEMENT" } };
 
       nextGame.structures.roads[edgeId] = { playerId: actorPlayerId };
@@ -875,7 +909,8 @@ export function applyAction(game, action, actorPlayerId) {
       const vertexId = String(action.vertexId || "");
       const vertex = nextGame.board.vertices.find((v) => v.id === vertexId);
       if (!vertex) return { error: { code: "BAD_VERTEX" } };
-      if (countSettlementsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.settlements) return { error: { code: "OUT_OF_PIECES_SETTLEMENT" } };
+      if (countSettlementsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.settlements)
+        return { error: { code: "OUT_OF_PIECES_SETTLEMENT" } };
       if (!isLegalSettlementBuild(nextGame, actorPlayerId, vertex)) return { error: { code: "ILLEGAL_PLACEMENT" } };
 
       nextGame.structures.settlements[vertexId] = { playerId: actorPlayerId, kind: "settlement" };
@@ -902,7 +937,8 @@ export function applyAction(game, action, actorPlayerId) {
       if (!existing) return { error: { code: "NO_SETTLEMENT" } };
       if (existing.playerId !== actorPlayerId) return { error: { code: "NOT_YOURS" } };
       if (existing.kind !== "settlement") return { error: { code: "ALREADY_CITY" } };
-      if (countCitiesByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.cities) return { error: { code: "OUT_OF_PIECES_CITY" } };
+      if (countCitiesByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.cities)
+        return { error: { code: "OUT_OF_PIECES_CITY" } };
 
       nextGame.structures.settlements[vertexId] = { playerId: actorPlayerId, kind: "city" };
       nextGame.log.push(
@@ -919,13 +955,15 @@ export function applyAction(game, action, actorPlayerId) {
 
     case "PLACE_SETTLEMENT": {
       if (!actorIsCurrent) return { error: { code: "NOT_YOUR_TURN" } };
-      if (!(nextGame.phase === "setup_round_1" || nextGame.phase === "setup_round_2")) return { error: { code: "BAD_PHASE" } };
+      if (!(nextGame.phase === "setup_round_1" || nextGame.phase === "setup_round_2"))
+        return { error: { code: "BAD_PHASE" } };
       if (nextGame.subphase !== "setup_settlement") return { error: { code: "BAD_PHASE" } };
 
       const vertexId = String(action.vertexId || "");
       const vertex = nextGame.board.vertices.find((v) => v.id === vertexId);
       if (!vertex) return { error: { code: "BAD_VERTEX" } };
-      if (countSettlementsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.settlements) return { error: { code: "OUT_OF_PIECES_SETTLEMENT" } };
+      if (countSettlementsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.settlements)
+        return { error: { code: "OUT_OF_PIECES_SETTLEMENT" } };
 
       const legal = new Set(legalSetupSettlementVertexIds(nextGame));
       if (!legal.has(vertexId)) return { error: { code: "ILLEGAL_PLACEMENT" } };
@@ -985,13 +1023,15 @@ export function applyAction(game, action, actorPlayerId) {
 
     case "PLACE_ROAD": {
       if (!actorIsCurrent) return { error: { code: "NOT_YOUR_TURN" } };
-      if (!(nextGame.phase === "setup_round_1" || nextGame.phase === "setup_round_2")) return { error: { code: "BAD_PHASE" } };
+      if (!(nextGame.phase === "setup_round_1" || nextGame.phase === "setup_round_2"))
+        return { error: { code: "BAD_PHASE" } };
       if (nextGame.subphase !== "setup_road") return { error: { code: "BAD_PHASE" } };
 
       const edgeId = String(action.edgeId || "");
       const edge = nextGame.board.edges.find((e) => e.id === edgeId);
       if (!edge) return { error: { code: "BAD_EDGE" } };
-      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads) return { error: { code: "OUT_OF_PIECES_ROAD" } };
+      if (countRoadsByPlayerId(nextGame, actorPlayerId) >= PIECE_LIMITS.roads)
+        return { error: { code: "OUT_OF_PIECES_ROAD" } };
 
       const legal = new Set(legalSetupRoadEdgeIds(nextGame));
       if (!legal.has(edgeId)) return { error: { code: "ILLEGAL_PLACEMENT" } };
@@ -1080,7 +1120,10 @@ export function applyAction(game, action, actorPlayerId) {
         })
       );
       if (sum === 7) {
-        const input = action?.discardRequiredByPlayerId && typeof action.discardRequiredByPlayerId === "object" ? action.discardRequiredByPlayerId : {};
+        const input =
+          action?.discardRequiredByPlayerId && typeof action.discardRequiredByPlayerId === "object"
+            ? action.discardRequiredByPlayerId
+            : {};
         const discardRequiredByPlayerId = {};
         for (const pid of nextGame.turnOrder) {
           const need = clampNonNegativeInt(input[pid] ?? 0);
@@ -1195,7 +1238,12 @@ export function applyAction(game, action, actorPlayerId) {
         nextGame.subphase = "main";
         nextGame.robber = null;
       } else {
-        if (!nextGame.robber) nextGame.robber = { discardRequiredByPlayerId: {}, discardSubmittedByPlayerId: {}, eligibleVictimPlayerIds: [] };
+        if (!nextGame.robber)
+          nextGame.robber = {
+            discardRequiredByPlayerId: {},
+            discardSubmittedByPlayerId: {},
+            eligibleVictimPlayerIds: []
+          };
         nextGame.robber.eligibleVictimPlayerIds = victims;
         nextGame.subphase = "robber_steal";
       }

@@ -7,11 +7,13 @@ The format is based on **Keep a Changelog**, and this project aims to follow **S
 ## Unreleased
 
 ### Added
+
 - TBD
 
 ### Changed
+
 - TBD
 
 ### Fixed
-- TBD
 
+- TBD

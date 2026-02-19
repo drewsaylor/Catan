@@ -137,11 +137,11 @@ const HIGH_CONTRAST_OVERRIDES = {
  * Uses distinct hues that are distinguishable for common types of color blindness
  */
 const COLORBLIND_RESOURCE_OVERRIDES = {
-  "--res-wood-rgb": "0, 114, 178",      // Blue
-  "--res-brick-rgb": "213, 94, 0",       // Vermillion/Orange
-  "--res-sheep-rgb": "204, 121, 167",    // Reddish purple
-  "--res-wheat-rgb": "240, 228, 66",     // Yellow
-  "--res-ore-rgb": "170, 170, 170"       // Gray
+  "--res-wood-rgb": "0, 114, 178", // Blue
+  "--res-brick-rgb": "213, 94, 0", // Vermillion/Orange
+  "--res-sheep-rgb": "204, 121, 167", // Reddish purple
+  "--res-wheat-rgb": "240, 228, 66", // Yellow
+  "--res-ore-rgb": "170, 170, 170" // Gray
 };
 
 // ============================================================================
@@ -188,11 +188,7 @@ function isValidThemeIndex(data) {
   if (!Array.isArray(data.themes)) return false;
   return data.themes.every(
     (t) =>
-      t &&
-      typeof t === "object" &&
-      typeof t.id === "string" &&
-      typeof t.name === "string" &&
-      typeof t.path === "string"
+      t && typeof t === "object" && typeof t.id === "string" && typeof t.name === "string" && typeof t.path === "string"
   );
 }
 
@@ -322,9 +318,7 @@ export async function preloadTexture(url) {
 async function preloadThemeTextures(theme) {
   if (!theme?.textures || !shouldLoadTextures()) return;
 
-  const urls = Object.values(theme.textures).filter(
-    (url) => typeof url === "string" && url
-  );
+  const urls = Object.values(theme.textures).filter((url) => typeof url === "string" && url);
 
   await Promise.all(urls.map((url) => preloadTexture(url)));
 }
@@ -540,9 +534,7 @@ export function onThemeChange(callback) {
  * @returns {Promise<void>}
  */
 export async function preloadThemes(themeIds) {
-  const validIds = Array.isArray(themeIds)
-    ? themeIds.filter((id) => typeof id === "string" && id)
-    : [];
+  const validIds = Array.isArray(themeIds) ? themeIds.filter((id) => typeof id === "string" && id) : [];
 
   await Promise.all(validIds.map((id) => fetchTheme(id)));
 }

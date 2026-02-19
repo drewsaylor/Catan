@@ -51,7 +51,9 @@ function normalizeOffer(offer) {
     fromPlayerId: typeof o.fromPlayerId === "string" ? o.fromPlayerId : null,
     to: o.to === "all" ? "all" : typeof o.to === "string" ? o.to : null,
     acceptedByPlayerId: typeof o.acceptedByPlayerId === "string" ? o.acceptedByPlayerId : null,
-    rejectedByPlayerIds: Array.isArray(o.rejectedByPlayerIds) ? o.rejectedByPlayerIds.filter((v) => typeof v === "string") : [],
+    rejectedByPlayerIds: Array.isArray(o.rejectedByPlayerIds)
+      ? o.rejectedByPlayerIds.filter((v) => typeof v === "string")
+      : [],
     createdAt: clampNonNegativeInt(o.createdAt ?? 0, 0),
     give: o.give && typeof o.give === "object" ? { ...o.give } : null,
     want: o.want && typeof o.want === "object" ? { ...o.want } : null
@@ -156,7 +158,8 @@ export function detectMoments(prevRoom, nextRoom) {
     });
   }
 
-  const prevRoads = prevGame.structures?.roads && typeof prevGame.structures.roads === "object" ? prevGame.structures.roads : {};
+  const prevRoads =
+    prevGame.structures?.roads && typeof prevGame.structures.roads === "object" ? prevGame.structures.roads : {};
   const nextRoads = game.structures?.roads && typeof game.structures.roads === "object" ? game.structures.roads : {};
   for (const [edgeId, road] of Object.entries(nextRoads)) {
     if (!edgeId || !road) continue;
@@ -171,8 +174,11 @@ export function detectMoments(prevRoom, nextRoom) {
   }
 
   const prevSettlements =
-    prevGame.structures?.settlements && typeof prevGame.structures.settlements === "object" ? prevGame.structures.settlements : {};
-  const nextSettlements = game.structures?.settlements && typeof game.structures.settlements === "object" ? game.structures.settlements : {};
+    prevGame.structures?.settlements && typeof prevGame.structures.settlements === "object"
+      ? prevGame.structures.settlements
+      : {};
+  const nextSettlements =
+    game.structures?.settlements && typeof game.structures.settlements === "object" ? game.structures.settlements : {};
   for (const [vertexId, settlement] of Object.entries(nextSettlements)) {
     if (!vertexId || !settlement) continue;
     const prev = prevSettlements?.[vertexId] || null;
@@ -195,7 +201,9 @@ export function detectMoments(prevRoom, nextRoom) {
     }
   }
 
-  const prevOffers = Array.isArray(prevGame.tradeOffers) ? prevGame.tradeOffers.map(normalizeOffer).filter(Boolean) : [];
+  const prevOffers = Array.isArray(prevGame.tradeOffers)
+    ? prevGame.tradeOffers.map(normalizeOffer).filter(Boolean)
+    : [];
   const nextOffers = Array.isArray(game.tradeOffers) ? game.tradeOffers.map(normalizeOffer).filter(Boolean) : [];
   const prevById = new Map(prevOffers.map((o) => [o.id, o]));
 
@@ -207,7 +215,13 @@ export function detectMoments(prevRoom, nextRoom) {
           id: makeMomentId(meta, "trade_open", offer.id),
           kind: "trade_open",
           at: offer.createdAt || atFallback,
-          data: { offerId: offer.id, fromPlayerId: offer.fromPlayerId, to: offer.to, give: offer.give, want: offer.want }
+          data: {
+            offerId: offer.id,
+            fromPlayerId: offer.fromPlayerId,
+            to: offer.to,
+            give: offer.give,
+            want: offer.want
+          }
         });
       }
       continue;

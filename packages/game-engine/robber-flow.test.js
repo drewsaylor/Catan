@@ -59,7 +59,9 @@ test("DISCARD_CARDS: validates totals, tracks submissions, and advances to robbe
     error: { code: "NO_DISCARD_REQUIRED" }
   });
 
-  assert.deepEqual(applyAction(rolled.game, { type: "DISCARD_CARDS", counts: { wood: 1 } }, "B"), { error: { code: "BAD_DISCARD" } });
+  assert.deepEqual(applyAction(rolled.game, { type: "DISCARD_CARDS", counts: { wood: 1 } }, "B"), {
+    error: { code: "BAD_DISCARD" }
+  });
 
   const discarded = applyAction(rolled.game, { type: "DISCARD_CARDS", counts: { wood: 2 } }, "B");
   assert.ok(discarded.game);
@@ -76,7 +78,9 @@ test("MOVE_ROBBER: transitions to robber_steal when victims exist + hints includ
   assert.ok(rolled.game);
   assert.equal(rolled.game.subphase, "robber_move");
 
-  const targetHex = rolled.game.board.hexes.find((h) => h.id && h.id !== rolled.game.robberHexId && Array.isArray(h.cornerVertexIds) && h.cornerVertexIds.length);
+  const targetHex = rolled.game.board.hexes.find(
+    (h) => h.id && h.id !== rolled.game.robberHexId && Array.isArray(h.cornerVertexIds) && h.cornerVertexIds.length
+  );
   assert.ok(targetHex?.id, "expected a non-current hex");
   const victimVertexId = targetHex.cornerVertexIds[0];
   rolled.game.structures.settlements[victimVertexId] = { playerId: "B", kind: "settlement" };
@@ -112,7 +116,9 @@ test("STEAL_CARD: validates victim and returns to main", () => {
   assert.ok(rolled.game);
   assert.equal(rolled.game.subphase, "robber_move");
 
-  const targetHex = rolled.game.board.hexes.find((h) => h.id && h.id !== rolled.game.robberHexId && Array.isArray(h.cornerVertexIds) && h.cornerVertexIds.length);
+  const targetHex = rolled.game.board.hexes.find(
+    (h) => h.id && h.id !== rolled.game.robberHexId && Array.isArray(h.cornerVertexIds) && h.cornerVertexIds.length
+  );
   assert.ok(targetHex?.id, "expected a non-current hex");
   rolled.game.structures.settlements[targetHex.cornerVertexIds[0]] = { playerId: "B", kind: "settlement" };
 
@@ -120,11 +126,12 @@ test("STEAL_CARD: validates victim and returns to main", () => {
   assert.ok(moved.game);
   assert.equal(moved.game.subphase, "robber_steal");
 
-  assert.deepEqual(applyAction(moved.game, { type: "STEAL_CARD", fromPlayerId: "A" }, "A"), { error: { code: "ILLEGAL_TARGET" } });
+  assert.deepEqual(applyAction(moved.game, { type: "STEAL_CARD", fromPlayerId: "A" }, "A"), {
+    error: { code: "ILLEGAL_TARGET" }
+  });
 
   const stole = applyAction(moved.game, { type: "STEAL_CARD", fromPlayerId: "B", didSteal: false }, "A");
   assert.ok(stole.game);
   assert.equal(stole.game.subphase, "main");
   assert.equal(stole.game.robber, null);
 });
-

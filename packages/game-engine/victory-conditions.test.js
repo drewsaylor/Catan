@@ -44,9 +44,18 @@ function findEdgePath(board, edgeCount) {
 
 test("createNewGame: supports houseRules.victoryPointsToWin override (6–15)", () => {
   const presetId = PRESET_META[0]?.id ?? "classic-balanced";
-  const game = createNewGame({ playerIds: ["A", "B"], presetId, gameMode: "classic", houseRules: { victoryPointsToWin: 6 } });
+  const game = createNewGame({
+    playerIds: ["A", "B"],
+    presetId,
+    gameMode: "classic",
+    houseRules: { victoryPointsToWin: 6 }
+  });
   assert.equal(game.victoryPointsToWin, 6);
-  assert.deepEqual(game.settings, { gameMode: "classic", victoryPointsToWin: 6, houseRules: { victoryPointsToWin: 6 } });
+  assert.deepEqual(game.settings, {
+    gameMode: "classic",
+    victoryPointsToWin: 6,
+    houseRules: { victoryPointsToWin: 6 }
+  });
 
   const snap = getPublicGameSnapshot(game);
   assert.equal(snap.settings?.victoryPointsToWin, 6);
@@ -133,5 +142,7 @@ test("Hidden VP interaction: victory point dev cards are drawn privately and do 
 
 test("PLAY_DEV_CARD: victory_point cards are not playable", () => {
   const game = makeMainPhaseGame({ playerIds: ["A"], currentPlayerId: "A" });
-  assert.deepEqual(applyAction(game, { type: "PLAY_DEV_CARD", card: "victory_point" }, "A"), { error: { code: "BAD_DEV_CARD" } });
+  assert.deepEqual(applyAction(game, { type: "PLAY_DEV_CARD", card: "victory_point" }, "A"), {
+    error: { code: "BAD_DEV_CARD" }
+  });
 });

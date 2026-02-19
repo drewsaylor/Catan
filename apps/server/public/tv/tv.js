@@ -1,5 +1,13 @@
 import { api, qs, renderLog, setText } from "/shared/common.js";
-import { applyBoardMoment, renderBoard, focusPlayerArea, focusEdge, focusVertex, focusHex, cinematicReset } from "/shared/board-renderer.js";
+import {
+  applyBoardMoment,
+  renderBoard,
+  focusPlayerArea,
+  focusEdge,
+  focusVertex,
+  focusHex,
+  cinematicReset
+} from "/shared/board-renderer.js";
 import { createRenderScheduler } from "/shared/render-scheduler.js";
 import { errorCode, humanizeErrorMessage } from "/shared/error-copy.js";
 import { qrSvg } from "/shared/qr.js";
@@ -10,12 +18,25 @@ import { supportsWebGL } from "/shared/render-capabilities.js";
 import { createMomentQueue, detectMoments } from "/shared/moment-detector.js";
 import { createShowLayer } from "/tv/show-layer.js";
 import { createSegmentTracker, getSegment, hostCopyForMoment } from "/shared/host-copy.js";
-import { loadTheme, getLoadedTheme, onThemeChange, preloadThemes, fetchThemeIndex, getAvailableThemes } from "/shared/theme-loader.js";
+import {
+  loadTheme,
+  getLoadedTheme,
+  onThemeChange,
+  preloadThemes,
+  fetchThemeIndex,
+  getAvailableThemes
+} from "/shared/theme-loader.js";
 import { getTipsForContext } from "/shared/tips-catalog.js";
 import { createDice3dPanel, createBoardFxHelper, createResourceFlyoutManager } from "/shared/board-3d.js";
 // Extracted modules for TV functionality (Phase 3 modularization)
-import { computeShowBeats as computeShowBeatsModule, computePlacedStructures as computePlacedStructuresModule } from "/tv/show-beats.js";
-import { createAttractSampleBoard as createAttractSampleBoardModule, createAttractModeController } from "/tv/attract-mode.js";
+import {
+  computeShowBeats as computeShowBeatsModule,
+  computePlacedStructures as computePlacedStructuresModule
+} from "/tv/show-beats.js";
+import {
+  createAttractSampleBoard as createAttractSampleBoardModule,
+  createAttractModeController
+} from "/tv/attract-mode.js";
 import { createLobbyOverlayController } from "/tv/lobby-overlay.js";
 
 const debugPerfEnabled = new URL(location.href).searchParams.get("debug") === "1";
@@ -364,7 +385,12 @@ elTimerPauseBtn?.addEventListener("click", async () => {
     const paused = !!lastRoomState?.timer?.paused;
     elTimerPauseBtn.disabled = true;
     await adminPost("timer", { paused: !paused });
-    show.toast({ title: paused ? "Timer resumed" : "Timer paused", subtitle: "Turn nudges follow the timer.", tone: "info", durationMs: 1400 });
+    show.toast({
+      title: paused ? "Timer resumed" : "Timer paused",
+      subtitle: "Turn nudges follow the timer.",
+      tone: "info",
+      durationMs: 1400
+    });
   } catch (e) {
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
@@ -518,9 +544,15 @@ function playerRow(p, { mode, currentPlayerId, pointsByPlayerId, victoryPointsTo
   const hostTag = p.isHost ? `<span class="tag">Host</span>` : "";
   const points = Math.max(0, Math.floor(pointsByPlayerId?.[p.playerId] ?? 0));
   const target = Math.max(0, Math.floor(victoryPointsToWin ?? 0));
-  const vpTag = target > 0 ? `<span class="tag">${escapeHtml(points)}/${escapeHtml(target)} VP</span>` : `<span class="tag">${escapeHtml(points)} VP</span>`;
+  const vpTag =
+    target > 0
+      ? `<span class="tag">${escapeHtml(points)}/${escapeHtml(target)} VP</span>`
+      : `<span class="tag">${escapeHtml(points)} VP</span>`;
   const winnerTag = winnerPlayerId === p.playerId ? `<span class="tag good">Winner</span>` : "";
-  const right = mode === "lobby" ? `<div style="display:flex; gap:8px; align-items:center;">${hostTag}${readyTag}</div>` : `<div style="display:flex; gap:8px; align-items:center;">${winnerTag}${vpTag}</div>`;
+  const right =
+    mode === "lobby"
+      ? `<div style="display:flex; gap:8px; align-items:center;">${hostTag}${readyTag}</div>`
+      : `<div style="display:flex; gap:8px; align-items:center;">${winnerTag}${vpTag}</div>`;
   return `
     <div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="--pc:${escapeHtml(p.color)};">
       <div class="name">
@@ -533,7 +565,10 @@ function playerRow(p, { mode, currentPlayerId, pointsByPlayerId, victoryPointsTo
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
 }
 
 function roomUrlForPhones() {
@@ -577,7 +612,9 @@ function setConnectionOverlay(isVisible, { title = "Reconnecting…", hint = "" 
 }
 
 function adminSecretStorageKey(code) {
-  const safe = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const safe = String(code || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
   return `catan.adminSecret.${safe}`;
 }
 
@@ -1087,7 +1124,12 @@ async function runBeat(beat) {
     const structures = lastRoomState?.game?.structures || null;
     focusPlayerArea(elBoard, beat?.playerId, structures, { duration: d(1000) });
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1150) });
+    await show.showMoment({
+      title: hostCopy.title,
+      subtitle: hostCopy.subtitle,
+      tone: hostCopy.tone,
+      durationMs: d(1150)
+    });
     const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) || null;
     show.spotlightElement(rowEl, { tone: "info", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
     return wait(640);
@@ -1143,7 +1185,12 @@ async function runBeat(beat) {
 
     // Step 2: Move the Robber
     if (sub === "robber_move") {
-      await show.showMoment({ title: "Move the Robber", subtitle: "Pick a new hex", tone: "warn", durationMs: d(1300) });
+      await show.showMoment({
+        title: "Move the Robber",
+        subtitle: "Pick a new hex",
+        tone: "warn",
+        durationMs: d(1300)
+      });
       const boardRoot = elBoard?.querySelector?.(".board") || elBoard;
       show.spotlightElement(boardRoot, { tone: "warn", pad: 14, durationMs: d(820), pulse: false, shade: 0.34 });
       return wait(650);
@@ -1151,7 +1198,12 @@ async function runBeat(beat) {
 
     // Step 3: Pick a Victim to Steal From
     if (sub === "robber_steal") {
-      await show.showMoment({ title: "Pick a Victim", subtitle: "Steal one random card", tone: "warn", durationMs: d(1300) });
+      await show.showMoment({
+        title: "Pick a Victim",
+        subtitle: "Steal one random card",
+        tone: "warn",
+        durationMs: d(1300)
+      });
       return wait(650);
     }
 
@@ -1238,8 +1290,16 @@ async function runBeat(beat) {
           ? elBoard?.querySelector?.(`[data-vertex-id="${beat.vertexId}"]`)
           : null;
     if (!target) {
-      const momentKind = kind === "road" ? "build_road" : kind === "settlement" ? "build_settlement" : kind === "city" ? "build_city" : "";
-      const data = momentKind === "build_road" ? { edgeId: beat?.edgeId || null } : { vertexId: beat?.vertexId || null };
+      const momentKind =
+        kind === "road"
+          ? "build_road"
+          : kind === "settlement"
+            ? "build_settlement"
+            : kind === "city"
+              ? "build_city"
+              : "";
+      const data =
+        momentKind === "build_road" ? { edgeId: beat?.edgeId || null } : { vertexId: beat?.vertexId || null };
       if (momentKind) await applyBoardMoment(elBoard, { kind: momentKind, data });
     }
     show.spotlightElement(target, { tone: "good", pad: 18, durationMs: d(850), pulse: true, shade: 0.34 });
@@ -1271,7 +1331,13 @@ async function runBeat(beat) {
     const giveBadges = renderResourceBadges(offer?.give, { prefix: "-" });
     const wantBadges = renderResourceBadges(offer?.want, { prefix: "+" });
     const badges = `${giveBadges ? `<span class="badge">Gives</span>${giveBadges}` : ""}${wantBadges ? `<span class="badge">Wants</span>${wantBadges}` : ""}`;
-    await show.showMoment({ title: `${hostCopy.title}${more}`, subtitle: hostCopy.subtitle, badgesHtml: badges, tone: hostCopy.tone, durationMs: d(1600) });
+    await show.showMoment({
+      title: `${hostCopy.title}${more}`,
+      subtitle: hostCopy.subtitle,
+      badgesHtml: badges,
+      tone: hostCopy.tone,
+      durationMs: d(1600)
+    });
     show.spotlightElement(elOffersCard, { tone: "info", pad: 12, durationMs: d(900), pulse: true, shade: 0.34 });
     return wait(720);
   }
@@ -1283,7 +1349,12 @@ async function runBeat(beat) {
     flashClass(elOffersCard, "cardFlash", d(700));
     playSfx("trade");
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1500) });
+    await show.showMoment({
+      title: hostCopy.title,
+      subtitle: hostCopy.subtitle,
+      tone: hostCopy.tone,
+      durationMs: d(1500)
+    });
     return wait(720);
   }
 
@@ -1319,7 +1390,12 @@ async function runBeat(beat) {
     cinematicReset(elBoard, { duration: d(1200) });
     show.confetti({ count: 70, durationMs: d(1900) });
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(2000) });
+    await show.showMoment({
+      title: hostCopy.title,
+      subtitle: hostCopy.subtitle,
+      tone: hostCopy.tone,
+      durationMs: d(2000)
+    });
     const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) || null;
     show.spotlightElement(rowEl, { tone: "good", pad: 10, durationMs: d(1400), pulse: false, shade: 0.32 });
     return wait(1100);
@@ -1330,7 +1406,12 @@ async function runBeat(beat) {
   // -------------------------------------------------------------------------
   if (type === "segment_transition") {
     const hostCopy = beat?.copy || { title: "Phase Change", subtitle: "", tone: "info" };
-    await show.showMoment({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1400) });
+    await show.showMoment({
+      title: hostCopy.title,
+      subtitle: hostCopy.subtitle,
+      tone: hostCopy.tone,
+      durationMs: d(1400)
+    });
     return wait(600);
   }
 
@@ -1475,7 +1556,9 @@ function renderResourceBadges(counts, { prefix = "+" } = {}) {
   for (const r of RESOURCE_TYPES) {
     const n = clampNonNegativeInt(counts[r] ?? 0);
     if (n <= 0) continue;
-    parts.push(`<span class="badge res-${escapeHtml(r)}">${escapeHtml(prefix)}${escapeHtml(n)} ${escapeHtml(r)}</span>`);
+    parts.push(
+      `<span class="badge res-${escapeHtml(r)}">${escapeHtml(prefix)}${escapeHtml(n)} ${escapeHtml(r)}</span>`
+    );
   }
   return parts.join("");
 }
@@ -1650,7 +1733,11 @@ function computeShowBeats(prevRoom, room) {
       const submitted = game.robber?.discardSubmittedByPlayerId || {};
       const pending = Object.entries(required)
         .filter(([, count]) => Number.isFinite(count) && count > 0)
-        .map(([playerId, count]) => ({ ...playerMeta(playerId), count: clampNonNegativeInt(count), submitted: !!submitted[playerId] }));
+        .map(([playerId, count]) => ({
+          ...playerMeta(playerId),
+          count: clampNonNegativeInt(count),
+          submitted: !!submitted[playerId]
+        }));
       beats.push({
         id: m.id,
         type: "robber_step",
@@ -1670,19 +1757,46 @@ function computeShowBeats(prevRoom, room) {
     if (kind === "build_road") {
       const edgeId = typeof data.edgeId === "string" ? data.edgeId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (edgeId) beats.push({ id: m.id, type: "build", kind: "road", edgeId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (edgeId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "road",
+          edgeId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
     if (kind === "build_settlement") {
       const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId) beats.push({ id: m.id, type: "build", kind: "settlement", vertexId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (vertexId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "settlement",
+          vertexId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
     if (kind === "build_city") {
       const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId) beats.push({ id: m.id, type: "build", kind: "city", vertexId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (vertexId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "city",
+          vertexId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
 
@@ -1724,7 +1838,14 @@ function computeShowBeats(prevRoom, room) {
 
     if (kind === "trade_cancelled") {
       const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      beats.push({ id: m.id, type: "trade_cancelled", count: 1, fromPlayerId: from.playerId, fromName: from.name, fromColor: from.color });
+      beats.push({
+        id: m.id,
+        type: "trade_cancelled",
+        count: 1,
+        fromPlayerId: from.playerId,
+        fromName: from.name,
+        fromColor: from.color
+      });
       continue;
     }
 
@@ -1746,7 +1867,13 @@ function computeShowBeats(prevRoom, room) {
 
     if (kind === "robber_discarded") {
       const actor = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      beats.push({ id: m.id, type: "robber_discarded", playerId: actor.playerId, playerName: actor.name, count: clampNonNegativeInt(data.count ?? 0) });
+      beats.push({
+        id: m.id,
+        type: "robber_discarded",
+        playerId: actor.playerId,
+        playerName: actor.name,
+        count: clampNonNegativeInt(data.count ?? 0)
+      });
       continue;
     }
 
@@ -1776,15 +1903,27 @@ function computeShowBeats(prevRoom, room) {
  */
 function createAttractSampleBoard() {
   const resources = [
-    "ore", "sheep", "wheat", "brick", "sheep",
-    "wheat", "ore", "wood", "brick", "desert",
-    "wood", "wheat", "ore", "wood", "sheep",
-    "brick", "sheep", "wheat", "wood"
+    "ore",
+    "sheep",
+    "wheat",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "brick",
+    "desert",
+    "wood",
+    "wheat",
+    "ore",
+    "wood",
+    "sheep",
+    "brick",
+    "sheep",
+    "wheat",
+    "wood"
   ];
-  const tokens = [
-    10, 2, 9, 12, 6, 4, 10, 9, 11, 0,
-    3, 8, 8, 3, 4, 5, 5, 6, 11
-  ];
+  const tokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
 
   const SQRT3 = Math.sqrt(3);
   const HEX_SIZE = 100;
@@ -1807,8 +1946,12 @@ function createAttractSampleBoard() {
     const a = (SQRT3 / 2) * HEX_SIZE;
     const b = 0.5 * HEX_SIZE;
     return [
-      { x: 0, y: -HEX_SIZE }, { x: a, y: -b }, { x: a, y: b },
-      { x: 0, y: HEX_SIZE }, { x: -a, y: b }, { x: -a, y: -b }
+      { x: 0, y: -HEX_SIZE },
+      { x: a, y: -b },
+      { x: a, y: b },
+      { x: 0, y: HEX_SIZE },
+      { x: -a, y: b },
+      { x: -a, y: -b }
     ];
   }
 
@@ -1818,8 +1961,12 @@ function createAttractSampleBoard() {
   const edgesByKey = new Map();
   const cornerOffsets = hexCornerOffsets();
 
-  function roundKey(n) { return Math.round(n * 1000); }
-  function pointKey(x, y) { return `${roundKey(x)}:${roundKey(y)}`; }
+  function roundKey(n) {
+    return Math.round(n * 1000);
+  }
+  function pointKey(x, y) {
+    return `${roundKey(x)}:${roundKey(y)}`;
+  }
 
   function getOrCreateVertex(pt) {
     const key = pointKey(pt.x, pt.y);
@@ -1854,7 +2001,10 @@ function createAttractSampleBoard() {
       addEdge(corners[i], corners[(i + 1) % corners.length]);
     }
     return {
-      id: hexId, q: c.q, r: c.r, center,
+      id: hexId,
+      q: c.q,
+      r: c.r,
+      center,
       resource: resources[idx] || "desert",
       token: tokens[idx] || 0,
       cornerVertexIds: corners.map((v) => v.id)
@@ -1871,18 +2021,29 @@ function createAttractSampleBoard() {
     vB.edgeIds.push(e.id);
   }
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const v of vertices) {
-    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
-    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+    minX = Math.min(minX, v.x);
+    maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y);
+    maxY = Math.max(maxY, v.y);
   }
 
   const edgeByVertexPair = {};
   for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
 
   return {
-    layout: "standard-radius-2", hexSize: HEX_SIZE, hexes, vertices, edges,
-    ports: [], edgeByVertexPair, bounds: { minX, minY, maxX, maxY }
+    layout: "standard-radius-2",
+    hexSize: HEX_SIZE,
+    hexes,
+    vertices,
+    edges,
+    ports: [],
+    edgeByVertexPair,
+    bounds: { minX, minY, maxX, maxY }
   };
 }
 
@@ -1914,8 +2075,11 @@ async function showAttractMode() {
 
   if (elAttractQr) {
     const baseUrl = `${location.protocol}//${location.host}/phone`;
-    try { elAttractQr.innerHTML = qrSvg(baseUrl, { margin: 4, label: "Join Catan" }); }
-    catch { elAttractQr.innerHTML = ""; }
+    try {
+      elAttractQr.innerHTML = qrSvg(baseUrl, { margin: 4, label: "Join Catan" });
+    } catch {
+      elAttractQr.innerHTML = "";
+    }
   }
 
   attractTipIndex = 0;
@@ -1927,11 +2091,16 @@ async function showAttractMode() {
   if (elAttractBoard && attractSampleBoard) {
     try {
       renderBoard(elAttractBoard, attractSampleBoard, {
-        players: [], structures: { roads: {}, settlements: {} },
-        selectableVertexIds: [], selectableEdgeIds: [], selectableHexIds: [],
+        players: [],
+        structures: { roads: {}, settlements: {} },
+        selectableVertexIds: [],
+        selectableEdgeIds: [],
+        selectableHexIds: [],
         robberHexId: "H9"
       });
-    } catch (err) { console.warn("[catan] Failed to render attract mode board:", err); }
+    } catch (err) {
+      console.warn("[catan] Failed to render attract mode board:", err);
+    }
   }
 }
 
@@ -1956,7 +2125,10 @@ function startAttractTipCarousel() {
   stopAttractTipCarousel();
   if (!elAttractTip || attractTips.length === 0) return;
   attractTipTimer = setInterval(() => {
-    if (!attractModeActive) { stopAttractTipCarousel(); return; }
+    if (!attractModeActive) {
+      stopAttractTipCarousel();
+      return;
+    }
     elAttractTip.classList.add("fading");
     setTimeout(() => {
       attractTipIndex = (attractTipIndex + 1) % attractTips.length;
@@ -1967,7 +2139,10 @@ function startAttractTipCarousel() {
 }
 
 function stopAttractTipCarousel() {
-  if (attractTipTimer) { clearInterval(attractTipTimer); attractTipTimer = null; }
+  if (attractTipTimer) {
+    clearInterval(attractTipTimer);
+    attractTipTimer = null;
+  }
 }
 
 function checkIdleForAttractMode() {
@@ -1992,7 +2167,10 @@ function checkIdleForAttractMode() {
 }
 
 function cancelAttractIdleTimer() {
-  if (attractIdleTimer) { clearTimeout(attractIdleTimer); attractIdleTimer = null; }
+  if (attractIdleTimer) {
+    clearTimeout(attractIdleTimer);
+    attractIdleTimer = null;
+  }
 }
 
 initAttractMode();
@@ -2062,9 +2240,7 @@ function renderLobbyPlayers(players) {
       const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
       const hostClass = p.isHost ? " host" : "";
       const roleText = p.isHost ? "Host" : "";
-      const readyTag = p.ready
-        ? `<span class="tag good">Ready</span>`
-        : `<span class="tag warn">Not ready</span>`;
+      const readyTag = p.ready ? `<span class="tag good">Ready</span>` : `<span class="tag warn">Not ready</span>`;
 
       return `
         <div class="lobbyPlayer${hostClass}">
@@ -2440,7 +2616,8 @@ function render(room, prevRoom) {
     hideLobbyOverlay();
   }
 
-  elSideTitle.textContent = mode === "in_game" && room.game?.phase === "game_over" ? "Game Over" : mode === "in_game" ? "Players" : "Lobby";
+  elSideTitle.textContent =
+    mode === "in_game" && room.game?.phase === "game_over" ? "Game Over" : mode === "in_game" ? "Players" : "Lobby";
   elJoinInfo.style.display = mode === "in_game" ? "none" : "";
   if (mode !== "in_game") renderJoinQr(joinUrl);
 
@@ -2608,7 +2785,9 @@ function render(room, prevRoom) {
   }
 
   const highlightMode =
-    room.gameMode === "quick" && ["PLACE_SETTLEMENT", "PLACE_ROAD"].includes(room.game.hints?.expected || "") ? "quick-setup" : "";
+    room.gameMode === "quick" && ["PLACE_SETTLEMENT", "PLACE_ROAD"].includes(room.game.hints?.expected || "")
+      ? "quick-setup"
+      : "";
   const nextBoardKey = alwaysRenderEnabled ? null : tvBoardRenderKey(room, { highlightMode });
   if (alwaysRenderEnabled || nextBoardKey !== lastBoardRenderKey) {
     const placed = computePlacedStructures(prevGame?.structures || null, game?.structures || null);
@@ -2635,10 +2814,15 @@ function stableRoomPart(v) {
 
 function playerDisplayKey(players) {
   if (!Array.isArray(players)) return "";
-  return players.map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.name)}:${stableRoomPart(p?.color)}`).join(";");
+  return players
+    .map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.name)}:${stableRoomPart(p?.color)}`)
+    .join(";");
 }
 
-function tvPlayersRenderKey(room, { mode = "", currentPlayerId = null, pointsByPlayerId = {}, victoryPointsToWin = 0, winnerPlayerId = null } = {}) {
+function tvPlayersRenderKey(
+  room,
+  { mode = "", currentPlayerId = null, pointsByPlayerId = {}, victoryPointsToWin = 0, winnerPlayerId = null } = {}
+) {
   const players = Array.isArray(room?.players) ? room.players : [];
   const rows = players
     .map((p) => {
@@ -2697,7 +2881,9 @@ function tvBoardStaticKey(board) {
   if (!b) return "board:none";
   const layout = stableRoomPart(b.layout);
   const hexSig = Array.isArray(b.hexes)
-    ? b.hexes.map((h) => `${stableRoomPart(h?.id)}:${stableRoomPart(h?.resource)}:${stableRoomPart(h?.token)}`).join(",")
+    ? b.hexes
+        .map((h) => `${stableRoomPart(h?.id)}:${stableRoomPart(h?.resource)}:${stableRoomPart(h?.token)}`)
+        .join(",")
     : "";
   const portSig = Array.isArray(b.ports)
     ? b.ports.map((p) => `${stableRoomPart(p?.id)}:${stableRoomPart(p?.kind)}:${stableRoomPart(p?.edgeId)}`).join(",")

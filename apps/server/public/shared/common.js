@@ -174,7 +174,10 @@ export function formatTs(ms) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
 }
 
 function listResourceBadges(counts, { prefix = "+" } = {}) {
@@ -274,7 +277,10 @@ function renderEntry(entry, playerById) {
 
 export function renderLog(logEl, entries, { players = [] } = {}) {
   const playerById = new Map((players || []).map((p) => [p.playerId, p]));
-  const list = (entries || []).slice(-60).map((e) => renderEntry(e, playerById)).join("");
+  const list = (entries || [])
+    .slice(-60)
+    .map((e) => renderEntry(e, playerById))
+    .join("");
   logEl.innerHTML = `<div class="logList">${list || `<div class="muted">No events yet.</div>`}</div>`;
   logEl.scrollTop = logEl.scrollHeight;
 }

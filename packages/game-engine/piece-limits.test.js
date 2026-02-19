@@ -40,7 +40,9 @@ test("BUILD_SETTLEMENT: rejects when out of settlement pieces", () => {
   const vertices = game.board.vertices.slice(0, 6);
   assert.ok(vertices.length >= 6, "board must have >= 6 vertices");
 
-  game.structures.settlements = Object.fromEntries(vertices.slice(0, 5).map((v) => [v.id, { playerId: "A", kind: "settlement" }]));
+  game.structures.settlements = Object.fromEntries(
+    vertices.slice(0, 5).map((v) => [v.id, { playerId: "A", kind: "settlement" }])
+  );
 
   const res = applyAction(game, { type: "BUILD_SETTLEMENT", vertexId: vertices[5].id }, "A");
   assert.deepEqual(res, { error: { code: "OUT_OF_PIECES_SETTLEMENT" } });
@@ -73,7 +75,9 @@ test("PLACE_SETTLEMENT (setup): rejects when out of settlement pieces", () => {
   const vertices = game.board.vertices.slice(0, 6);
   assert.ok(vertices.length >= 6, "board must have >= 6 vertices");
 
-  game.structures.settlements = Object.fromEntries(vertices.slice(0, 5).map((v) => [v.id, { playerId: "A", kind: "settlement" }]));
+  game.structures.settlements = Object.fromEntries(
+    vertices.slice(0, 5).map((v) => [v.id, { playerId: "A", kind: "settlement" }])
+  );
 
   const res = applyAction(game, { type: "PLACE_SETTLEMENT", vertexId: vertices[5].id }, "A");
   assert.deepEqual(res, { error: { code: "OUT_OF_PIECES_SETTLEMENT" } });

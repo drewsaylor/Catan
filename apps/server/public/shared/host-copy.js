@@ -96,15 +96,9 @@ const HOST_SCRIPTS = {
     { title: "Your move", subtitle: "Time's ticking!" },
     { title: "Still your turn", subtitle: "Make a play!" }
   ],
-  segment_setup: [
-    { title: "Setup Phase", subtitle: "Place your starting pieces." }
-  ],
-  segment_main: [
-    { title: "Main Game", subtitle: "Build your empire!" }
-  ],
-  segment_endgame: [
-    { title: "Endgame!", subtitle: "Victory is near..." }
-  ]
+  segment_setup: [{ title: "Setup Phase", subtitle: "Place your starting pieces." }],
+  segment_main: [{ title: "Main Game", subtitle: "Build your empire!" }],
+  segment_endgame: [{ title: "Endgame!", subtitle: "Victory is near..." }]
 };
 
 // -----------------------------------------------------------------------------
@@ -315,7 +309,8 @@ export function hostCopyForMoment(moment, { audience = "tv" } = {}) {
 
   // --- Build ---
   if (kind === "build" || kind === "build_road" || kind === "build_settlement" || kind === "build_city") {
-    const buildKind = moment.kind === "build" ? String(moment.buildKind || data.kind || "road") : kind.replace("build_", "");
+    const buildKind =
+      moment.kind === "build" ? String(moment.buildKind || data.kind || "road") : kind.replace("build_", "");
     const scripts = HOST_SCRIPTS[`build_${buildKind}`] || HOST_SCRIPTS.build_road;
     const variant = pickVariant(scripts);
     const playerName = moment.playerName || data.playerName || "";

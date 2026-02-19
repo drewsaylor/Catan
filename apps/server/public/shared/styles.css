@@ -3,7 +3,7 @@
   --bg0: #0b0f1a;
   --bg1: #121a2b;
   --card: rgba(255, 255, 255, 0.06);
-  --card2: rgba(255, 255, 255, 0.10);
+  --card2: rgba(255, 255, 255, 0.1);
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.68);
   --faint: rgba(255, 255, 255, 0.12);
@@ -45,8 +45,8 @@
   --res-ore-rgb: 154, 163, 173;
   --res-desert-rgb: 200, 176, 137;
   --res-badge-bg-alpha: 0.16;
-  --res-badge-border-alpha: 0.40;
-  --res-badge-pattern-alpha: 0.20;
+  --res-badge-border-alpha: 0.4;
+  --res-badge-pattern-alpha: 0.2;
   --res-badge-icon-size: 14px;
   --res-badge-icon-alpha: 0.92;
   --res-badge-icon-ink: rgba(255, 255, 255, 0.92);
@@ -90,8 +90,9 @@ body {
   font-family: "Alegreya Sans", "Gill Sans", "Trebuchet MS", sans-serif;
   font-size: var(--type-base);
   line-height: 1.25;
-  background: radial-gradient(1200px 800px at 15% 10%, rgba(var(--accent-rgb), 0.18), transparent 60%),
-    radial-gradient(900px 600px at 85% 30%, rgba(var(--accent2-rgb), 0.10), transparent 60%),
+  background:
+    radial-gradient(1200px 800px at 15% 10%, rgba(var(--accent-rgb), 0.18), transparent 60%),
+    radial-gradient(900px 600px at 85% 30%, rgba(var(--accent2-rgb), 0.1), transparent 60%),
     linear-gradient(180deg, var(--bg0), var(--bg1));
 }
 
@@ -138,7 +139,7 @@ h1 {
   padding: 8px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--muted);
   font-size: var(--type-pill);
 }
@@ -177,7 +178,7 @@ h1 {
 
 .card {
   background: var(--card);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   padding: 16px;
   backdrop-filter: blur(10px);
@@ -193,9 +194,9 @@ h1 {
 .primaryActionCard {
   border-color: rgba(var(--accent-rgb), 0.18);
   padding: 12px;
-  background: radial-gradient(900px 600px at 20% 0%, rgba(var(--accent-rgb), 0.14), transparent 62%),
-    radial-gradient(700px 500px at 80% 30%, rgba(var(--accent2-rgb), 0.08), transparent 62%),
-    var(--card);
+  background:
+    radial-gradient(900px 600px at 20% 0%, rgba(var(--accent-rgb), 0.14), transparent 62%),
+    radial-gradient(700px 500px at 80% 30%, rgba(var(--accent2-rgb), 0.08), transparent 62%), var(--card);
   position: sticky;
   top: calc(12px + env(safe-area-inset-top));
   z-index: 50;
@@ -230,9 +231,9 @@ h1 {
 .resourcesBarCard {
   padding: 10px 12px;
   border-color: rgba(var(--accent2-rgb), 0.18);
-  background: radial-gradient(900px 600px at 30% 20%, rgba(var(--accent2-rgb), 0.10), transparent 62%),
-    radial-gradient(700px 500px at 80% 30%, rgba(var(--accent-rgb), 0.08), transparent 62%),
-    var(--card);
+  background:
+    radial-gradient(900px 600px at 30% 20%, rgba(var(--accent2-rgb), 0.1), transparent 62%),
+    radial-gradient(700px 500px at 80% 30%, rgba(var(--accent-rgb), 0.08), transparent 62%), var(--card);
 }
 
 .resourcesBar {
@@ -277,7 +278,7 @@ h1 {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.2px;
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
   min-width: 18px;
   text-align: right;
 }
@@ -305,7 +306,7 @@ h1 {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
   background: rgba(255, 209, 102, 0.14);
   border: 1px solid rgba(255, 209, 102, 0.34);
   display: inline-flex;
@@ -367,7 +368,7 @@ h1 {
     box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
   }
   40% {
-    box-shadow: 0 0 0 10px rgba(var(--accent-rgb), 0.10);
+    box-shadow: 0 0 0 10px rgba(var(--accent-rgb), 0.1);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
@@ -379,7 +380,7 @@ h1 {
     box-shadow: 0 0 22px 0 rgba(var(--accent-rgb), 0);
   }
   45% {
-    box-shadow: 0 0 22px 0 rgba(var(--accent-rgb), 0.20);
+    box-shadow: 0 0 22px 0 rgba(var(--accent-rgb), 0.2);
   }
   100% {
     box-shadow: 0 0 22px 0 rgba(var(--accent-rgb), 0);
@@ -402,13 +403,15 @@ h1 {
   z-index: 2000;
   padding: 12px 14px;
   border-radius: 18px;
-  background: radial-gradient(900px 600px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 60%),
-    radial-gradient(800px 500px at 80% 20%, rgba(var(--accent2-rgb), 0.10), transparent 60%),
-    rgba(10, 16, 30, 0.92);
+  background:
+    radial-gradient(900px 600px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 60%),
+    radial-gradient(800px 500px at 80% 20%, rgba(var(--accent2-rgb), 0.1), transparent 60%), rgba(10, 16, 30, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(14px);
-  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.40);
-  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
 }
 
 .notifyBanner.show {
@@ -447,10 +450,10 @@ h1 {
 .stateBanner {
   padding: 12px 14px;
   border-radius: 18px;
-  background: rgba(10, 16, 30, 0.70);
+  background: rgba(10, 16, 30, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.20);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
 }
 
 .stateBanner.good {
@@ -498,7 +501,7 @@ h1 {
   height: 66px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -597,7 +600,7 @@ h1 {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes offerPop {
@@ -665,7 +668,10 @@ body[data-player-count-bucket="5-6"] .tradeOffersList {
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
 .btn.icon {
@@ -678,7 +684,7 @@ body[data-player-count-bucket="5-6"] .tradeOffersList {
 .btn:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn:focus-visible {
@@ -731,7 +737,7 @@ select {
   width: 100%;
   min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(10, 16, 30, 0.60);
+  background: rgba(10, 16, 30, 0.6);
   color: var(--text);
   padding: 10px 12px;
   border-radius: 12px;
@@ -821,7 +827,7 @@ select:focus {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .player.compact {
@@ -851,8 +857,8 @@ select:focus {
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  border: 2px solid var(--pc, rgba(var(--accent-rgb), 0.70));
-  box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.70));
+  border: 2px solid var(--pc, rgba(var(--accent-rgb), 0.7));
+  box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.7));
   opacity: 0.45;
   pointer-events: none;
   animation: turnRing calc(var(--dur-slow) * 2.15) var(--ease-in-out) infinite;
@@ -861,15 +867,15 @@ select:focus {
 @keyframes turnRing {
   0% {
     opacity: 0.25;
-    box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.70));
+    box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.7));
   }
   55% {
     opacity: 0.92;
-    box-shadow: 0 0 18px 2px var(--pc, rgba(var(--accent-rgb), 0.70));
+    box-shadow: 0 0 18px 2px var(--pc, rgba(var(--accent-rgb), 0.7));
   }
   100% {
     opacity: 0.25;
-    box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.70));
+    box-shadow: 0 0 0 0 var(--pc, rgba(var(--accent-rgb), 0.7));
   }
 }
 
@@ -884,7 +890,7 @@ select:focus {
   height: 12px;
   border-radius: 99px;
   background: var(--faint);
-  border: 1px solid rgba(255, 255, 255, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .tag {
@@ -897,14 +903,14 @@ select:focus {
 }
 
 .tag.good {
-  border-color: rgba(57, 217, 138, 0.30);
-  background: rgba(57, 217, 138, 0.10);
+  border-color: rgba(57, 217, 138, 0.3);
+  background: rgba(57, 217, 138, 0.1);
   color: rgba(255, 255, 255, 0.84);
 }
 
 .tag.warn {
   border-color: rgba(255, 209, 102, 0.28);
-  background: rgba(255, 209, 102, 0.10);
+  background: rgba(255, 209, 102, 0.1);
   color: rgba(255, 255, 255, 0.84);
 }
 
@@ -912,9 +918,9 @@ select:focus {
   font-family: inherit;
   font-size: var(--type-log);
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
   background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   padding: 10px 12px;
   height: 280px;
@@ -933,7 +939,7 @@ select:focus {
   padding: 9px 10px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logItem.game {
@@ -945,7 +951,7 @@ select:focus {
   width: 12px;
   height: 12px;
   border-radius: 99px;
-  background: var(--c, rgba(255, 255, 255, 0.20));
+  background: var(--c, rgba(255, 255, 255, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
   flex: 0 0 auto;
@@ -967,7 +973,7 @@ select:focus {
 }
 
 .logName {
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 800;
   letter-spacing: 0.2px;
 }
@@ -979,7 +985,7 @@ select:focus {
 
 .logMsg {
   margin-top: 4px;
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .logBadges {
@@ -1006,7 +1012,7 @@ select:focus {
   width: 8px;
   height: 8px;
   border-radius: 99px;
-  background: var(--c, rgba(255, 255, 255, 0.30));
+  background: var(--c, rgba(255, 255, 255, 0.3));
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
@@ -1057,7 +1063,8 @@ select:focus {
 
 .badge.res-wheat {
   --badge-res-rgb: var(--res-wheat-rgb);
-  --badge-res-pattern: linear-gradient(
+  --badge-res-pattern:
+    linear-gradient(
       45deg,
       rgba(255, 255, 255, var(--res-badge-pattern-alpha)) 0,
       rgba(255, 255, 255, var(--res-badge-pattern-alpha)) 2px,
@@ -1075,7 +1082,8 @@ select:focus {
 
 .badge.res-ore {
   --badge-res-rgb: var(--res-ore-rgb);
-  --badge-res-pattern: linear-gradient(
+  --badge-res-pattern:
+    linear-gradient(
       0deg,
       rgba(255, 255, 255, var(--res-badge-pattern-alpha)) 0,
       rgba(255, 255, 255, var(--res-badge-pattern-alpha)) 1.4px,
@@ -1144,7 +1152,7 @@ select:focus {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes diceShake {
@@ -1202,7 +1210,9 @@ select:focus {
   position: relative;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(225, 236, 255, 0.82));
   border: 1px solid rgba(0, 0, 0, 0.15);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.60);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .die.empty {
@@ -1293,7 +1303,7 @@ html[data-reduced-motion="true"] .dice3d-wrapper {
   border-radius: 14px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes boardPulse {
@@ -1301,7 +1311,7 @@ html[data-reduced-motion="true"] .dice3d-wrapper {
     box-shadow: 0 0 0 0 rgba(var(--accent2-rgb), 0);
   }
   40% {
-    box-shadow: 0 0 0 12px rgba(var(--accent2-rgb), 0.10);
+    box-shadow: 0 0 0 12px rgba(var(--accent2-rgb), 0.1);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(var(--accent2-rgb), 0);
@@ -1365,9 +1375,9 @@ body.board-fullscreen {
   gap: 10px;
   padding: 14px;
   border-radius: 18px;
-  background: radial-gradient(1000px 700px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 62%),
-    radial-gradient(900px 600px at 80% 20%, rgba(var(--accent2-rgb), 0.10), transparent 62%),
-    rgba(10, 16, 30, 0.92);
+  background:
+    radial-gradient(1000px 700px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 62%),
+    radial-gradient(900px 600px at 80% 20%, rgba(var(--accent2-rgb), 0.1), transparent 62%), rgba(10, 16, 30, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(14px);
 }
@@ -1445,8 +1455,8 @@ body.board-fullscreen {
 
 .token.res-ore {
   --token-ink: rgba(27, 45, 66, 0.95);
-  --token-ink-soft: rgba(27, 45, 66, 0.60);
-  --token-ring: rgba(27, 45, 66, 0.30);
+  --token-ink-soft: rgba(27, 45, 66, 0.6);
+  --token-ring: rgba(27, 45, 66, 0.3);
 }
 
 .token .token-bg {
@@ -1454,7 +1464,8 @@ body.board-fullscreen {
   stroke: var(--token-ring);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.42)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.26)) drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.18));
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.42)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.26))
+    drop-shadow(0 -2px 0 rgba(255, 255, 255, 0.18));
 }
 
 .token.hot .token-bg {
@@ -1479,7 +1490,7 @@ body.board-fullscreen {
 
 .robber circle {
   fill: rgba(255, 92, 122, 0.85);
-  stroke: rgba(0, 0, 0, 0.30);
+  stroke: rgba(0, 0, 0, 0.3);
   stroke-width: 3;
   vector-effect: non-scaling-stroke;
 }
@@ -1518,7 +1529,7 @@ body.board-fullscreen {
 }
 
 .edge-line {
-  stroke: rgba(255, 255, 255, 0.10);
+  stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
@@ -1528,7 +1539,7 @@ body.board-fullscreen {
   stroke-width: 6;
   vector-effect: non-scaling-stroke;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.30));
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.3));
   opacity: 0.65;
   animation: edgeGlow calc(var(--dur-slow) * 2) var(--ease-in-out) infinite;
 }
@@ -1557,14 +1568,14 @@ body.board-fullscreen {
 }
 
 .vertex-dot {
-  fill: rgba(255, 255, 255, 0.10);
-  stroke: rgba(0, 0, 0, 0.20);
+  fill: rgba(255, 255, 255, 0.1);
+  stroke: rgba(0, 0, 0, 0.2);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
 .vertex.occupied .vertex-dot {
-  opacity: 0.0;
+  opacity: 0;
 }
 
 .vertex-hint {
@@ -1589,7 +1600,7 @@ body.board-fullscreen {
 .board[data-highlight="quick-setup"] .edge-hint {
   opacity: 0.8;
   stroke-width: 7;
-  filter: drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.40));
+  filter: drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.4));
 }
 
 .board[data-highlight="quick-setup"] .hex-hint {
@@ -1874,7 +1885,7 @@ html[data-reduced-motion="true"] .tradeOffer.new {
 html[data-reduced-motion="true"] .player.turn::after {
   animation: none;
   opacity: 0.75;
-  box-shadow: 0 0 14px 2px var(--pc, rgba(var(--accent-rgb), 0.70));
+  box-shadow: 0 0 14px 2px var(--pc, rgba(var(--accent-rgb), 0.7));
 }
 
 html[data-reduced-motion="true"] .card.cardFlash,
@@ -1986,12 +1997,16 @@ html[data-high-contrast="true"] .vertex-hint {
   background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.12) 100%);
   border: 1px solid rgba(var(--accent-rgb), 0.45);
   border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   opacity: 0;
   transform: translateY(20px) scale(0.95);
-  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
   cursor: pointer;
   max-width: 100%;
 }
@@ -2164,7 +2179,9 @@ html[data-high-contrast="true"] .vertex-hint {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
 
 .howToPlayBtn:hover {

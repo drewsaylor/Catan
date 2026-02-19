@@ -50,7 +50,13 @@ test("computeLongestRoadLengthsByPlayerId: cycles and blocking", () => {
   const gameCycleTail = makeGame({
     turnOrder: ["A"],
     edges: edgesCycleTail,
-    roads: { E0: { playerId: "A" }, E1: { playerId: "A" }, E2: { playerId: "A" }, E3: { playerId: "A" }, E4: { playerId: "A" } },
+    roads: {
+      E0: { playerId: "A" },
+      E1: { playerId: "A" },
+      E2: { playerId: "A" },
+      E3: { playerId: "A" },
+      E4: { playerId: "A" }
+    },
     settlements: {}
   });
   assert.deepEqual(computeLongestRoadLengthsByPlayerId(gameCycleTail), { A: 5 });
@@ -120,4 +126,3 @@ test("computeLongestRoadAward: min length and ties", () => {
   });
   assert.equal(computeLongestRoadAward(aWins).longestRoadPlayerId, "A");
 });
-

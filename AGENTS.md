@@ -20,6 +20,7 @@ From the project root:
 - `PORT=3001 npm run dev`: run on a different port.
 
 Open:
+
 - TV: `http://localhost:3000/tv`
 - Phone: `http://localhost:3000/phone`
 

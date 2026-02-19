@@ -147,7 +147,8 @@ function ensureOverlay() {
   overlayRoot.style.borderRadius = "10px";
   overlayRoot.style.padding = "10px 12px";
   overlayRoot.style.maxWidth = "70vw";
-  overlayRoot.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+  overlayRoot.style.fontFamily =
+    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
   overlayRoot.style.fontSize = "12px";
   overlayRoot.style.lineHeight = "1.25";
   overlayRoot.style.whiteSpace = "pre";
@@ -223,15 +224,23 @@ function instrumentWebGLContext(gl) {
   wrap("drawRangeElements", (mode, start, end, count, type, offset) => estimateTriangles(gl, mode, count));
 
   // Instancing (WebGL2 + ANGLE extension).
-  wrap("drawArraysInstanced", (mode, first, count, instanceCount) => estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1));
-  wrap("drawElementsInstanced", (mode, count, type, offset, instanceCount) => estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1));
+  wrap(
+    "drawArraysInstanced",
+    (mode, first, count, instanceCount) => estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1)
+  );
+  wrap(
+    "drawElementsInstanced",
+    (mode, count, type, offset, instanceCount) =>
+      estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1)
+  );
   wrap(
     "drawArraysInstancedANGLE",
     (mode, first, count, instanceCount) => estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1)
   );
   wrap(
     "drawElementsInstancedANGLE",
-    (mode, count, type, offset, instanceCount) => estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1)
+    (mode, count, type, offset, instanceCount) =>
+      estimateTriangles(gl, mode, count) * Math.max(1, Number(instanceCount) || 1)
   );
 }
 
@@ -311,7 +320,9 @@ function renderOverlay() {
   if (fpsWindow.count > 0) lines.push(`fps: ${fmtFps(fpsLast)} (avg ${fmtFps(fpsAvg)})`);
 
   if (drawCallsWindow.count > 0 || trianglesWindow.count > 0) {
-    lines.push(`gl: ${fmtCount(drawCallsWindow.last)} calls, ${fmtCount(trianglesWindow.last)} tris (avg ${fmtCount(avg(drawCallsWindow))}/${fmtCount(avg(trianglesWindow))})`);
+    lines.push(
+      `gl: ${fmtCount(drawCallsWindow.last)} calls, ${fmtCount(trianglesWindow.last)} tris (avg ${fmtCount(avg(drawCallsWindow))}/${fmtCount(avg(trianglesWindow))})`
+    );
   }
 
   try {

@@ -215,7 +215,7 @@ const elFeedbackSubmitBtn = qs("#feedbackSubmitBtn");
 const elFeedbackSkipBtn = qs("#feedbackSkipBtn");
 const elFeedbackErr = qs("#feedbackErr");
 
-const tabButtons = Array.from(document.querySelectorAll('#phoneTabs [data-tab]'));
+const tabButtons = Array.from(document.querySelectorAll("#phoneTabs [data-tab]"));
 const tabPanels = Array.from(document.querySelectorAll("[data-tab-panel]"));
 const tabBadges = new Map(
   Array.from(document.querySelectorAll("[data-tab-badge]")).map((el) => [el.getAttribute("data-tab-badge"), el])
@@ -404,7 +404,8 @@ function shouldShowBoardTab(room, me) {
   if (!game) return false;
   const myTurn = me?.playerId === game.currentPlayerId;
   const expected = game.hints?.expected || null;
-  if (myTurn && ["PLACE_SETTLEMENT", "PLACE_ROAD", "MOVE_ROBBER", "DEV_ROAD_BUILDING_PLACE_ROAD"].includes(expected)) return true;
+  if (myTurn && ["PLACE_SETTLEMENT", "PLACE_ROAD", "MOVE_ROBBER", "DEV_ROAD_BUILDING_PLACE_ROAD"].includes(expected))
+    return true;
   if (myTurn && game.phase === "turn" && game.subphase === "main" && mode) return true;
   return false;
 }
@@ -586,7 +587,11 @@ function renderHelp(room, you) {
         "The current player will move the robber next."
       ];
     } else {
-      items = ["No discard needed for you.", "Waiting for everyone to finish discarding.", "Then the current player moves the robber."];
+      items = [
+        "No discard needed for you.",
+        "Waiting for everyone to finish discarding.",
+        "Then the current player moves the robber."
+      ];
     }
   } else if (expected === "MOVE_ROBBER") {
     title = "Robber: Move";
@@ -612,8 +617,16 @@ function renderHelp(room, you) {
   } else if (game.phase === "turn" && game.subphase === "main") {
     title = myTurn ? "Main phase" : "Waiting";
     items = myTurn
-      ? ["Build: pick a build button, then tap highlighted board.", "Trade: propose or accept offers.", "End your turn when you’re done."]
-      : ["You can respond to trade offers in the Trade section.", `Waiting for ${currentName} to end their turn.`, "Pinch/drag the board to inspect."];
+      ? [
+          "Build: pick a build button, then tap highlighted board.",
+          "Trade: propose or accept offers.",
+          "End your turn when you’re done."
+        ]
+      : [
+          "You can respond to trade offers in the Trade section.",
+          `Waiting for ${currentName} to end their turn.`,
+          "Pinch/drag the board to inspect."
+        ];
   } else {
     title = "In progress";
     items = ["Follow the Primary action at the top.", "If you’re stuck, check the Robber or Trade sections."];
@@ -817,7 +830,10 @@ syncSettingsUi(getSettings());
 onSettingsChange(syncSettingsUi);
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
 }
 
 function parseNonNegativeInt(value) {
@@ -1132,7 +1148,12 @@ function handleMoment(moment) {
     if (!fromPlayerId || fromPlayerId === playerId) return;
     if (to !== "all" && to !== playerId) return;
     playSfx("trade", { gain: 0.55 });
-    showNotify({ tone: "info", title: "Trade offer", hint: `From ${nameFor(fromPlayerId)}. Scroll to Trade to respond.`, durationMs: 5200 });
+    showNotify({
+      tone: "info",
+      title: "Trade offer",
+      hint: `From ${nameFor(fromPlayerId)}. Scroll to Trade to respond.`,
+      durationMs: 5200
+    });
     return;
   }
 
@@ -1226,7 +1247,9 @@ function renderResourceBadges(counts, { prefix = "+" } = {}) {
   for (const r of RESOURCE_TYPES) {
     const n = parseNonNegativeInt(counts[r] ?? 0);
     if (n <= 0) continue;
-    parts.push(`<span class="badge res-${escapeHtml(r)}">${escapeHtml(prefix)}${escapeHtml(n)} ${escapeHtml(r)}</span>`);
+    parts.push(
+      `<span class="badge res-${escapeHtml(r)}">${escapeHtml(prefix)}${escapeHtml(n)} ${escapeHtml(r)}</span>`
+    );
   }
   return parts.join("");
 }
@@ -1582,7 +1605,11 @@ function renderRoomStateBanner(room, { context = "connected" } = {}) {
   const info = bannerForRoom(room, { context });
   if (!info) return setRoomStateBanner({ show: false });
   const hide =
-    context === "connected" && room?.status === "in_game" && info.tone === "info" && !info.hint && String(info.title || "").toLowerCase() === "in game";
+    context === "connected" &&
+    room?.status === "in_game" &&
+    info.tone === "info" &&
+    !info.hint &&
+    String(info.title || "").toLowerCase() === "in game";
   setRoomStateBanner({ ...info, show: !hide });
 }
 
@@ -1656,7 +1683,10 @@ async function join({ name, code }) {
   const prevRoomCode = roomCode;
   const rejoin = !!playerId;
   elStatus.textContent = rejoin ? "Rejoining…" : "Joining…";
-  setConnectionOverlay(true, { title: rejoin ? "Rejoining…" : "Joining…", hint: rejoin ? "Hold tight — your seat is saved." : "" });
+  setConnectionOverlay(true, {
+    title: rejoin ? "Rejoining…" : "Joining…",
+    hint: rejoin ? "Hold tight — your seat is saved." : ""
+  });
   playerName = String(name || "").trim();
   let payload;
   try {
@@ -1936,7 +1966,9 @@ function stableRoomPart(v) {
 
 function playerDisplayKey(players) {
   if (!Array.isArray(players)) return "";
-  return players.map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.name)}:${stableRoomPart(p?.color)}`).join(";");
+  return players
+    .map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.name)}:${stableRoomPart(p?.color)}`)
+    .join(";");
 }
 
 function phonePlayersRenderKey(room) {
@@ -1988,7 +2020,9 @@ function phoneBoardStaticKey(board) {
   if (!b) return "board:none";
   const layout = stableRoomPart(b.layout);
   const hexSig = Array.isArray(b.hexes)
-    ? b.hexes.map((h) => `${stableRoomPart(h?.id)}:${stableRoomPart(h?.resource)}:${stableRoomPart(h?.token)}`).join(",")
+    ? b.hexes
+        .map((h) => `${stableRoomPart(h?.id)}:${stableRoomPart(h?.resource)}:${stableRoomPart(h?.token)}`)
+        .join(",")
     : "";
   const portSig = Array.isArray(b.ports)
     ? b.ports.map((p) => `${stableRoomPart(p?.id)}:${stableRoomPart(p?.kind)}:${stableRoomPart(p?.edgeId)}`).join(",")
@@ -2051,7 +2085,10 @@ function phoneBoardRenderKey({
 function renderPresetSelect(room) {
   const presets = room.presets || [];
   const html = presets
-    .map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === room.presetId ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
+    .map(
+      (p) =>
+        `<option value="${escapeHtml(p.id)}" ${p.id === room.presetId ? "selected" : ""}>${escapeHtml(p.name)}</option>`
+    )
     .join("");
   elPresetSelect.innerHTML = html;
 }
@@ -2060,7 +2097,10 @@ function renderThemeSelect(room) {
   if (!elThemeSelect) return;
   const themes = room.themes || [];
   const html = themes
-    .map((t) => `<option value="${escapeHtml(t.id)}" ${t.id === room.themeId ? "selected" : ""}>${escapeHtml(t.name)}</option>`)
+    .map(
+      (t) =>
+        `<option value="${escapeHtml(t.id)}" ${t.id === room.themeId ? "selected" : ""}>${escapeHtml(t.name)}</option>`
+    )
     .join("");
   elThemeSelect.innerHTML = html;
 }
@@ -2130,7 +2170,8 @@ function renderHouseRulesControls(room) {
   const customVp = Number.isFinite(vp) ? Math.floor(vp) : null;
   if (elVpTargetSelect) elVpTargetSelect.value = customVp != null ? String(customVp) : "";
   if (elVpTargetHint) {
-    elVpTargetHint.textContent = customVp != null ? `Custom: ${customVp} VP (default ${defaultVp})` : `Default: ${defaultVp} VP`;
+    elVpTargetHint.textContent =
+      customVp != null ? `Custom: ${customVp} VP (default ${defaultVp})` : `Default: ${defaultVp} VP`;
   }
 
   const emotesEnabled = room?.settings?.houseRules?.emotesEnabled !== false;
@@ -2217,7 +2258,10 @@ function renderPostGame(room, me) {
     elPostGameWinner.textContent = winnerId && winnerId === me?.playerId ? "You win!" : `Winner: ${winnerName}`;
   }
 
-  const breakdown = computeVpBreakdownByPlayerId(game, (room.players || []).map((p) => p.playerId));
+  const breakdown = computeVpBreakdownByPlayerId(
+    game,
+    (room.players || []).map((p) => p.playerId)
+  );
   const playersSorted = [...(room.players || [])].sort((a, b) => {
     const at = parseNonNegativeInt(breakdown?.[a.playerId]?.total ?? 0);
     const bt = parseNonNegativeInt(breakdown?.[b.playerId]?.total ?? 0);
@@ -2228,7 +2272,14 @@ function renderPostGame(room, me) {
     elPostGameStats.innerHTML =
       playersSorted
         .map((p) => {
-          const b = breakdown?.[p.playerId] || { settlementCount: 0, cityCount: 0, longestRoad: 0, largestArmy: 0, hidden: 0, total: 0 };
+          const b = breakdown?.[p.playerId] || {
+            settlementCount: 0,
+            cityCount: 0,
+            longestRoad: 0,
+            largestArmy: 0,
+            hidden: 0,
+            total: 0
+          };
           const tags = [
             `S ${parseNonNegativeInt(b.settlementCount)}`,
             `C ${parseNonNegativeInt(b.cityCount)}`,
@@ -2342,8 +2393,10 @@ function renderPrimaryAction(room, me, you) {
 
       const gateCtx = { game, playerId: me?.playerId || null, you };
       const canBuildRoad = !gateAction(gateCtx, { type: "BUILD_ROAD" }) && legalRoadEdges(game, me.playerId).length > 0;
-      const canBuildSettlement = !gateAction(gateCtx, { type: "BUILD_SETTLEMENT" }) && legalSettlementVertices(game, me.playerId).length > 0;
-      const canBuildCity = !gateAction(gateCtx, { type: "BUILD_CITY" }) && legalCityVertices(game, me.playerId).length > 0;
+      const canBuildSettlement =
+        !gateAction(gateCtx, { type: "BUILD_SETTLEMENT" }) && legalSettlementVertices(game, me.playerId).length > 0;
+      const canBuildCity =
+        !gateAction(gateCtx, { type: "BUILD_CITY" }) && legalCityVertices(game, me.playerId).length > 0;
 
       const canBuyDevCard = !gateAction(gateCtx, { type: "BUY_DEV_CARD" });
       const canPlayDevCard =
@@ -2366,7 +2419,14 @@ function renderPrimaryAction(room, me, you) {
         if (canBankTrade) break;
       }
 
-      const canDoSomething = canBuildRoad || canBuildSettlement || canBuildCity || canBuyDevCard || canPlayDevCard || canBankTrade || total > 0;
+      const canDoSomething =
+        canBuildRoad ||
+        canBuildSettlement ||
+        canBuildCity ||
+        canBuyDevCard ||
+        canPlayDevCard ||
+        canBankTrade ||
+        total > 0;
       elEndTurnBtn.classList.toggle("primary", !canDoSomething);
     }
   }
@@ -2852,13 +2912,37 @@ function renderMainActions(room, me) {
   const cityGate = gateAction(gateCtx, { type: "BUILD_CITY" });
 
   const roadsBuilt = Object.values(room.game.structures?.roads || {}).filter((r) => r?.playerId === me.playerId).length;
-  const settlementsBuilt = Object.values(room.game.structures?.settlements || {}).filter((s) => s?.playerId === me.playerId && s.kind === "settlement").length;
-  const citiesBuilt = Object.values(room.game.structures?.settlements || {}).filter((s) => s?.playerId === me.playerId && s.kind === "city").length;
+  const settlementsBuilt = Object.values(room.game.structures?.settlements || {}).filter(
+    (s) => s?.playerId === me.playerId && s.kind === "settlement"
+  ).length;
+  const citiesBuilt = Object.values(room.game.structures?.settlements || {}).filter(
+    (s) => s?.playerId === me.playerId && s.kind === "city"
+  ).length;
 
-  const roadBlock = roadsBuilt >= 15 ? "OUT_OF_PIECES_ROAD" : roadGate ? roadGate.code : roadOpts.length === 0 ? "ILLEGAL_PLACEMENT" : "";
+  const roadBlock =
+    roadsBuilt >= 15
+      ? "OUT_OF_PIECES_ROAD"
+      : roadGate
+        ? roadGate.code
+        : roadOpts.length === 0
+          ? "ILLEGAL_PLACEMENT"
+          : "";
   const settlementBlock =
-    settlementsBuilt >= 5 ? "OUT_OF_PIECES_SETTLEMENT" : settlementGate ? settlementGate.code : settlementOpts.length === 0 ? "ILLEGAL_PLACEMENT" : "";
-  const cityBlock = citiesBuilt >= 4 ? "OUT_OF_PIECES_CITY" : cityGate ? cityGate.code : cityOpts.length === 0 ? "ILLEGAL_PLACEMENT" : "";
+    settlementsBuilt >= 5
+      ? "OUT_OF_PIECES_SETTLEMENT"
+      : settlementGate
+        ? settlementGate.code
+        : settlementOpts.length === 0
+          ? "ILLEGAL_PLACEMENT"
+          : "";
+  const cityBlock =
+    citiesBuilt >= 4
+      ? "OUT_OF_PIECES_CITY"
+      : cityGate
+        ? cityGate.code
+        : cityOpts.length === 0
+          ? "ILLEGAL_PLACEMENT"
+          : "";
 
   setSoftDisabled(elBuildRoadBtn, roadBlock);
   setSoftDisabled(elBuildSettlementBtn, settlementBlock);
@@ -3045,21 +3129,34 @@ function renderActionHint(room, me) {
     if (required > 0 && !submitted) {
       text = `Discard ${required} card${required === 1 ? "" : "s"}`;
     } else {
-      text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: false, currentPlayerName: currentName });
+      text = getWhatsNextCopy(game, {
+        playerId: me?.playerId,
+        expected,
+        isMyTurn: false,
+        currentPlayerName: currentName
+      });
     }
-  }
-  else if (expected === "MOVE_ROBBER") {
+  } else if (expected === "MOVE_ROBBER") {
     if (myTurn) {
       text = "Move the robber";
     } else {
-      text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: false, currentPlayerName: currentName });
+      text = getWhatsNextCopy(game, {
+        playerId: me?.playerId,
+        expected,
+        isMyTurn: false,
+        currentPlayerName: currentName
+      });
     }
-  }
-  else if (expected === "STEAL_CARD") {
+  } else if (expected === "STEAL_CARD") {
     if (myTurn) {
       text = "Pick someone to steal from";
     } else {
-      text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: false, currentPlayerName: currentName });
+      text = getWhatsNextCopy(game, {
+        playerId: me?.playerId,
+        expected,
+        isMyTurn: false,
+        currentPlayerName: currentName
+      });
     }
   }
   // Dev card road building
@@ -3074,20 +3171,22 @@ function renderActionHint(room, me) {
     if (offers.length) {
       text = "Trade offer pending";
     } else {
-      text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: false, currentPlayerName: currentName });
+      text = getWhatsNextCopy(game, {
+        playerId: me?.playerId,
+        expected,
+        isMyTurn: false,
+        currentPlayerName: currentName
+      });
     }
   }
   // My turn - use host copy for actionable hints
   else if (expected === "ROLL_DICE") {
     text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
-  }
-  else if (expected === "PLACE_SETTLEMENT") {
+  } else if (expected === "PLACE_SETTLEMENT") {
     text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
-  }
-  else if (expected === "PLACE_ROAD") {
+  } else if (expected === "PLACE_ROAD") {
     text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
-  }
-  else if (game.phase === "turn" && game.subphase === "main") {
+  } else if (game.phase === "turn" && game.subphase === "main") {
     text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
   }
 
@@ -3132,7 +3231,11 @@ function renderTrade(room, me, you) {
 
   setText(
     elTradeHint,
-    inMain ? (canCreate ? "Propose a trade. Other players can accept or reject." : "Respond to the current player's trade offers.") : "Trading unlocks during the main phase (after dice)."
+    inMain
+      ? canCreate
+        ? "Propose a trade. Other players can accept or reject."
+        : "Respond to the current player's trade offers."
+      : "Trading unlocks during the main phase (after dice)."
   );
 
   elTradeCreatePanel.style.display = canCreate ? "" : "none";
@@ -3279,7 +3382,9 @@ function renderBankTrade(room, me, you) {
 
   const prevGive = elBankGiveSelect?.value || "wood";
   const prevReceive = elBankReceiveSelect?.value || "brick";
-  const options = RESOURCE_TYPES.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(titleResource(r))}</option>`).join("");
+  const options = RESOURCE_TYPES.map(
+    (r) => `<option value="${escapeHtml(r)}">${escapeHtml(titleResource(r))}</option>`
+  ).join("");
   elBankGiveSelect.innerHTML = options;
   elBankReceiveSelect.innerHTML = options;
 
@@ -3401,7 +3506,9 @@ function renderDevCards(room, me, you) {
     })
     .join("");
 
-  elDevCardsInHand.innerHTML = inHandRows ? `<div class="muted">In hand</div>${inHandRows}` : `<div class="muted">In hand: none.</div>`;
+  elDevCardsInHand.innerHTML = inHandRows
+    ? `<div class="muted">In hand</div>${inHandRows}`
+    : `<div class="muted">In hand: none.</div>`;
 
   // Newly bought (locked until next turn).
   const newCounts = countsByValue(you?.devCardsNew);
@@ -3424,7 +3531,8 @@ function renderDevCards(room, me, you) {
 
   const largestPid = game.awards?.largestArmyPlayerId ?? null;
   const largestPlayer = largestPid ? (room.players || []).find((p) => p.playerId === largestPid) : null;
-  if (elDevLargestArmyTag) elDevLargestArmyTag.textContent = largestPlayer ? `Largest Army: ${largestPlayer.name}` : "Largest Army: —";
+  if (elDevLargestArmyTag)
+    elDevLargestArmyTag.textContent = largestPlayer ? `Largest Army: ${largestPlayer.name}` : "Largest Army: —";
 
   const hiddenVp = parseNonNegativeInt(you?.hiddenVictoryPointsCount ?? 0);
   if (elDevHiddenVpTag) elDevHiddenVpTag.textContent = `Hidden VP: ${hiddenVp}`;
@@ -3467,7 +3575,9 @@ function renderDevCards(room, me, you) {
     if (elDevMonopolyPanel) elDevMonopolyPanel.style.display = "";
 
     const prev = elDevMonopolySelect?.value || "wood";
-    const options = RESOURCE_TYPES.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(titleResource(r))}</option>`).join("");
+    const options = RESOURCE_TYPES.map(
+      (r) => `<option value="${escapeHtml(r)}">${escapeHtml(titleResource(r))}</option>`
+    ).join("");
     elDevMonopolySelect.innerHTML = options;
     if (RESOURCE_TYPES.includes(prev)) elDevMonopolySelect.value = prev;
   }
@@ -3607,7 +3717,10 @@ elReadyBtn.addEventListener("click", async () => {
   const me = lastRoomState?.players.find((p) => p.playerId === playerId);
   const nextReady = !me?.ready;
   try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/ready`, { method: "POST", body: { playerId, ready: nextReady } });
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/ready`, {
+      method: "POST",
+      body: { playerId, ready: nextReady }
+    });
   } catch (e) {
     showErrorToast(e);
   }
@@ -3643,7 +3756,10 @@ elGameModeSelect?.addEventListener("change", async () => {
 elMaxPlayersSelect?.addEventListener("change", async () => {
   if (!roomCode || !playerId) return;
   try {
-    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/maxPlayers`, { playerId, maxPlayers: Number(elMaxPlayersSelect.value) });
+    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/maxPlayers`, {
+      playerId,
+      maxPlayers: Number(elMaxPlayersSelect.value)
+    });
   } catch (e) {
     showErrorToast(e);
   }
@@ -3692,7 +3808,10 @@ elEmotesToggleBtn?.addEventListener("click", async () => {
 elBoardSeedInput?.addEventListener("change", async () => {
   if (!roomCode || !playerId) return;
   try {
-    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/boardSeed`, { playerId, boardSeed: elBoardSeedInput.value });
+    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/boardSeed`, {
+      playerId,
+      boardSeed: elBoardSeedInput.value
+    });
   } catch (e) {
     showErrorToast(e);
     renderBoardSeedControls(lastRoomState);
@@ -3788,7 +3907,10 @@ elPrimaryBtn.addEventListener("click", async () => {
   if ((lastRoomState.game.hints?.expected || null) !== "ROLL_DICE") return;
   animatePressEffect(elPrimaryBtn);
   try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, { method: "POST", body: { playerId, type: "ROLL_DICE" } });
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "ROLL_DICE" }
+    });
     feedbackGood("dice", { gain: 0.9 });
   } catch (e) {
     showErrorToast(e);
@@ -3799,7 +3921,10 @@ elEndTurnBtn.addEventListener("click", async () => {
   if (!roomCode || !playerId) return;
   animatePressEffect(elEndTurnBtn);
   try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, { method: "POST", body: { playerId, type: "END_TURN" } });
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "END_TURN" }
+    });
     feedbackGood("turn", { gain: 0.75 });
   } catch (e) {
     showErrorToast(e);
@@ -3995,7 +4120,8 @@ elTradeSendBtn?.addEventListener("click", async () => {
   elTradeErr.textContent = "";
   const give = countsFromInputs(tradeGiveInputs);
   const want = countsFromInputs(tradeWantInputs);
-  if (!hasAnyResources(give) || !hasAnyResources(want)) return (elTradeErr.textContent = "Enter something to give and want.");
+  if (!hasAnyResources(give) || !hasAnyResources(want))
+    return (elTradeErr.textContent = "Enter something to give and want.");
 
   const hand = lastYouState?.hand || {};
   if (!hasEnough(hand, give)) return (elTradeErr.textContent = "You don't have those resources to give.");
@@ -4043,7 +4169,8 @@ elBankTradeBtn?.addEventListener("click", async () => {
 
   const hand = lastYouState?.hand || {};
   if (!hasEnough(hand, give)) return (elBankTradeErr.textContent = "You don't have enough to give.");
-  if (parseNonNegativeInt(game.bank?.[receiveType] ?? 0) < receiveAmount) return (elBankTradeErr.textContent = "Bank is out of that resource.");
+  if (parseNonNegativeInt(game.bank?.[receiveType] ?? 0) < receiveAmount)
+    return (elBankTradeErr.textContent = "Bank is out of that resource.");
 
   animatePressEffect(elBankTradeBtn);
   try {
@@ -4069,7 +4196,10 @@ elDevBuyBtn?.addEventListener("click", async () => {
   animatePressEffect(elDevBuyBtn);
   try {
     elDevBuyBtn.disabled = true;
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, { method: "POST", body: { playerId, type: "BUY_DEV_CARD" } });
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "BUY_DEV_CARD" }
+    });
     feedbackGood("ui_confirm", { gain: 0.85 });
   } catch (e) {
     showErrorToast(e, { title: "Can't buy dev card" });
@@ -4100,7 +4230,10 @@ elDevCardsInHand?.addEventListener("click", async (ev) => {
   if (elDevCardsErr) elDevCardsErr.textContent = "";
   try {
     btn.disabled = true;
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, { method: "POST", body: { playerId, type: "PLAY_DEV_CARD", card } });
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "PLAY_DEV_CARD", card }
+    });
     feedbackGood("ui_confirm", { gain: 0.85 });
   } catch (e) {
     showErrorToast(e, { title: "Can't play dev card" });
@@ -4408,7 +4541,10 @@ function checkHintTriggers(room, me, you) {
 
   // --- Hint: First Settlement (setup phase) ---
   if (myTurn && expected === "PLACE_SETTLEMENT" && isNewExpected && !hintTriggerState.settlementHintShown) {
-    if ((phase === "setup_round_1" || phase === "setup_round_2") && !window.CatanHints.hasSeenHint("first_settlement")) {
+    if (
+      (phase === "setup_round_1" || phase === "setup_round_2") &&
+      !window.CatanHints.hasSeenHint("first_settlement")
+    ) {
       window.CatanHints.showHint("first_settlement");
       hintTriggerState.settlementHintShown = true;
       return;

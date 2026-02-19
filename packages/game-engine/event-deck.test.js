@@ -31,15 +31,24 @@ describe("EVENT_TYPES and EVENT_IDS", () => {
   });
 
   test("EVENT_IDS matches EVENT_TYPES ids", () => {
-    assert.deepEqual(EVENT_IDS, EVENT_TYPES.map((e) => e.id));
+    assert.deepEqual(
+      EVENT_IDS,
+      EVENT_TYPES.map((e) => e.id)
+    );
   });
 
   test("each event has required fields", () => {
     for (const event of EVENT_TYPES) {
       assert.ok(typeof event.id === "string" && event.id.length > 0, `Event missing id`);
       assert.ok(typeof event.name === "string" && event.name.length > 0, `Event ${event.id} missing name`);
-      assert.ok(typeof event.description === "string" && event.description.length > 0, `Event ${event.id} missing description`);
-      assert.ok(typeof event.shortText === "string" && event.shortText.length > 0, `Event ${event.id} missing shortText`);
+      assert.ok(
+        typeof event.description === "string" && event.description.length > 0,
+        `Event ${event.id} missing description`
+      );
+      assert.ok(
+        typeof event.shortText === "string" && event.shortText.length > 0,
+        `Event ${event.id} missing shortText`
+      );
     }
   });
 });

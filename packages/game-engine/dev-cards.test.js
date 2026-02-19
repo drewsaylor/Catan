@@ -57,7 +57,9 @@ test("PLAY_DEV_CARD: Year of Plenty validates and updates bank", () => {
   const ok = applyAction(okGame, { type: "PLAY_DEV_CARD", card: "year_of_plenty", take: { wood: 2 } }, "A");
   assert.ok(ok.game);
   assert.equal(ok.game.bank.wood, 0);
-  assert.deepEqual(ok.privateUpdates, [{ playerId: "A", handDelta: { wood: 2, brick: 0, sheep: 0, wheat: 0, ore: 0 } }]);
+  assert.deepEqual(ok.privateUpdates, [
+    { playerId: "A", handDelta: { wood: 2, brick: 0, sheep: 0, wheat: 0, ore: 0 } }
+  ]);
 
   const badTotal = makeMainPhaseGame({ playerIds: ["A"], currentPlayerId: "A" });
   badTotal.bank = { wood: 19, brick: 19, sheep: 19, wheat: 19, ore: 19 };
@@ -104,4 +106,3 @@ test("PLAY_DEV_CARD: Road Building places up to two roads", () => {
   assert.equal(r2.game.subphase, "main");
   assert.equal(r2.game.devRoadBuilding, null);
 });
-

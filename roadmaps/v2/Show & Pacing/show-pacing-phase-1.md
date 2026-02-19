@@ -1,37 +1,47 @@
 # Show & Pacing — Phase 1: Shared Moment Detector (TV + Phone + 3D Hooks) (P1)
 
 ## Status (Implemented)
+
 Implemented on 2026-02-14.
 
 ## Goal
+
 Centralize “what just happened?” detection into a shared module so TV overlays, phone prompts, and 3D animations stay synchronized.
 
 ## Non-goals
+
 - No new server SSE events required.
 - No new UI layout redesign.
 
 ## Player-facing outcomes
+
 - More consistent toasts/moment cards across devices.
 - Fewer double-triggers on reconnect.
 
 ## Technical plan
+
 ### Server
+
 - No changes.
 
 ### Engine
+
 - No changes.
 
 ### TV
+
 - Replace ad-hoc moment detection in TV with a shared detector.
 - Map moments → show layer actions (moment card, toast, spotlight, confetti).
 
 ### Phone
+
 - Use the same shared detector for:
   - “Primary action” nudges
   - small, non-blocking toasts
   - haptic/sfx triggers (respect settings)
 
 ### Shared
+
 - Add `detectMoments(prevRoom, nextRoom) -> moments[]`
   - Each moment has:
     - `id` (stable de-dupe key)
@@ -43,22 +53,27 @@ Centralize “what just happened?” detection into a shared module so TV overla
   - apply cooldowns where needed
 
 ## APIs & data shape changes
+
 - None.
 
 ## Acceptance criteria
+
 - Moments fire once per underlying state change.
 - Refresh/reconnect does not replay old moments endlessly.
 
 ## Manual test scenarios
-1) Refresh TV mid-turn: no repeated “Turn Start” moment loops.
-2) Spam build actions quickly: moments remain ordered and readable.
-3) Trade accept/cancel flows: moments remain correct.
+
+1. Refresh TV mid-turn: no repeated “Turn Start” moment loops.
+2. Spam build actions quickly: moments remain ordered and readable.
+3. Trade accept/cancel flows: moments remain correct.
 
 ## Risk & rollback
+
 - Risk: mismatched moment ids causing duplicates.
 - Rollback: keep TV-only detection as fallback while migrating phones later.
 
 ## Implementation notes
+
 - Shared moment detector + queue: `apps/server/public/shared/moment-detector.js`
   - `detectMoments(prevRoom, nextRoom) -> moments[]` emits stable `id` keys (revision-scoped) to avoid replay on refresh/reconnect.
   - `createMomentQueue()` provides de-dupe + optional cooldowns to prevent show spam.

@@ -5,7 +5,8 @@ function clampNonNegativeInt(n) {
 
 function settlementAndCityCounts(structures) {
   const out = { settlementsByPlayerId: {}, citiesByPlayerId: {} };
-  const settlements = structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
+  const settlements =
+    structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
   for (const s of Object.values(settlements)) {
     if (!s?.playerId) continue;
     const pid = s.playerId;
@@ -23,7 +24,9 @@ function ensurePlayerIds(game, playerIds) {
 
 function totalPointsFromGame(game, pid) {
   const totals =
-    (game?.finalPointsByPlayerId && typeof game.finalPointsByPlayerId === "object" ? game.finalPointsByPlayerId : null) ||
+    (game?.finalPointsByPlayerId && typeof game.finalPointsByPlayerId === "object"
+      ? game.finalPointsByPlayerId
+      : null) ||
     (game?.pointsByPlayerId && typeof game.pointsByPlayerId === "object" ? game.pointsByPlayerId : null) ||
     null;
   return clampNonNegativeInt(totals?.[pid] ?? 0);
@@ -31,7 +34,9 @@ function totalPointsFromGame(game, pid) {
 
 export function computeVpBreakdownByPlayerId(game, playerIds = null) {
   const ids = ensurePlayerIds(game, playerIds);
-  const breakdown = Object.fromEntries(ids.map((pid) => [pid, { settlementCount: 0, cityCount: 0, longestRoad: 0, largestArmy: 0, hidden: 0, total: 0 }]));
+  const breakdown = Object.fromEntries(
+    ids.map((pid) => [pid, { settlementCount: 0, cityCount: 0, longestRoad: 0, largestArmy: 0, hidden: 0, total: 0 }])
+  );
   if (!game || typeof game !== "object") return breakdown;
 
   const { settlementsByPlayerId, citiesByPlayerId } = settlementAndCityCounts(game.structures);
@@ -53,4 +58,3 @@ export function computeVpBreakdownByPlayerId(game, playerIds = null) {
 
   return breakdown;
 }
-

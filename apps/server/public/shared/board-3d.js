@@ -126,7 +126,7 @@ function validateSelectableIds({
   selectableHexIds,
   validVertexIds,
   validEdgeIds,
-  validHexIds,
+  validHexIds
 }) {
   const invalidVertices = [];
   const invalidEdges = [];
@@ -179,7 +179,7 @@ function validatePickMeshCounts({
   vertexPickCount,
   boardHexCount,
   boardEdgeCount,
-  boardVertexCount,
+  boardVertexCount
 }) {
   if (hexPickCount !== boardHexCount) {
     warnOnce(
@@ -212,11 +212,36 @@ function validatePickMeshCounts({
  */
 const DICE_PIP_LAYOUTS = {
   1: [[0, 0]],
-  2: [[-0.2, -0.2], [0.2, 0.2]],
-  3: [[-0.2, -0.2], [0, 0], [0.2, 0.2]],
-  4: [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]],
-  5: [[-0.2, -0.2], [0.2, -0.2], [0, 0], [-0.2, 0.2], [0.2, 0.2]],
-  6: [[-0.2, -0.25], [-0.2, 0], [-0.2, 0.25], [0.2, -0.25], [0.2, 0], [0.2, 0.25]]
+  2: [
+    [-0.2, -0.2],
+    [0.2, 0.2]
+  ],
+  3: [
+    [-0.2, -0.2],
+    [0, 0],
+    [0.2, 0.2]
+  ],
+  4: [
+    [-0.2, -0.2],
+    [0.2, -0.2],
+    [-0.2, 0.2],
+    [0.2, 0.2]
+  ],
+  5: [
+    [-0.2, -0.2],
+    [0.2, -0.2],
+    [0, 0],
+    [-0.2, 0.2],
+    [0.2, 0.2]
+  ],
+  6: [
+    [-0.2, -0.25],
+    [-0.2, 0],
+    [-0.2, 0.25],
+    [0.2, -0.25],
+    [0.2, 0],
+    [0.2, 0.25]
+  ]
 };
 
 /**
@@ -287,12 +312,12 @@ function createDie3d(size = 40) {
 
   // Face normals and rotations for placing pips
   const faces = [
-    { normal: [0, 0, 1], up: [0, 1, 0] },   // Front (+Z) - face 1
-    { normal: [0, 0, -1], up: [0, 1, 0] },  // Back (-Z) - face 6
-    { normal: [1, 0, 0], up: [0, 1, 0] },   // Right (+X) - face 3
-    { normal: [-1, 0, 0], up: [0, 1, 0] },  // Left (-X) - face 4
-    { normal: [0, 1, 0], up: [0, 0, -1] },  // Top (+Y) - face 2
-    { normal: [0, -1, 0], up: [0, 0, 1] }   // Bottom (-Y) - face 5
+    { normal: [0, 0, 1], up: [0, 1, 0] }, // Front (+Z) - face 1
+    { normal: [0, 0, -1], up: [0, 1, 0] }, // Back (-Z) - face 6
+    { normal: [1, 0, 0], up: [0, 1, 0] }, // Right (+X) - face 3
+    { normal: [-1, 0, 0], up: [0, 1, 0] }, // Left (-X) - face 4
+    { normal: [0, 1, 0], up: [0, 0, -1] }, // Top (+Y) - face 2
+    { normal: [0, -1, 0], up: [0, 0, 1] } // Bottom (-Y) - face 5
   ];
 
   // Standard die face values (opposite faces sum to 7)
@@ -456,16 +481,8 @@ export function createDice3dPanel(container, options = {}) {
       animating = true;
 
       // Random starting rotations for tumble effect
-      die1.mesh.rotation.set(
-        Math.random() * Math.PI * 4,
-        Math.random() * Math.PI * 4,
-        Math.random() * Math.PI * 2
-      );
-      die2.mesh.rotation.set(
-        Math.random() * Math.PI * 4,
-        Math.random() * Math.PI * 4,
-        Math.random() * Math.PI * 2
-      );
+      die1.mesh.rotation.set(Math.random() * Math.PI * 4, Math.random() * Math.PI * 4, Math.random() * Math.PI * 2);
+      die2.mesh.rotation.set(Math.random() * Math.PI * 4, Math.random() * Math.PI * 4, Math.random() * Math.PI * 2);
 
       const startRot1 = { x: die1.mesh.rotation.x, y: die1.mesh.rotation.y, z: die1.mesh.rotation.z };
       const startRot2 = { x: die2.mesh.rotation.x, y: die2.mesh.rotation.y, z: die2.mesh.rotation.z };
@@ -563,10 +580,22 @@ export function createDice3dPanel(container, options = {}) {
     if (animationId) cancelAnimationFrame(animationId);
     unmount();
     for (const d of disposables) {
-      try { d.dispose?.(); } catch { /* ignore */ }
+      try {
+        d.dispose?.();
+      } catch {
+        /* ignore */
+      }
     }
-    try { renderer.dispose(); } catch { /* ignore */ }
-    try { renderer.forceContextLoss?.(); } catch { /* ignore */ }
+    try {
+      renderer.dispose();
+    } catch {
+      /* ignore */
+    }
+    try {
+      renderer.forceContextLoss?.();
+    } catch {
+      /* ignore */
+    }
   }
 
   // Initial render
@@ -580,7 +609,9 @@ export function createDice3dPanel(container, options = {}) {
     animateRoll,
     setReducedMotion,
     destroy,
-    get isAnimating() { return animating; }
+    get isAnimating() {
+      return animating;
+    }
   };
 }
 
@@ -813,14 +844,7 @@ export function createResourceFlyoutManager(container) {
  * @param {Object} options - Burst options
  */
 function createParticleBurst(container, position, options = {}) {
-  const {
-    count = 8,
-    color = "#4cc9f0",
-    size = 6,
-    spread = 40,
-    duration = 400,
-    reducedMotion = false
-  } = options;
+  const { count = 8, color = "#4cc9f0", size = 6, spread = 40, duration = 400, reducedMotion = false } = options;
 
   if (reducedMotion) return; // Skip particles in reduced motion mode
 
@@ -967,11 +991,7 @@ export function createBoardFxHelper(container, options = {}) {
     if (reducedMotion) return;
     if (quality === "low") return; // Skip particles on low quality
 
-    const {
-      tone = "good",
-      particleCount = 10,
-      duration = 450
-    } = opts;
+    const { tone = "good", particleCount = 10, duration = 450 } = opts;
 
     const colors = {
       good: "#44d07b",
@@ -998,11 +1018,7 @@ export function createBoardFxHelper(container, options = {}) {
     if (destroyed) return;
     if (reducedMotion) return;
 
-    const {
-      tone = "info",
-      size = 60,
-      duration = 600
-    } = opts;
+    const { tone = "info", size = 60, duration = 600 } = opts;
 
     const colors = {
       good: "#44d07b",
@@ -1213,8 +1229,8 @@ function createCinematicCameraController(cameraController, options = {}) {
     const vA = verticesById.get(e.vA);
     const vB = verticesById.get(e.vB);
     if (!vA || !vB) return null;
-    const x = ((Number(vA.x) + Number(vB.x)) / 2) - centerX;
-    const y = -(((Number(vA.y) + Number(vB.y)) / 2) - centerY);
+    const x = (Number(vA.x) + Number(vB.x)) / 2 - centerX;
+    const y = -((Number(vA.y) + Number(vB.y)) / 2 - centerY);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     return { x, y };
   }
@@ -1370,12 +1386,18 @@ function createCinematicCameraController(cameraController, options = {}) {
 
     if (points.length === 0) {
       // No structures yet, just do a subtle zoom on center
-      animateTo({ x: 0, y: 0 }, CINEMATIC_DEFAULTS.subtleZoom, opts.duration ?? CINEMATIC_DEFAULTS.turnStartDuration, opts.onComplete);
+      animateTo(
+        { x: 0, y: 0 },
+        CINEMATIC_DEFAULTS.subtleZoom,
+        opts.duration ?? CINEMATIC_DEFAULTS.turnStartDuration,
+        opts.onComplete
+      );
       return;
     }
 
     // Calculate centroid of player's structures
-    let sumX = 0, sumY = 0;
+    let sumX = 0,
+      sumY = 0;
     for (const p of points) {
       sumX += p.x;
       sumY += p.y;
@@ -1422,7 +1444,9 @@ function createCinematicCameraController(cameraController, options = {}) {
     stopAnimation,
     setOnCameraUpdate,
     destroy,
-    get isAnimating() { return state.isAnimating; }
+    get isAnimating() {
+      return state.isAnimating;
+    }
   };
 }
 
@@ -1570,7 +1594,9 @@ function createPostFxController(renderer, scene, camera) {
     update,
     render,
     destroy,
-    get isEnabled() { return vignetteEnabled; }
+    get isEnabled() {
+      return vignetteEnabled;
+    }
   };
 }
 
@@ -1783,7 +1809,7 @@ function createRoadGeometry(tileHeight) {
   // Road dimensions - slightly taller and thicker than basic box
   const width = 1; // Will be scaled by edge length
   const height = Math.max(12, tileHeight * 0.65);
-  const depth = Math.max(5, tileHeight * 0.40);
+  const depth = Math.max(5, tileHeight * 0.4);
   const bevel = Math.min(1.5, depth * 0.25);
 
   // Create beveled road shape (rectangle with rounded corners)
@@ -1835,11 +1861,11 @@ function createSettlementGeometry(tileHeight) {
   const hd = baseDepth / 2;
 
   // House outline looking from side (Y axis)
-  shape.moveTo(-hw, 0);           // Bottom left
-  shape.lineTo(hw, 0);            // Bottom right
-  shape.lineTo(hw, wallHeight);   // Right wall top
-  shape.lineTo(0, totalHeight);   // Roof peak
-  shape.lineTo(-hw, wallHeight);  // Left wall top
+  shape.moveTo(-hw, 0); // Bottom left
+  shape.lineTo(hw, 0); // Bottom right
+  shape.lineTo(hw, wallHeight); // Right wall top
+  shape.lineTo(0, totalHeight); // Roof peak
+  shape.lineTo(-hw, wallHeight); // Left wall top
   shape.closePath();
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
@@ -2127,8 +2153,12 @@ function getThemeWorld3dParams() {
   return {
     waterColor: typeof themeParams.waterColor === "string" ? themeParams.waterColor : DEFAULT_WORLD3D_PARAMS.waterColor,
     skyTint: typeof themeParams.skyTint === "string" ? themeParams.skyTint : DEFAULT_WORLD3D_PARAMS.skyTint,
-    ambientIntensity: typeof themeParams.ambientIntensity === "number" ? themeParams.ambientIntensity : DEFAULT_WORLD3D_PARAMS.ambientIntensity,
-    tileRoughness: typeof themeParams.tileRoughness === "number" ? themeParams.tileRoughness : DEFAULT_WORLD3D_PARAMS.tileRoughness
+    ambientIntensity:
+      typeof themeParams.ambientIntensity === "number"
+        ? themeParams.ambientIntensity
+        : DEFAULT_WORLD3D_PARAMS.ambientIntensity,
+    tileRoughness:
+      typeof themeParams.tileRoughness === "number" ? themeParams.tileRoughness : DEFAULT_WORLD3D_PARAMS.tileRoughness
   };
 }
 
@@ -2146,7 +2176,9 @@ function parseThemeColor(hex) {
 }
 
 function normalizeRendererQuality(value) {
-  const v = String(value || "auto").toLowerCase().trim();
+  const v = String(value || "auto")
+    .toLowerCase()
+    .trim();
   if (v === "low" || v === "medium" || v === "high" || v === "auto") return v;
   return "auto";
 }
@@ -2354,9 +2386,15 @@ function createCameraController(camera, bounds, options = {}) {
     reset,
     getState,
     setQuality,
-    get zoom() { return state.zoom; },
-    get targetX() { return state.targetX; },
-    get targetY() { return state.targetY; }
+    get zoom() {
+      return state.zoom;
+    },
+    get targetX() {
+      return state.targetX;
+    },
+    get targetY() {
+      return state.targetY;
+    }
   };
 }
 
@@ -2436,7 +2474,7 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
     if (touchCount === 1) {
       // Single finger - prepare for pan
       const touch = Array.from(state.touches.values())[0];
-      state.mode = 'pan';
+      state.mode = "pan";
       state.lastPanX = touch.startX;
       state.lastPanY = touch.startY;
       state.totalMovement = 0;
@@ -2444,7 +2482,7 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
     } else if (touchCount === 2) {
       // Two fingers - switch to pinch
       const [t1, t2] = Array.from(state.touches.values());
-      state.mode = 'pinch';
+      state.mode = "pinch";
       state.pinchStartDist = touchDistance(
         { clientX: t1.currentX, clientY: t1.currentY },
         { clientX: t2.currentX, clientY: t2.currentY }
@@ -2474,7 +2512,7 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
 
     const { width, height } = getViewSize();
 
-    if (state.mode === 'pan' && state.touches.size === 1) {
+    if (state.mode === "pan" && state.touches.size === 1) {
       const touch = Array.from(state.touches.values())[0];
       const deltaX = touch.currentX - state.lastPanX;
       const deltaY = touch.currentY - state.lastPanY;
@@ -2490,7 +2528,7 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
 
       state.lastPanX = touch.currentX;
       state.lastPanY = touch.currentY;
-    } else if (state.mode === 'pinch' && state.touches.size === 2) {
+    } else if (state.mode === "pinch" && state.touches.size === 2) {
       const [t1, t2] = Array.from(state.touches.values());
       const currentDist = touchDistance(
         { clientX: t1.currentX, clientY: t1.currentY },
@@ -2534,15 +2572,12 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
     const remainingCount = state.touches.size;
 
     // Check for double-tap on single touch release
-    if (removedTouches.length === 1 && remainingCount === 0 && state.mode === 'pan') {
+    if (removedTouches.length === 1 && remainingCount === 0 && state.mode === "pan") {
       const removed = removedTouches[0];
       if (removed && !state.gestureWasSignificant) {
         const now = Date.now();
         const timeSinceLastTap = now - state.lastTapTime;
-        const distFromLastTap = Math.hypot(
-          removed.startX - state.lastTapX,
-          removed.startY - state.lastTapY
-        );
+        const distFromLastTap = Math.hypot(removed.startX - state.lastTapX, removed.startY - state.lastTapY);
 
         if (timeSinceLastTap < state.doubleTapTimeout && distFromLastTap < state.doubleTapDistance) {
           // Double-tap detected - reset view
@@ -2570,7 +2605,7 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
       state.gestureWasSignificant = false;
     } else if (remainingCount === 1) {
       // Transition from pinch back to pan
-      state.mode = 'pan';
+      state.mode = "pan";
       const touch = Array.from(state.touches.values())[0];
       state.lastPanX = touch.currentX;
       state.lastPanY = touch.currentY;
@@ -2599,18 +2634,18 @@ function createTouchGestureHandler(canvas, cameraController, options = {}) {
 
   // Attach event listeners
   function attach() {
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-    canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+    canvas.addEventListener("touchcancel", handleTouchCancel, { passive: false });
   }
 
   // Detach event listeners
   function detach() {
-    canvas.removeEventListener('touchstart', handleTouchStart);
-    canvas.removeEventListener('touchmove', handleTouchMove);
-    canvas.removeEventListener('touchend', handleTouchEnd);
-    canvas.removeEventListener('touchcancel', handleTouchCancel);
+    canvas.removeEventListener("touchstart", handleTouchStart);
+    canvas.removeEventListener("touchmove", handleTouchMove);
+    canvas.removeEventListener("touchend", handleTouchEnd);
+    canvas.removeEventListener("touchcancel", handleTouchCancel);
   }
 
   // Auto-attach on creation
@@ -2791,11 +2826,11 @@ function createShorelineMesh(vertices, centerX, centerY, hexSize) {
 
   // Calculate convex hull of vertex positions for the shore ring
   const points = vertices
-    .map(v => ({
+    .map((v) => ({
       x: Number(v.x) - centerX,
       y: -(Number(v.y) - centerY)
     }))
-    .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
 
   if (points.length < 3) return null;
 
@@ -2811,7 +2846,8 @@ function createShorelineMesh(vertices, centerX, centerY, hexSize) {
   const outerPoints = [];
 
   // Compute center of hull
-  let cx = 0, cy = 0;
+  let cx = 0,
+    cy = 0;
   for (const p of hull) {
     cx += p.x;
     cy += p.y;
@@ -2869,8 +2905,8 @@ function createShorelineMesh(vertices, centerX, centerY, hexSize) {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
 
   // Shoreline shader with foam effect
@@ -3066,7 +3102,8 @@ function createBoardView3d(container, board, options) {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setPixelRatio(pixelRatioForQuality(quality));
-  const maxAnisotropy = typeof renderer.capabilities?.getMaxAnisotropy === "function" ? renderer.capabilities.getMaxAnisotropy() : 1;
+  const maxAnisotropy =
+    typeof renderer.capabilities?.getMaxAnisotropy === "function" ? renderer.capabilities.getMaxAnisotropy() : 1;
 
   const scene = new THREE.Scene();
 
@@ -3131,16 +3168,17 @@ function createBoardView3d(container, board, options) {
   world.add(hintGroup);
 
   // Use debug wireframe material if debug mode is enabled
-  const pickMat = debugMode && debugPickMat
-    ? trackDisposable(debugPickMat)
-    : trackDisposable(
-        new THREE.MeshBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 0.0,
-          depthWrite: false
-        })
-      );
+  const pickMat =
+    debugMode && debugPickMat
+      ? trackDisposable(debugPickMat)
+      : trackDisposable(
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.0,
+            depthWrite: false
+          })
+        );
 
   const hintColor = 0x4cc9f0;
   const vertexHintMat = trackDisposable(
@@ -3377,7 +3415,7 @@ function createBoardView3d(container, board, options) {
   // Get heights from bounding boxes (fallback to reasonable defaults)
   const roadHeight = roadGeo.boundingBox
     ? Math.abs(roadGeo.boundingBox.max.z - roadGeo.boundingBox.min.z)
-    : Math.max(5, tileHeight * 0.40);
+    : Math.max(5, tileHeight * 0.4);
   const settlementHeight = settlementGeo.boundingBox
     ? Math.abs(settlementGeo.boundingBox.max.z - settlementGeo.boundingBox.min.z)
     : Math.max(14, tileHeight * 0.84);
@@ -3389,13 +3427,15 @@ function createBoardView3d(container, board, options) {
   const robberGeos = createRobberGeometry(tileHeight);
   const robberBodyGeo = trackDisposable(robberGeos.body);
   const robberHeadGeo = trackDisposable(robberGeos.head);
-  const robberMat = trackDisposable(new THREE.MeshStandardMaterial({
-    color: 0x12151c,
-    roughness: 0.55,
-    metalness: 0.1,
-    emissive: 0x000000,
-    emissiveIntensity: 0
-  }));
+  const robberMat = trackDisposable(
+    new THREE.MeshStandardMaterial({
+      color: 0x12151c,
+      roughness: 0.55,
+      metalness: 0.1,
+      emissive: 0x000000,
+      emissiveIntensity: 0
+    })
+  );
   const robberMesh = new THREE.Group();
   const robberBodyMesh = new THREE.Mesh(robberBodyGeo, robberMat);
   const robberHeadMesh = new THREE.Mesh(robberHeadGeo, robberMat.clone());
@@ -3526,7 +3566,9 @@ function createBoardView3d(container, board, options) {
   );
   portPostGeo.rotateX(Math.PI / 2);
 
-  const portLabelGeo = trackDisposable(new THREE.PlaneGeometry(Math.max(48, tokenSize * 0.62), Math.max(30, tokenSize * 0.36)));
+  const portLabelGeo = trackDisposable(
+    new THREE.PlaneGeometry(Math.max(48, tokenSize * 0.62), Math.max(30, tokenSize * 0.36))
+  );
   const portLabelMatByKind = new Map();
 
   function portFillColor(kind) {
@@ -3585,7 +3627,7 @@ function createBoardView3d(container, board, options) {
 
     if (subText) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.90)";
-      ctx.font = `900 ${Math.round(size * 0.20)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+      ctx.font = `900 ${Math.round(size * 0.2)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
       ctx.fillText(subText, size / 2, size * 0.62);
     }
 
@@ -3629,7 +3671,15 @@ function createBoardView3d(container, board, options) {
     const stemLen = Math.hypot(px - mx, py - my);
     const stemAngle = Math.atan2(py - my, px - mx);
 
-    const stemMat = trackDisposable(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.05, opacity: 0.8, transparent: true }));
+    const stemMat = trackDisposable(
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.8,
+        metalness: 0.05,
+        opacity: 0.8,
+        transparent: true
+      })
+    );
     const stemMesh = new THREE.Mesh(portStemGeo, stemMat);
     stemMesh.position.set((mx + px) / 2, (my + py) / 2, surfaceZ + portStemGeo.parameters.depth / 2);
     stemMesh.rotation.z = stemAngle;
@@ -3667,11 +3717,7 @@ function createBoardView3d(container, board, options) {
   // === OCEAN MESH SETUP ===
   // Get current settings for quality-gated ocean effects
   const currentSettings = getSettings();
-  let oceanQuality = getOceanQuality(
-    quality,
-    currentSettings.reducedMotion,
-    currentSettings.lowPowerMode
-  );
+  let oceanQuality = getOceanQuality(quality, currentSettings.reducedMotion, currentSettings.lowPowerMode);
 
   // Create ocean mesh (renders underneath everything)
   const oceanResult = createOceanMesh(boardRadius, oceanQuality);
@@ -4109,13 +4155,15 @@ function createBoardView3d(container, board, options) {
       let mesh = roadById.get(edgeId);
       const isNew = !mesh;
       if (!mesh) {
-        const mat = trackDisposable(new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          roughness: 0.7,
-          metalness: 0.05,
-          emissive: 0x000000,
-          emissiveIntensity: 0
-        }));
+        const mat = trackDisposable(
+          new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.7,
+            metalness: 0.05,
+            emissive: 0x000000,
+            emissiveIntensity: 0
+          })
+        );
         mesh = new THREE.Mesh(roadGeo, mat);
         mesh.position.z = surfaceZ + roadHeight / 2;
         structGroup.add(mesh);
@@ -4145,7 +4193,8 @@ function createBoardView3d(container, board, options) {
   }
 
   function updateSettlements(structures, players, placedVertexIds) {
-    const settlements = structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
+    const settlements =
+      structures?.settlements && typeof structures.settlements === "object" ? structures.settlements : {};
     const placedSet = new Set(Array.isArray(placedVertexIds) ? placedVertexIds.map(String) : []);
     const used = new Set();
 
@@ -4162,13 +4211,15 @@ function createBoardView3d(container, board, options) {
       const wasUpgraded = entry && entry.kind !== kind && kind === "city";
 
       if (!entry) {
-        const mat = trackDisposable(new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          roughness: 0.8,
-          metalness: 0.05,
-          emissive: 0x000000,
-          emissiveIntensity: 0
-        }));
+        const mat = trackDisposable(
+          new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.8,
+            metalness: 0.05,
+            emissive: 0x000000,
+            emissiveIntensity: 0
+          })
+        );
         const mesh = new THREE.Mesh(kind === "city" ? cityGeo : settlementGeo, mat);
         entry = { mesh, kind };
         structGroup.add(mesh);
@@ -4320,11 +4371,7 @@ function createBoardView3d(container, board, options) {
     // === UPDATE OCEAN QUALITY ===
     // Check if ocean quality needs to change based on settings
     const updatedSettings = getSettings();
-    const newOceanQuality = getOceanQuality(
-      quality,
-      updatedSettings.reducedMotion,
-      updatedSettings.lowPowerMode
-    );
+    const newOceanQuality = getOceanQuality(quality, updatedSettings.reducedMotion, updatedSettings.lowPowerMode);
 
     // If quality changed, update uniforms and restart/stop animation
     if (newOceanQuality !== oceanQuality) {
@@ -4363,9 +4410,15 @@ function createBoardView3d(container, board, options) {
 
     applyHighlightMode(nextOptions?.highlightMode);
 
-    interaction.selectableVertexSet = new Set(Array.isArray(nextOptions?.selectableVertexIds) ? nextOptions.selectableVertexIds.map(String) : []);
-    interaction.selectableEdgeSet = new Set(Array.isArray(nextOptions?.selectableEdgeIds) ? nextOptions.selectableEdgeIds.map(String) : []);
-    interaction.selectableHexSet = new Set(Array.isArray(nextOptions?.selectableHexIds) ? nextOptions.selectableHexIds.map(String) : []);
+    interaction.selectableVertexSet = new Set(
+      Array.isArray(nextOptions?.selectableVertexIds) ? nextOptions.selectableVertexIds.map(String) : []
+    );
+    interaction.selectableEdgeSet = new Set(
+      Array.isArray(nextOptions?.selectableEdgeIds) ? nextOptions.selectableEdgeIds.map(String) : []
+    );
+    interaction.selectableHexSet = new Set(
+      Array.isArray(nextOptions?.selectableHexIds) ? nextOptions.selectableHexIds.map(String) : []
+    );
     interaction.canCaptureVertices = !!nextOptions?.onIllegalClick && !!nextOptions?.captureAllVertices;
     interaction.canCaptureEdges = !!nextOptions?.onIllegalClick && !!nextOptions?.captureAllEdges;
     interaction.canCaptureHexes = !!nextOptions?.onIllegalClick && !!nextOptions?.captureAllHexes;

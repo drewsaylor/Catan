@@ -45,7 +45,7 @@ function createMockStandardBoard() {
   function axialToPixel(q, r, size = HEX_SIZE) {
     return {
       x: size * SQRT3 * (q + r / 2),
-      y: size * 1.5 * r,
+      y: size * 1.5 * r
     };
   }
 
@@ -58,7 +58,7 @@ function createMockStandardBoard() {
       { x: a, y: b },
       { x: 0, y: size },
       { x: -a, y: b },
-      { x: -a, y: -b },
+      { x: -a, y: -b }
     ];
   }
 
@@ -80,7 +80,7 @@ function createMockStandardBoard() {
       y: pt.y,
       adjacentHexIds: [],
       neighborVertexIds: [],
-      edgeIds: [],
+      edgeIds: []
     };
     verticesByKey.set(key, v);
     vertices.push(v);
@@ -119,15 +119,13 @@ function createMockStandardBoard() {
     "brick",
     "sheep",
     "wood",
-    "wheat",
+    "wheat"
   ];
   const tokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, null, 3, 8, 8, 3, 4, 5, 5, 6, 11];
 
   const hexes = coords.map((c, idx) => {
     const center = axialToPixel(c.q, c.r, HEX_SIZE);
-    const corners = cornerOffsets.map((off) =>
-      getOrCreateVertex({ x: center.x + off.x, y: center.y + off.y })
-    );
+    const corners = cornerOffsets.map((off) => getOrCreateVertex({ x: center.x + off.x, y: center.y + off.y }));
     const hexId = `H${idx}`;
 
     for (const v of corners) v.adjacentHexIds.push(hexId);
@@ -145,7 +143,7 @@ function createMockStandardBoard() {
       center,
       resource: resources[idx],
       token: tokens[idx],
-      cornerVertexIds: corners.map((v) => v.id),
+      cornerVertexIds: corners.map((v) => v.id)
     };
   });
 
@@ -179,7 +177,7 @@ function createMockStandardBoard() {
     vertices,
     edges,
     ports: [],
-    bounds: { minX, minY, maxX, maxY },
+    bounds: { minX, minY, maxX, maxY }
   };
 }
 
@@ -344,21 +342,9 @@ describe("Edge/Vertex Pick Mesh Placement", () => {
     const board = createMockStandardBoard();
     const counts = simulatePickMeshCreation(board);
 
-    assert.strictEqual(
-      counts.hexPickCount,
-      board.hexes.length,
-      "Hex pick count should match hex count"
-    );
-    assert.strictEqual(
-      counts.edgePickCount,
-      board.edges.length,
-      "Edge pick count should match edge count"
-    );
-    assert.strictEqual(
-      counts.vertexPickCount,
-      board.vertices.length,
-      "Vertex pick count should match vertex count"
-    );
+    assert.strictEqual(counts.hexPickCount, board.hexes.length, "Hex pick count should match hex count");
+    assert.strictEqual(counts.edgePickCount, board.edges.length, "Edge pick count should match edge count");
+    assert.strictEqual(counts.vertexPickCount, board.vertices.length, "Vertex pick count should match vertex count");
   });
 
   test("handles malformed board data gracefully", () => {
@@ -366,9 +352,9 @@ describe("Edge/Vertex Pick Mesh Placement", () => {
       hexes: [{ id: "H0", cornerVertexIds: ["V0", "V1", "MISSING"] }],
       vertices: [
         { id: "V0", x: 0, y: 0 },
-        { id: "V1", x: 10, y: 0 },
+        { id: "V1", x: 10, y: 0 }
       ],
-      edges: [{ id: "E0", vA: "V0", vB: "V1" }],
+      edges: [{ id: "E0", vA: "V0", vB: "V1" }]
     };
 
     // Should not throw, just return reduced counts
@@ -392,8 +378,8 @@ describe("Theme Manifest Validation (Stub)", () => {
       version: "1.0.0",
       assets: {
         hexTextures: {},
-        structureModels: {},
-      },
+        structureModels: {}
+      }
     };
 
     assert.ok(mockThemeManifest.name, "Theme should have a name");

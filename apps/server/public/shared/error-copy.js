@@ -122,7 +122,8 @@ function codeToCopy(code, { room = null, data = null } = {}) {
     if (expected === "STEAL_CARD" || subphase === "robber_steal") return "Steal a card first.";
     if (expected === "PLACE_SETTLEMENT") return "Place a settlement first.";
     if (expected === "PLACE_ROAD") return "Place a road first.";
-    if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD" || subphase === "dev_road_building") return "Finish Road Building first.";
+    if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD" || subphase === "dev_road_building")
+      return "Finish Road Building first.";
     return "Not right now.";
   }
 
@@ -142,7 +143,8 @@ export function humanizeErrorMessage(raw, { room = null } = {}) {
     if (status >= 500) return "Server error. Try again.";
     return "Connection error.";
   }
-  if (msg === "Game already started" || msg === "GAME_ALREADY_STARTED") return "Game in progress. New players can’t join mid-game.";
+  if (msg === "Game already started" || msg === "GAME_ALREADY_STARTED")
+    return "Game in progress. New players can’t join mid-game.";
 
   const roomFullMatch = msg.match(/^Room is full \\(max (\\d+) players\\)$/i);
   if (roomFullMatch) {

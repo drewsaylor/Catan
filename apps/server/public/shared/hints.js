@@ -218,12 +218,16 @@
   function getHintIcon(iconName) {
     const icons = {
       dice: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="16" cy="8" r="1.5" fill="currentColor"/><circle cx="8" cy="16" r="1.5" fill="currentColor"/><circle cx="16" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
-      hammer: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 12L12 9M12 9L9 12M12 9V21M19 9a3 3 0 0 0-3-3H8a3 3 0 0 0 0 6h8a3 3 0 0 0 0-6z"/></svg>',
-      trade: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/></svg>',
+      hammer:
+        '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 12L12 9M12 9L9 12M12 9V21M19 9a3 3 0 0 0-3-3H8a3 3 0 0 0 0 6h8a3 3 0 0 0 0-6z"/></svg>',
+      trade:
+        '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/></svg>',
       star: '<svg class="hintIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>',
-      settlement: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21H21M5 21V11L12 4L19 11V21M9 21V15H15V21"/></svg>',
+      settlement:
+        '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21H21M5 21V11L12 4L19 11V21M9 21V15H15V21"/></svg>',
       road: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20L8 4M16 20L20 4M8 12H16M6 8H18"/></svg>',
-      robber: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20"/><path d="M9 8C9 8 10 6 12 6C14 6 15 8 15 8"/></svg>',
+      robber:
+        '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20C4 16 8 14 12 14C16 14 20 16 20 20"/><path d="M9 8C9 8 10 6 12 6C14 6 15 8 15 8"/></svg>',
       card: '<svg class="hintIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M12 6V12L15 9"/></svg>'
     };
     return icons[iconName] || "";
@@ -250,7 +254,7 @@
 
     const message = options.message || def?.message || "";
     const icon = def?.icon || "";
-    const durationMs = typeof options.durationMs === "number" ? options.durationMs : (def?.durationMs || 5000);
+    const durationMs = typeof options.durationMs === "number" ? options.durationMs : def?.durationMs || 5000;
 
     const container = getHintContainer();
     if (!container) return false;

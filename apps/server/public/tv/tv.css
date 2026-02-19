@@ -18,16 +18,18 @@
   width: min(680px, calc(100% - 32px));
   border-radius: 26px;
   padding: 18px 20px;
-  background: radial-gradient(900px 600px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 60%),
-    radial-gradient(800px 500px at 80% 20%, rgba(var(--accent2-rgb), 0.10), transparent 60%),
-    rgba(10, 16, 30, 0.92);
+  background:
+    radial-gradient(900px 600px at 30% 10%, rgba(var(--accent-rgb), 0.16), transparent 60%),
+    radial-gradient(800px 500px at 80% 20%, rgba(var(--accent2-rgb), 0.1), transparent 60%), rgba(10, 16, 30, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(14px);
   box-shadow: 0 16px 70px rgba(0, 0, 0, 0.55);
 
   opacity: 0;
   transform: translateY(10px) scale(0.985);
-  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
 }
 
 .momentCard.show {
@@ -86,7 +88,9 @@
 
   opacity: 0;
   transform: translateY(-8px);
-  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-med) var(--ease-out);
 }
 
 .showToast.show {
@@ -109,7 +113,7 @@
 .toastTitle {
   font-weight: 900;
   letter-spacing: 0.2px;
-  font-size: calc(var(--type-base) * 1.0);
+  font-size: calc(var(--type-base) * 1);
 }
 
 .toastSubtitle {
@@ -140,7 +144,7 @@
 .spotlightHole {
   position: absolute;
   border-radius: var(--spotRadius, 18px);
-  border: 2px solid var(--spotColor, rgba(var(--accent-rgb), 0.70));
+  border: 2px solid var(--spotColor, rgba(var(--accent-rgb), 0.7));
   box-shadow: 0 0 0 9999px var(--spotShade, rgba(0, 0, 0, 0.55));
 }
 
@@ -383,8 +387,7 @@ body.tv[data-player-count-bucket="5-6"] .player > div:last-child {
 
 /* Event Card - Party Mode */
 #eventCard {
-  background: linear-gradient(135deg, rgba(57, 217, 138, 0.12), transparent 60%),
-    var(--card-bg);
+  background: linear-gradient(135deg, rgba(57, 217, 138, 0.12), transparent 60%), var(--card-bg);
   border: 1px solid rgba(57, 217, 138, 0.28);
   position: relative;
   overflow: hidden;
@@ -696,7 +699,7 @@ html[data-reduced-motion="true"] .attractBoard canvas {
 
 .lobbySection {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   padding: 20px;
   display: flex;
@@ -788,7 +791,7 @@ html[data-reduced-motion="true"] .attractBoard canvas {
 
 .lobbyPlayer.host {
   border-color: rgba(var(--accent-rgb), 0.35);
-  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.10), transparent 70%);
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.1), transparent 70%);
 }
 
 .lobbyPlayerDot {
@@ -886,7 +889,9 @@ html[data-reduced-motion="true"] .attractBoard canvas {
   border-radius: 10px;
   color: #fff;
   cursor: pointer;
-  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+  transition:
+    border-color 0.2s var(--ease-out),
+    background 0.2s var(--ease-out);
 }
 
 .lobbySetupField select:hover {
@@ -1022,11 +1027,11 @@ html[data-reduced-motion="true"] .lobbyOverlay.hiding {
 /* High contrast */
 html[data-high-contrast="true"] .lobbySection {
   background: rgba(5, 8, 18, 0.95);
-  border-color: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 html[data-high-contrast="true"] .lobbyPlayer {
-  background: rgba(5, 8, 18, 0.90);
+  background: rgba(5, 8, 18, 0.9);
   border-color: rgba(255, 255, 255, 0.18);
 }
 

@@ -285,7 +285,11 @@ function createStereoPanner(c, pan) {
   }
 }
 
-function playTone(c, { type = "sine", freq = 440, freqTo = null, startAt = 0, dur = 0.12, gain = 0.25, pan = 0 } = {}, mix) {
+function playTone(
+  c,
+  { type = "sine", freq = 440, freqTo = null, startAt = 0, dur = 0.12, gain = 0.25, pan = 0 } = {},
+  mix
+) {
   const t0 = c.currentTime + clampNonNegative(startAt);
   const t2 = t0 + Math.max(0.02, clampNonNegative(dur));
   const osc = c.createOscillator();
@@ -314,7 +318,11 @@ function playTone(c, { type = "sine", freq = 440, freqTo = null, startAt = 0, du
   return { src: osc, endsAt: t2 + 0.08 };
 }
 
-function playNoiseBurst(c, { startAt = 0, dur = 0.1, gain = 0.18, filter = "bandpass", freq = 1200, q = 1.2, pan = 0 } = {}, mix) {
+function playNoiseBurst(
+  c,
+  { startAt = 0, dur = 0.1, gain = 0.18, filter = "bandpass", freq = 1200, q = 1.2, pan = 0 } = {},
+  mix
+) {
   const buf = ensureNoiseBuffer();
   if (!buf) return null;
 
@@ -379,7 +387,9 @@ function playSynth(key, { volume = 1 } = {}) {
     add(playNoiseBurst(c, { dur: 0.05, gain: 0.05, filter: "lowpass", freq: 520, q: 0.7 }, mix));
   } else if (key === "dice") {
     add(playNoiseBurst(c, { dur: 0.08, gain: 0.12, filter: "bandpass", freq: 1400, q: 1.4, pan: -0.2 }, mix));
-    add(playNoiseBurst(c, { startAt: 0.06, dur: 0.09, gain: 0.11, filter: "bandpass", freq: 1100, q: 1.2, pan: 0.2 }, mix));
+    add(
+      playNoiseBurst(c, { startAt: 0.06, dur: 0.09, gain: 0.11, filter: "bandpass", freq: 1100, q: 1.2, pan: 0.2 }, mix)
+    );
     add(playTone(c, { type: "triangle", freq: 520, freqTo: 420, startAt: 0.02, dur: 0.16, gain: 0.12 }, mix));
   } else if (key === "build") {
     add(playTone(c, { type: "square", freq: 660, freqTo: 560, dur: 0.12, gain: 0.18 }, mix));

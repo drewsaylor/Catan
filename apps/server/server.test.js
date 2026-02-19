@@ -93,12 +93,21 @@ test("server: maxPlayers and action idempotency", { timeout: 20000 }, async (t) 
   assert.equal(setMax.res.status, 200);
   assert.equal(setMax.json?.ok, true);
 
-  const p2 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, { method: "POST", body: { playerName: "P2" } });
-  const p3 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, { method: "POST", body: { playerName: "P3" } });
+  const p2 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, {
+    method: "POST",
+    body: { playerName: "P2" }
+  });
+  const p3 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, {
+    method: "POST",
+    body: { playerName: "P3" }
+  });
   assert.equal(p2.json?.ok, true);
   assert.equal(p3.json?.ok, true);
 
-  const p4 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, { method: "POST", body: { playerName: "P4" } });
+  const p4 = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/join`, {
+    method: "POST",
+    body: { playerName: "P4" }
+  });
   assert.equal(p4.res.status, 403);
   assert.equal(p4.json?.ok, false);
   assert.equal(p4.json?.error?.code, "ROOM_FULL");
@@ -120,7 +129,10 @@ test("server: maxPlayers and action idempotency", { timeout: 20000 }, async (t) 
     assert.equal(ready.json?.ok, true);
   }
 
-  const started = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/start`, { method: "POST", body: { playerId: hostId } });
+  const started = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}/start`, {
+    method: "POST",
+    body: { playerId: hostId }
+  });
   assert.equal(started.json?.ok, true);
 
   const roomGet = await httpJson(baseUrl, `/api/rooms/${encodeURIComponent(roomCode)}`, { method: "GET" });

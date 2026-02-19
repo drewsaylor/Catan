@@ -30,8 +30,10 @@ export function computePlacedStructures(prevStructures, nextStructures) {
 
   const prevRoads = prevStructures?.roads && typeof prevStructures.roads === "object" ? prevStructures.roads : {};
   const nextRoads = nextStructures?.roads && typeof nextStructures.roads === "object" ? nextStructures.roads : {};
-  const prevSettlements = prevStructures?.settlements && typeof prevStructures.settlements === "object" ? prevStructures.settlements : {};
-  const nextSettlements = nextStructures?.settlements && typeof nextStructures.settlements === "object" ? nextStructures.settlements : {};
+  const prevSettlements =
+    prevStructures?.settlements && typeof prevStructures.settlements === "object" ? prevStructures.settlements : {};
+  const nextSettlements =
+    nextStructures?.settlements && typeof nextStructures.settlements === "object" ? nextStructures.settlements : {};
 
   for (const edgeId of Object.keys(nextRoads)) {
     if (!prevRoads[edgeId]) placedEdgeIds.push(edgeId);
@@ -118,7 +120,11 @@ export function computeShowBeats(prevRoom, room) {
       const submitted = game.robber?.discardSubmittedByPlayerId || {};
       const pending = Object.entries(required)
         .filter(([, count]) => Number.isFinite(count) && count > 0)
-        .map(([playerId, count]) => ({ ...playerMeta(playerId), count: clampNonNegativeInt(count), submitted: !!submitted[playerId] }));
+        .map(([playerId, count]) => ({
+          ...playerMeta(playerId),
+          count: clampNonNegativeInt(count),
+          submitted: !!submitted[playerId]
+        }));
       beats.push({
         id: m.id,
         type: "robber_step",
@@ -138,19 +144,46 @@ export function computeShowBeats(prevRoom, room) {
     if (kind === "build_road") {
       const edgeId = typeof data.edgeId === "string" ? data.edgeId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (edgeId) beats.push({ id: m.id, type: "build", kind: "road", edgeId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (edgeId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "road",
+          edgeId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
     if (kind === "build_settlement") {
       const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId) beats.push({ id: m.id, type: "build", kind: "settlement", vertexId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (vertexId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "settlement",
+          vertexId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
     if (kind === "build_city") {
       const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
       const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId) beats.push({ id: m.id, type: "build", kind: "city", vertexId, playerId: p.playerId, playerName: p.name, playerColor: p.color });
+      if (vertexId)
+        beats.push({
+          id: m.id,
+          type: "build",
+          kind: "city",
+          vertexId,
+          playerId: p.playerId,
+          playerName: p.name,
+          playerColor: p.color
+        });
       continue;
     }
 
@@ -192,7 +225,14 @@ export function computeShowBeats(prevRoom, room) {
 
     if (kind === "trade_cancelled") {
       const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      beats.push({ id: m.id, type: "trade_cancelled", count: 1, fromPlayerId: from.playerId, fromName: from.name, fromColor: from.color });
+      beats.push({
+        id: m.id,
+        type: "trade_cancelled",
+        count: 1,
+        fromPlayerId: from.playerId,
+        fromName: from.name,
+        fromColor: from.color
+      });
       continue;
     }
 
@@ -214,7 +254,13 @@ export function computeShowBeats(prevRoom, room) {
 
     if (kind === "robber_discarded") {
       const actor = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      beats.push({ id: m.id, type: "robber_discarded", playerId: actor.playerId, playerName: actor.name, count: clampNonNegativeInt(data.count ?? 0) });
+      beats.push({
+        id: m.id,
+        type: "robber_discarded",
+        playerId: actor.playerId,
+        playerName: actor.name,
+        count: clampNonNegativeInt(data.count ?? 0)
+      });
       continue;
     }
 

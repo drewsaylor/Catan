@@ -18,15 +18,27 @@ const ATTRACT_TIP_INTERVAL_MS = 5500;
  */
 export function createAttractSampleBoard() {
   const resources = [
-    "ore", "sheep", "wheat", "brick", "sheep",
-    "wheat", "ore", "wood", "brick", "desert",
-    "wood", "wheat", "ore", "wood", "sheep",
-    "brick", "sheep", "wheat", "wood"
+    "ore",
+    "sheep",
+    "wheat",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "brick",
+    "desert",
+    "wood",
+    "wheat",
+    "ore",
+    "wood",
+    "sheep",
+    "brick",
+    "sheep",
+    "wheat",
+    "wood"
   ];
-  const tokens = [
-    10, 2, 9, 12, 6, 4, 10, 9, 11, 0,
-    3, 8, 8, 3, 4, 5, 5, 6, 11
-  ];
+  const tokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
 
   const SQRT3 = Math.sqrt(3);
   const HEX_SIZE = 100;
@@ -49,8 +61,12 @@ export function createAttractSampleBoard() {
     const a = (SQRT3 / 2) * HEX_SIZE;
     const b = 0.5 * HEX_SIZE;
     return [
-      { x: 0, y: -HEX_SIZE }, { x: a, y: -b }, { x: a, y: b },
-      { x: 0, y: HEX_SIZE }, { x: -a, y: b }, { x: -a, y: -b }
+      { x: 0, y: -HEX_SIZE },
+      { x: a, y: -b },
+      { x: a, y: b },
+      { x: 0, y: HEX_SIZE },
+      { x: -a, y: b },
+      { x: -a, y: -b }
     ];
   }
 
@@ -60,8 +76,12 @@ export function createAttractSampleBoard() {
   const edgesByKey = new Map();
   const cornerOffsets = hexCornerOffsets();
 
-  function roundKey(n) { return Math.round(n * 1000); }
-  function pointKey(x, y) { return `${roundKey(x)}:${roundKey(y)}`; }
+  function roundKey(n) {
+    return Math.round(n * 1000);
+  }
+  function pointKey(x, y) {
+    return `${roundKey(x)}:${roundKey(y)}`;
+  }
 
   function getOrCreateVertex(pt) {
     const key = pointKey(pt.x, pt.y);
@@ -96,7 +116,10 @@ export function createAttractSampleBoard() {
       addEdge(corners[i], corners[(i + 1) % corners.length]);
     }
     return {
-      id: hexId, q: c.q, r: c.r, center,
+      id: hexId,
+      q: c.q,
+      r: c.r,
+      center,
       resource: resources[idx] || "desert",
       token: tokens[idx] || 0,
       cornerVertexIds: corners.map((v) => v.id)
@@ -113,18 +136,29 @@ export function createAttractSampleBoard() {
     vB.edgeIds.push(e.id);
   }
 
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const v of vertices) {
-    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
-    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+    minX = Math.min(minX, v.x);
+    maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y);
+    maxY = Math.max(maxY, v.y);
   }
 
   const edgeByVertexPair = {};
   for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
 
   return {
-    layout: "standard-radius-2", hexSize: HEX_SIZE, hexes, vertices, edges,
-    ports: [], edgeByVertexPair, bounds: { minX, minY, maxX, maxY }
+    layout: "standard-radius-2",
+    hexSize: HEX_SIZE,
+    hexes,
+    vertices,
+    edges,
+    ports: [],
+    edgeByVertexPair,
+    bounds: { minX, minY, maxX, maxY }
   };
 }
 

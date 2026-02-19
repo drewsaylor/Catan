@@ -16,17 +16,18 @@ This repo is a LAN-hosted “TV + phones” game. Releases are mostly about **a 
 
 ## Checklist (for any release)
 
-1) Update `CHANGELOG.md`
+1. Update `CHANGELOG.md`
+
 - Move items from “Unreleased” into a new version section (dated).
 - Keep entries short and player/host-impact focused.
 
-2) Run automated tests
+2. Run automated tests
 
 ```sh
 npm test
 ```
 
-3) Manual smoke test (LAN)
+3. Manual smoke test (LAN)
 
 - Start the server: `npm run dev` (or `npm start`).
 - TV: open `http://<host-ip>:3000/tv`, create a room.
@@ -40,10 +41,9 @@ npm test
   - end turn + turn advances cleanly
   - refresh TV and one phone mid-game and rejoin works
 
-4) Tag and publish (if using git)
+4. Tag and publish (if using git)
 
 ```sh
 git tag vX.Y.Z
 git push --tags
 ```
-

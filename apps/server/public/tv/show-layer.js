@@ -6,7 +6,10 @@ function clampNonNegativeInt(n) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
 }
 
 function safeTone(tone) {
@@ -160,7 +163,12 @@ export function createShowLayer(rootEl) {
 
     elConfetti.innerHTML = "";
     const n = Math.max(10, Math.min(90, clampNonNegativeInt(count)));
-    const colors = ["rgba(95, 211, 255, 0.85)", "rgba(201, 255, 79, 0.80)", "rgba(255, 209, 102, 0.82)", "rgba(57, 217, 138, 0.82)"];
+    const colors = [
+      "rgba(95, 211, 255, 0.85)",
+      "rgba(201, 255, 79, 0.80)",
+      "rgba(255, 209, 102, 0.82)",
+      "rgba(57, 217, 138, 0.82)"
+    ];
 
     for (let i = 0; i < n; i += 1) {
       const piece = document.createElement("div");
@@ -192,4 +200,3 @@ export function createShowLayer(rootEl) {
     clearSpotlight
   };
 }
-

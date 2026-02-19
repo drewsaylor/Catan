@@ -188,7 +188,9 @@ describe("gateAction", () => {
     assert.equal(gateAction({ game, playerId: "A", you: makeYou() }, { type: "ROLL_DICE" }), null);
 
     // Wrong player
-    assert.deepEqual(gateAction({ game, playerId: "B", you: makeYou() }, { type: "ROLL_DICE" }), { code: "NOT_YOUR_TURN" });
+    assert.deepEqual(gateAction({ game, playerId: "B", you: makeYou() }, { type: "ROLL_DICE" }), {
+      code: "NOT_YOUR_TURN"
+    });
 
     // Wrong phase
     const mainPhaseGame = makeGame({ subphase: "main", currentPlayerId: "A" });
@@ -201,7 +203,9 @@ describe("gateAction", () => {
     const game = makeGame({ subphase: "main", currentPlayerId: "A" });
 
     assert.equal(gateAction({ game, playerId: "A", you: makeYou() }, { type: "END_TURN" }), null);
-    assert.deepEqual(gateAction({ game, playerId: "B", you: makeYou() }, { type: "END_TURN" }), { code: "NOT_YOUR_TURN" });
+    assert.deepEqual(gateAction({ game, playerId: "B", you: makeYou() }, { type: "END_TURN" }), {
+      code: "NOT_YOUR_TURN"
+    });
   });
 
   test("BUY_DEV_CARD requires resources and non-empty deck", () => {

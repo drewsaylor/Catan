@@ -118,4 +118,3 @@ test("createNewGame: stores boardSeed for random-balanced", () => {
   assert.equal(game.boardSeed, "abc");
   assert.equal(game.board.hexes.length, 19);
 });
-

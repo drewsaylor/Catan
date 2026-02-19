@@ -12,10 +12,25 @@ import { generateStandardBoard } from "./board.js";
 // Mock preset definition for testing
 const mockPresetDef = {
   resources: [
-    "ore", "sheep", "wheat", "brick", "wood",
-    "sheep", "ore", "wood", "wheat", "desert",
-    "brick", "sheep", "wood", "wheat", "ore",
-    "brick", "sheep", "wood", "wheat"
+    "ore",
+    "sheep",
+    "wheat",
+    "brick",
+    "wood",
+    "sheep",
+    "ore",
+    "wood",
+    "wheat",
+    "desert",
+    "brick",
+    "sheep",
+    "wood",
+    "wheat",
+    "ore",
+    "brick",
+    "sheep",
+    "wood",
+    "wheat"
   ],
   tokens: [10, 2, 9, 12, 6, 4, 10, 9, 11, null, 3, 8, 8, 3, 4, 5, 5, 6, 11]
 };
@@ -295,10 +310,7 @@ describe("Hex-Vertex consistency", () => {
       const vertexById = new Map(board.vertices.map((v) => [v.id, v]));
       for (const vertexId of hex.cornerVertexIds) {
         const vertex = vertexById.get(vertexId);
-        assert.ok(
-          vertex.adjacentHexIds.includes(hex.id),
-          `Vertex ${vertexId} should list hex ${hex.id} as adjacent`
-        );
+        assert.ok(vertex.adjacentHexIds.includes(hex.id), `Vertex ${vertexId} should list hex ${hex.id} as adjacent`);
       }
     }
   });

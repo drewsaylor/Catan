@@ -53,7 +53,13 @@
         <div class="card">
           <h2 id="panelTitle">Join</h2>
 
-          <div id="roomStateBanner" class="stateBanner info" style="display:none;" aria-live="polite" aria-atomic="true">
+          <div
+            id="roomStateBanner"
+            class="stateBanner info"
+            style="display: none"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <div id="roomStateTitle" class="stateBannerTitle"></div>
             <div id="roomStateHint" class="stateBannerHint"></div>
           </div>
@@ -71,7 +77,7 @@
             <div id="joinErr" class="muted"></div>
           </div>
 
-          <div id="lobbyPanel" class="stack" style="display:none;">
+          <div id="lobbyPanel" class="stack" style="display: none">
             <div class="pill">
               <span class="k">Room</span>
               <span id="roomLabel" class="v">—</span>
@@ -85,10 +91,10 @@
 
             <div class="row">
               <button class="btn" id="readyBtn" aria-pressed="false">Not ready</button>
-              <span id="hostTag" class="tag" style="display:none;">Host</span>
+              <span id="hostTag" class="tag" style="display: none">Host</span>
             </div>
 
-            <div id="hostControls" class="stack" style="display:none;">
+            <div id="hostControls" class="stack" style="display: none">
               <div class="field">
                 <label for="presetSelect">Preset</label>
                 <select id="presetSelect"></select>
@@ -113,8 +119,10 @@
                   <option value="6">6</option>
                 </select>
               </div>
-              <button class="btn" id="advancedBtn" aria-expanded="false" aria-controls="advancedPanel">Advanced ▸</button>
-              <div id="advancedPanel" class="stack" style="display:none;">
+              <button class="btn" id="advancedBtn" aria-expanded="false" aria-controls="advancedPanel">
+                Advanced ▸
+              </button>
+              <div id="advancedPanel" class="stack" style="display: none">
                 <div class="field">
                   <label for="vpTargetSelect">VP to win</label>
                   <select id="vpTargetSelect">
@@ -133,15 +141,15 @@
                   <div id="vpTargetHint" class="muted"></div>
                 </div>
 
-                <div class="field" id="boardSeedField" style="display:none;">
+                <div class="field" id="boardSeedField" style="display: none">
                   <label for="boardSeedInput">Board seed (optional)</label>
                   <input id="boardSeedInput" autocomplete="off" placeholder="Blank = random" />
                   <div class="muted">Random board only</div>
                 </div>
 
-                <div class="row" style="justify-content:space-between; align-items:center;">
+                <div class="row" style="justify-content: space-between; align-items: center">
                   <div>
-                    <div style="font-weight:700;">Emotes</div>
+                    <div style="font-weight: 700">Emotes</div>
                     <div class="muted">Quick reactions during the game.</div>
                   </div>
                   <button class="btn" id="emotesToggleBtn" aria-pressed="true">On</button>
@@ -165,89 +173,93 @@
             <div class="list" id="players"></div>
           </div>
 
-	          <div id="gamePanel" class="stack" style="display:none;">
-	            <div class="row gameTopRow">
-	              <div class="pill vpPill">
-	                <span class="k">VP</span>
-	                <span id="vpLabel" class="v">0/10</span>
-	              </div>
-	              <span id="winnerTag" class="tag good" style="display:none;">Winner</span>
-	            </div>
-
-              <div id="eventBanner" class="stateBanner good" style="display:none;" aria-live="polite">
-                <div id="eventBannerTitle" class="stateBannerTitle"></div>
-                <div id="eventBannerHint" class="stateBannerHint"></div>
+          <div id="gamePanel" class="stack" style="display: none">
+            <div class="row gameTopRow">
+              <div class="pill vpPill">
+                <span class="k">VP</span>
+                <span id="vpLabel" class="v">0/10</span>
               </div>
+              <span id="winnerTag" class="tag good" style="display: none">Winner</span>
+            </div>
 
-              <div class="card" id="postGameCard" style="display:none;">
-                <h2 style="margin:0 0 6px 0;">Game Over</h2>
-                <div class="muted" id="postGameWinner">Winner: —</div>
-                <div class="spacer"></div>
-                <div id="postGameStats" class="list"></div>
-                <div class="spacer"></div>
-                <div id="postGameHostControls" class="stack" style="display:none;">
-                  <button class="btn primary" id="postGameRematchBtn">Play again</button>
-                  <div id="postGameErr" class="muted"></div>
+            <div id="eventBanner" class="stateBanner good" style="display: none" aria-live="polite">
+              <div id="eventBannerTitle" class="stateBannerTitle"></div>
+              <div id="eventBannerHint" class="stateBannerHint"></div>
+            </div>
+
+            <div class="card" id="postGameCard" style="display: none">
+              <h2 style="margin: 0 0 6px 0">Game Over</h2>
+              <div class="muted" id="postGameWinner">Winner: —</div>
+              <div class="spacer"></div>
+              <div id="postGameStats" class="list"></div>
+              <div class="spacer"></div>
+              <div id="postGameHostControls" class="stack" style="display: none">
+                <button class="btn primary" id="postGameRematchBtn">Play again</button>
+                <div id="postGameErr" class="muted"></div>
+              </div>
+              <div id="postGameWaiting" class="muted" style="display: none">Waiting for host…</div>
+            </div>
+
+            <div class="card resourcesBarCard" id="resourcesBarCard" aria-label="Resources">
+              <div class="resourcesBar">
+                <div class="resChip" title="Wood">
+                  <img class="resChipIcon" src="/shared/icons/wood.png" alt="Wood" />
+                  <div class="resChipCount" id="resCountWood">0</div>
                 </div>
-                <div id="postGameWaiting" class="muted" style="display:none;">Waiting for host…</div>
+                <div class="resChip" title="Brick">
+                  <img class="resChipIcon" src="/shared/icons/brick.png" alt="Brick" />
+                  <div class="resChipCount" id="resCountBrick">0</div>
+                </div>
+                <div class="resChip" title="Sheep">
+                  <img class="resChipIcon" src="/shared/icons/sheep.png" alt="Sheep" />
+                  <div class="resChipCount" id="resCountSheep">0</div>
+                </div>
+                <div class="resChip" title="Wheat">
+                  <img class="resChipIcon" src="/shared/icons/wheat.png" alt="Wheat" />
+                  <div class="resChipCount" id="resCountWheat">0</div>
+                </div>
+                <div class="resChip" title="Ore">
+                  <img class="resChipIcon" src="/shared/icons/ore.png" alt="Ore" />
+                  <div class="resChipCount" id="resCountOre">0</div>
+                </div>
+                <div class="resChip resChipTotal" title="Total resources">
+                  <div class="resChipLabel">Total</div>
+                  <div class="resChipCount" id="resTotalValue">0</div>
+                </div>
               </div>
+            </div>
 
-	            <div class="card resourcesBarCard" id="resourcesBarCard" aria-label="Resources">
-	              <div class="resourcesBar">
-	                <div class="resChip" title="Wood">
-	                  <img class="resChipIcon" src="/shared/icons/wood.png" alt="Wood" />
-	                  <div class="resChipCount" id="resCountWood">0</div>
-	                </div>
-	                <div class="resChip" title="Brick">
-	                  <img class="resChipIcon" src="/shared/icons/brick.png" alt="Brick" />
-	                  <div class="resChipCount" id="resCountBrick">0</div>
-	                </div>
-	                <div class="resChip" title="Sheep">
-	                  <img class="resChipIcon" src="/shared/icons/sheep.png" alt="Sheep" />
-	                  <div class="resChipCount" id="resCountSheep">0</div>
-	                </div>
-	                <div class="resChip" title="Wheat">
-	                  <img class="resChipIcon" src="/shared/icons/wheat.png" alt="Wheat" />
-	                  <div class="resChipCount" id="resCountWheat">0</div>
-	                </div>
-	                <div class="resChip" title="Ore">
-	                  <img class="resChipIcon" src="/shared/icons/ore.png" alt="Ore" />
-	                  <div class="resChipCount" id="resCountOre">0</div>
-	                </div>
-	                <div class="resChip resChipTotal" title="Total resources">
-	                  <div class="resChipLabel">Total</div>
-	                  <div class="resChipCount" id="resTotalValue">0</div>
-	                </div>
-	              </div>
-	            </div>
+            <div class="card primaryActionCard" id="primaryActionCard">
+              <div class="row primaryActionHeader">
+                <h2>Primary action</h2>
+                <button class="btn icon" id="helpBtn" aria-label="Help">?</button>
+              </div>
+              <button class="btn primary" id="primaryBtn" aria-describedby="actionHint">…</button>
+              <div id="actionHint" class="muted"></div>
+              <button class="btn" id="endTurnBtn" style="display: none">End turn</button>
+              <div
+                id="emoteStrip"
+                class="row"
+                style="justify-content: flex-start; gap: 8px; flex-wrap: wrap; margin-top: 10px; display: none"
+              >
+                <button class="btn" data-emote="nice" aria-label="Emote: Nice">Nice!</button>
+                <button class="btn" data-emote="ouch" aria-label="Emote: Ouch">Ouch</button>
+                <button class="btn" data-emote="gg" aria-label="Emote: GG">GG</button>
+              </div>
+            </div>
 
-	            <div class="card primaryActionCard" id="primaryActionCard">
-	              <div class="row primaryActionHeader">
-	                <h2>Primary action</h2>
-	                <button class="btn icon" id="helpBtn" aria-label="Help">?</button>
-	              </div>
-	              <button class="btn primary" id="primaryBtn" aria-describedby="actionHint">…</button>
-	              <div id="actionHint" class="muted"></div>
-	              <button class="btn" id="endTurnBtn" style="display:none;">End turn</button>
-	              <div id="emoteStrip" class="row" style="justify-content:flex-start; gap:8px; flex-wrap:wrap; margin-top:10px; display:none;">
-	                <button class="btn" data-emote="nice" aria-label="Emote: Nice">Nice!</button>
-	                <button class="btn" data-emote="ouch" aria-label="Emote: Ouch">Ouch</button>
-	                <button class="btn" data-emote="gg" aria-label="Emote: GG">GG</button>
-	              </div>
-	            </div>
+            <div id="mainActions" style="display: none; gap: 10px; flex-wrap: wrap">
+              <button class="btn" id="buildRoadBtn">Build road</button>
+              <button class="btn" id="buildSettlementBtn">Build settlement</button>
+              <button class="btn" id="buildCityBtn">Build city</button>
+              <button class="btn danger" id="cancelModeBtn" style="display: none">Cancel</button>
+            </div>
 
-	            <div id="mainActions" style="display:none; gap:10px; flex-wrap:wrap;">
-	              <button class="btn" id="buildRoadBtn">Build road</button>
-	              <button class="btn" id="buildSettlementBtn">Build settlement</button>
-	              <button class="btn" id="buildCityBtn">Build city</button>
-	              <button class="btn danger" id="cancelModeBtn" style="display:none;">Cancel</button>
-	            </div>
+            <div class="card" style="padding: 12px; display: none" id="robberCard">
+              <h2 style="margin: 0 0 10px 0">Robber</h2>
+              <div id="robberHint" class="muted" style="margin-bottom: 10px"></div>
 
-            <div class="card" style="padding:12px; display:none;" id="robberCard">
-              <h2 style="margin:0 0 10px 0;">Robber</h2>
-              <div id="robberHint" class="muted" style="margin-bottom:10px;"></div>
-
-              <div id="discardPanel" class="stack" style="display:none;">
+              <div id="discardPanel" class="stack" style="display: none">
                 <div class="pill">
                   <span class="k">Discard</span>
                   <span id="discardReqLabel" class="v">—</span>
@@ -280,295 +292,297 @@
                 <div id="discardErr" class="muted"></div>
               </div>
 
-              <div id="stealPanel" class="stack" style="display:none;">
+              <div id="stealPanel" class="stack" style="display: none">
                 <div id="stealHint" class="muted"></div>
                 <div class="playerPickList" id="stealTargets" aria-label="Steal targets"></div>
                 <div id="stealErr" class="muted"></div>
-	              </div>
-	            </div>
+              </div>
+            </div>
 
-	            <div class="phoneTabs" id="phoneTabs" role="tablist" aria-label="Sections">
-	              <button class="btn tabBtn primary" data-tab="board" role="tab" aria-selected="true">
-	                Board <span class="tabBadge" data-tab-badge="board" style="display:none;"></span>
-	              </button>
-	              <button class="btn tabBtn" data-tab="trade" role="tab" aria-selected="false">
-	                Trade <span class="tabBadge" data-tab-badge="trade" style="display:none;"></span>
-	              </button>
-	              <button class="btn tabBtn" data-tab="more" role="tab" aria-selected="false">More</button>
-	            </div>
+            <div class="phoneTabs" id="phoneTabs" role="tablist" aria-label="Sections">
+              <button class="btn tabBtn primary" data-tab="board" role="tab" aria-selected="true">
+                Board <span class="tabBadge" data-tab-badge="board" style="display: none"></span>
+              </button>
+              <button class="btn tabBtn" data-tab="trade" role="tab" aria-selected="false">
+                Trade <span class="tabBadge" data-tab-badge="trade" style="display: none"></span>
+              </button>
+              <button class="btn tabBtn" data-tab="more" role="tab" aria-selected="false">More</button>
+            </div>
 
-	            <div class="tabPanel" data-tab-panel="board" role="tabpanel">
-	              <div class="boardShell" id="boardShell">
-	                <div class="row" style="align-items:center;">
-	                  <div class="pill">
-	                    <span class="k">Board</span>
-	                    <span class="v">Pan/zoom</span>
-	                  </div>
-	                  <div style="display:flex; gap:8px; align-items:center;">
-	                    <button class="btn" id="boardResetBtn">Reset</button>
-	                    <button class="btn" id="boardFullscreenBtn">Full screen</button>
-	                  </div>
-	                </div>
-	                <div id="boardFrame" class="boardFrame">
-	                  <div id="board" class="boardMount"></div>
-	                </div>
-	              </div>
-	            </div>
+            <div class="tabPanel" data-tab-panel="board" role="tabpanel">
+              <div class="boardShell" id="boardShell">
+                <div class="row" style="align-items: center">
+                  <div class="pill">
+                    <span class="k">Board</span>
+                    <span class="v">Pan/zoom</span>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <button class="btn" id="boardResetBtn">Reset</button>
+                    <button class="btn" id="boardFullscreenBtn">Full screen</button>
+                  </div>
+                </div>
+                <div id="boardFrame" class="boardFrame">
+                  <div id="board" class="boardMount"></div>
+                </div>
+              </div>
+            </div>
 
-	            <div class="tabPanel" data-tab-panel="trade" role="tabpanel" hidden>
-	              <div class="card" style="padding:12px;" id="tradeCard">
-	                <h2 style="margin:0 0 10px 0;">Trade</h2>
-	                <div id="tradeHint" class="muted" style="margin-bottom:10px;"></div>
+            <div class="tabPanel" data-tab-panel="trade" role="tabpanel" hidden>
+              <div class="card" style="padding: 12px" id="tradeCard">
+                <h2 style="margin: 0 0 10px 0">Trade</h2>
+                <div id="tradeHint" class="muted" style="margin-bottom: 10px"></div>
 
-	                <div id="tradeCreatePanel" class="stack" style="display:none;">
-	                  <div class="field">
-	                    <label for="tradeToSelect">To</label>
-	                    <select id="tradeToSelect"></select>
-	                  </div>
+                <div id="tradeCreatePanel" class="stack" style="display: none">
+                  <div class="field">
+                    <label for="tradeToSelect">To</label>
+                    <select id="tradeToSelect"></select>
+                  </div>
 
-	                  <div class="field">
-	                    <label>Give</label>
-	                    <div class="tradeGrid">
-	                      <div class="field">
-	                        <label for="tradeGiveWood">Wood</label>
-	                        <input id="tradeGiveWood" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeGiveBrick">Brick</label>
-	                        <input id="tradeGiveBrick" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeGiveSheep">Sheep</label>
-	                        <input id="tradeGiveSheep" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeGiveWheat">Wheat</label>
-	                        <input id="tradeGiveWheat" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeGiveOre">Ore</label>
-	                        <input id="tradeGiveOre" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                    </div>
-	                  </div>
+                  <div class="field">
+                    <label>Give</label>
+                    <div class="tradeGrid">
+                      <div class="field">
+                        <label for="tradeGiveWood">Wood</label>
+                        <input id="tradeGiveWood" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeGiveBrick">Brick</label>
+                        <input id="tradeGiveBrick" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeGiveSheep">Sheep</label>
+                        <input id="tradeGiveSheep" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeGiveWheat">Wheat</label>
+                        <input id="tradeGiveWheat" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeGiveOre">Ore</label>
+                        <input id="tradeGiveOre" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                    </div>
+                  </div>
 
-	                  <div class="field">
-	                    <label>Want</label>
-	                    <div class="tradeGrid">
-	                      <div class="field">
-	                        <label for="tradeWantWood">Wood</label>
-	                        <input id="tradeWantWood" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeWantBrick">Brick</label>
-	                        <input id="tradeWantBrick" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeWantSheep">Sheep</label>
-	                        <input id="tradeWantSheep" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeWantWheat">Wheat</label>
-	                        <input id="tradeWantWheat" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="tradeWantOre">Ore</label>
-	                        <input id="tradeWantOre" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                    </div>
-	                  </div>
+                  <div class="field">
+                    <label>Want</label>
+                    <div class="tradeGrid">
+                      <div class="field">
+                        <label for="tradeWantWood">Wood</label>
+                        <input id="tradeWantWood" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeWantBrick">Brick</label>
+                        <input id="tradeWantBrick" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeWantSheep">Sheep</label>
+                        <input id="tradeWantSheep" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeWantWheat">Wheat</label>
+                        <input id="tradeWantWheat" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="tradeWantOre">Ore</label>
+                        <input id="tradeWantOre" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                    </div>
+                  </div>
 
-	                  <div class="row" style="justify-content:flex-start; flex-wrap:wrap;">
-	                    <button class="btn" id="tradeSuggestBtn">Suggest</button>
-	                    <button class="btn" id="tradeRepeatBtn" disabled>Repeat last</button>
-	                    <button class="btn primary" id="tradeSendBtn" disabled>Send offer</button>
-	                    <button class="btn" id="tradeClearBtn">Clear</button>
-	                  </div>
-	                  <div id="tradeErr" class="muted"></div>
-	                </div>
+                  <div class="row" style="justify-content: flex-start; flex-wrap: wrap">
+                    <button class="btn" id="tradeSuggestBtn">Suggest</button>
+                    <button class="btn" id="tradeRepeatBtn" disabled>Repeat last</button>
+                    <button class="btn primary" id="tradeSendBtn" disabled>Send offer</button>
+                    <button class="btn" id="tradeClearBtn">Clear</button>
+                  </div>
+                  <div id="tradeErr" class="muted"></div>
+                </div>
 
-	                <div id="tradeOffers" class="stack tradeOffersList"></div>
-	              </div>
+                <div id="tradeOffers" class="stack tradeOffersList"></div>
+              </div>
 
-	              <div class="card" style="padding:12px;" id="bankTradeCard">
-	                <h2 style="margin:0 0 10px 0;">Bank trade</h2>
-	                <div id="bankTradeHint" class="muted" style="margin-bottom:10px;"></div>
+              <div class="card" style="padding: 12px" id="bankTradeCard">
+                <h2 style="margin: 0 0 10px 0">Bank trade</h2>
+                <div id="bankTradeHint" class="muted" style="margin-bottom: 10px"></div>
 
-	                <div id="bankTradePanel" class="stack" style="display:none;">
-	                  <div class="row" style="gap:10px; align-items:flex-end;">
-	                    <div class="field" style="flex:1;">
-	                      <label for="bankGiveSelect">Give</label>
-	                      <select id="bankGiveSelect"></select>
-	                    </div>
-	                    <div class="field" style="width:90px;">
-	                      <label for="bankGiveAmount">Amt</label>
-	                      <input id="bankGiveAmount" inputmode="numeric" type="number" min="0" value="0" disabled />
-	                    </div>
-	                  </div>
+                <div id="bankTradePanel" class="stack" style="display: none">
+                  <div class="row" style="gap: 10px; align-items: flex-end">
+                    <div class="field" style="flex: 1">
+                      <label for="bankGiveSelect">Give</label>
+                      <select id="bankGiveSelect"></select>
+                    </div>
+                    <div class="field" style="width: 90px">
+                      <label for="bankGiveAmount">Amt</label>
+                      <input id="bankGiveAmount" inputmode="numeric" type="number" min="0" value="0" disabled />
+                    </div>
+                  </div>
 
-	                  <div class="row" style="gap:10px; align-items:flex-end;">
-	                    <div class="field" style="flex:1;">
-	                      <label for="bankReceiveSelect">Receive</label>
-	                      <select id="bankReceiveSelect"></select>
-	                    </div>
-	                    <div class="field" style="width:90px;">
-	                      <label for="bankReceiveAmount">Amt</label>
-	                      <input id="bankReceiveAmount" inputmode="numeric" type="number" min="1" value="1" />
-	                    </div>
-	                  </div>
+                  <div class="row" style="gap: 10px; align-items: flex-end">
+                    <div class="field" style="flex: 1">
+                      <label for="bankReceiveSelect">Receive</label>
+                      <select id="bankReceiveSelect"></select>
+                    </div>
+                    <div class="field" style="width: 90px">
+                      <label for="bankReceiveAmount">Amt</label>
+                      <input id="bankReceiveAmount" inputmode="numeric" type="number" min="1" value="1" />
+                    </div>
+                  </div>
 
-	                  <div class="pill">
-	                    <span class="k">Rate</span>
-	                    <span id="bankTradeRate" class="v">4:1</span>
-	                  </div>
+                  <div class="pill">
+                    <span class="k">Rate</span>
+                    <span id="bankTradeRate" class="v">4:1</span>
+                  </div>
 
-	                  <button class="btn primary" id="bankTradeBtn" disabled>Trade with bank</button>
-	                  <div id="bankTradeErr" class="muted"></div>
-	                </div>
-	              </div>
-	            </div>
+                  <button class="btn primary" id="bankTradeBtn" disabled>Trade with bank</button>
+                  <div id="bankTradeErr" class="muted"></div>
+                </div>
+              </div>
+            </div>
 
-	            <div class="tabPanel" data-tab-panel="more" role="tabpanel" hidden>
-	              <div class="card" style="padding:12px;" id="devCardsCard">
-	                <h2 style="margin:0 0 10px 0;">Dev cards</h2>
-	                <div id="devCardsHint" class="muted" style="margin-bottom:10px;"></div>
+            <div class="tabPanel" data-tab-panel="more" role="tabpanel" hidden>
+              <div class="card" style="padding: 12px" id="devCardsCard">
+                <h2 style="margin: 0 0 10px 0">Dev cards</h2>
+                <div id="devCardsHint" class="muted" style="margin-bottom: 10px"></div>
 
-	                <div class="row" style="justify-content:flex-start; gap:10px; flex-wrap:wrap;">
-	                  <button class="btn primary" id="devBuyBtn" disabled>Buy dev card</button>
-	                  <span class="tag" id="devDeckTag">Deck: —</span>
-	                  <span class="tag" id="devPlayLimitTag" style="display:none;">1/turn</span>
-	                </div>
+                <div class="row" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap">
+                  <button class="btn primary" id="devBuyBtn" disabled>Buy dev card</button>
+                  <span class="tag" id="devDeckTag">Deck: —</span>
+                  <span class="tag" id="devPlayLimitTag" style="display: none">1/turn</span>
+                </div>
 
-	                <div id="devCardsInHand" class="stack" style="margin-top:10px;"></div>
-	                <div id="devCardsNew" class="stack"></div>
+                <div id="devCardsInHand" class="stack" style="margin-top: 10px"></div>
+                <div id="devCardsNew" class="stack"></div>
 
-	                <div id="devPlayPanel" class="stack" style="display:none; margin-top:10px;">
-	                  <div class="row" style="justify-content:flex-start; gap:10px; flex-wrap:wrap;">
-	                    <span class="tag" id="devPlayTag">Play</span>
-	                    <button class="btn danger" id="devPlayCancelBtn">Cancel</button>
-	                  </div>
+                <div id="devPlayPanel" class="stack" style="display: none; margin-top: 10px">
+                  <div class="row" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap">
+                    <span class="tag" id="devPlayTag">Play</span>
+                    <button class="btn danger" id="devPlayCancelBtn">Cancel</button>
+                  </div>
 
-	                  <div id="devYopPanel" class="stack" style="display:none;">
-	                    <div class="muted">Take exactly 2 from the bank.</div>
-	                    <div class="tradeGrid">
-	                      <div class="field">
-	                        <label for="devYopWood">Wood</label>
-	                        <input id="devYopWood" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="devYopBrick">Brick</label>
-	                        <input id="devYopBrick" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="devYopSheep">Sheep</label>
-	                        <input id="devYopSheep" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="devYopWheat">Wheat</label>
-	                        <input id="devYopWheat" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                      <div class="field">
-	                        <label for="devYopOre">Ore</label>
-	                        <input id="devYopOre" inputmode="numeric" type="number" min="0" value="0" />
-	                      </div>
-	                    </div>
-	                    <button class="btn primary" id="devYopPlayBtn" disabled>Play Year of Plenty</button>
-	                    <div id="devYopErr" class="muted"></div>
-	                  </div>
+                  <div id="devYopPanel" class="stack" style="display: none">
+                    <div class="muted">Take exactly 2 from the bank.</div>
+                    <div class="tradeGrid">
+                      <div class="field">
+                        <label for="devYopWood">Wood</label>
+                        <input id="devYopWood" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="devYopBrick">Brick</label>
+                        <input id="devYopBrick" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="devYopSheep">Sheep</label>
+                        <input id="devYopSheep" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="devYopWheat">Wheat</label>
+                        <input id="devYopWheat" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                      <div class="field">
+                        <label for="devYopOre">Ore</label>
+                        <input id="devYopOre" inputmode="numeric" type="number" min="0" value="0" />
+                      </div>
+                    </div>
+                    <button class="btn primary" id="devYopPlayBtn" disabled>Play Year of Plenty</button>
+                    <div id="devYopErr" class="muted"></div>
+                  </div>
 
-	                  <div id="devMonopolyPanel" class="stack" style="display:none;">
-	                    <div class="field">
-	                      <label for="devMonopolySelect">Resource</label>
-	                      <select id="devMonopolySelect"></select>
-	                    </div>
-	                    <button class="btn primary" id="devMonopolyPlayBtn">Play Monopoly</button>
-	                    <div id="devMonopolyErr" class="muted"></div>
-	                  </div>
-	                </div>
+                  <div id="devMonopolyPanel" class="stack" style="display: none">
+                    <div class="field">
+                      <label for="devMonopolySelect">Resource</label>
+                      <select id="devMonopolySelect"></select>
+                    </div>
+                    <button class="btn primary" id="devMonopolyPlayBtn">Play Monopoly</button>
+                    <div id="devMonopolyErr" class="muted"></div>
+                  </div>
+                </div>
 
-	                <div class="row" style="justify-content:flex-start; gap:10px; flex-wrap:wrap; margin-top:10px;">
-	                  <span class="tag" id="devKnightsTag">Knights: —</span>
-	                  <span class="tag" id="devLargestArmyTag">Largest Army: —</span>
-	                  <span class="tag" id="devHiddenVpTag">Hidden VP: —</span>
-	                </div>
+                <div class="row" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap; margin-top: 10px">
+                  <span class="tag" id="devKnightsTag">Knights: —</span>
+                  <span class="tag" id="devLargestArmyTag">Largest Army: —</span>
+                  <span class="tag" id="devHiddenVpTag">Hidden VP: —</span>
+                </div>
 
-	                <div id="devCardsErr" class="muted"></div>
-	              </div>
+                <div id="devCardsErr" class="muted"></div>
+              </div>
 
-	              <div class="log" id="log"></div>
-	            </div>
-	          </div>
-	        </div>
+              <div class="log" id="log"></div>
+            </div>
+          </div>
+        </div>
 
-	        <div class="card" id="tipsCard">
-	          <h2>Tips</h2>
-	          <div class="muted">
-	            <div>1) Open the TV page on the big screen.</div>
-	            <div>2) Join from phones with the room code.</div>
-	            <div>3) Everyone taps Ready. Host taps Start.</div>
+        <div class="card" id="tipsCard">
+          <h2>Tips</h2>
+          <div class="muted">
+            <div>1) Open the TV page on the big screen.</div>
+            <div>2) Join from phones with the room code.</div>
+            <div>3) Everyone taps Ready. Host taps Start.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="connectionOverlay" class="connectionOverlay" style="display:none;" aria-live="polite">
+    <div id="connectionOverlay" class="connectionOverlay" style="display: none" aria-live="polite">
       <div class="connectionOverlayCard">
         <div id="connectionTitle" class="connectionOverlayTitle">Rejoining…</div>
         <div id="connectionHint" class="connectionOverlayHint">Hold tight — your seat is saved.</div>
       </div>
     </div>
 
-    <div id="settingsBackdrop" class="modalBackdrop" style="display:none;">
+    <div id="settingsBackdrop" class="modalBackdrop" style="display: none">
       <div class="card modalPanel" role="dialog" aria-modal="true" aria-label="Settings">
-        <div class="row" style="justify-content:space-between; align-items:center;">
-          <h2 style="margin:0;">Settings</h2>
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h2 style="margin: 0">Settings</h2>
           <button class="btn" id="settingsCloseBtn">Close</button>
         </div>
         <div class="spacer"></div>
         <div class="stack">
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">Mute</div>
+              <div style="font-weight: 700">Mute</div>
               <div class="muted">Silence all sounds.</div>
             </div>
             <button class="btn" id="muteAllBtn" aria-pressed="false" aria-label="Mute all sounds">Off</button>
           </div>
 
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">Reduced motion</div>
+              <div style="font-weight: 700">Reduced motion</div>
               <div class="muted">Less movement, more fades.</div>
             </div>
             <button class="btn" id="reducedMotionBtn" aria-pressed="false" aria-label="Reduce motion">Off</button>
           </div>
 
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">Low power</div>
+              <div style="font-weight: 700">Low power</div>
               <div class="muted">Lower heat + battery use.</div>
             </div>
             <button class="btn" id="lowPowerModeBtn" aria-pressed="false" aria-label="Low power mode">Off</button>
           </div>
 
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">High contrast</div>
+              <div style="font-weight: 700">High contrast</div>
               <div class="muted">Bolder UI for readability.</div>
             </div>
             <button class="btn" id="highContrastBtn" aria-pressed="false" aria-label="High contrast mode">Off</button>
           </div>
 
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">Colorblind palette</div>
+              <div style="font-weight: 700">Colorblind palette</div>
               <div class="muted">More distinct resource colors.</div>
             </div>
-            <button class="btn" id="colorblindBtn" aria-pressed="false" aria-label="Colorblind-friendly palette">Off</button>
+            <button class="btn" id="colorblindBtn" aria-pressed="false" aria-label="Colorblind-friendly palette">
+              Off
+            </button>
           </div>
 
-          <div class="row" style="justify-content:space-between;">
+          <div class="row" style="justify-content: space-between">
             <div>
-              <div style="font-weight:700;">Board renderer</div>
+              <div style="font-weight: 700">Board renderer</div>
               <div class="muted" id="boardRendererHint">2D is safest • 3D is beta.</div>
             </div>
             <button class="btn" id="boardRendererBtn" aria-pressed="false" aria-label="Board renderer">2D</button>
@@ -590,55 +604,65 @@
       </div>
     </div>
 
-    <div id="helpBackdrop" class="modalBackdrop" style="display:none;">
+    <div id="helpBackdrop" class="modalBackdrop" style="display: none">
       <div class="card modalPanel" role="dialog" aria-modal="true" aria-label="Help">
-        <div class="row" style="justify-content:space-between; align-items:center;">
-          <h2 style="margin:0;">Help</h2>
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h2 style="margin: 0">Help</h2>
           <button class="btn" id="helpCloseBtn">Close</button>
         </div>
         <div class="spacer"></div>
-        <div id="helpTitle" style="font-weight:800; letter-spacing:0.2px;"></div>
+        <div id="helpTitle" style="font-weight: 800; letter-spacing: 0.2px"></div>
         <ul id="helpList" class="helpList"></ul>
       </div>
     </div>
 
-    <div id="feedbackModal" class="modalBackdrop" style="display:none;">
+    <div id="feedbackModal" class="modalBackdrop" style="display: none">
       <div class="card modalPanel" role="dialog" aria-modal="true" aria-labelledby="feedbackModalTitle">
-        <div class="row" style="justify-content:space-between; align-items:center;">
-          <h2 id="feedbackModalTitle" style="margin:0;">How was your game?</h2>
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h2 id="feedbackModalTitle" style="margin: 0">How was your game?</h2>
         </div>
         <div class="spacer"></div>
-        <div class="muted" style="margin-bottom:12px;">Your feedback helps us improve.</div>
+        <div class="muted" style="margin-bottom: 12px">Your feedback helps us improve.</div>
 
         <div id="feedbackStars" class="feedbackStars" role="group" aria-label="Star rating">
           <button type="button" class="feedbackStar" data-star="1" aria-label="1 star">
-            <svg viewBox="0 0 24 24" width="36" height="36"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
           </button>
           <button type="button" class="feedbackStar" data-star="2" aria-label="2 stars">
-            <svg viewBox="0 0 24 24" width="36" height="36"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
           </button>
           <button type="button" class="feedbackStar" data-star="3" aria-label="3 stars">
-            <svg viewBox="0 0 24 24" width="36" height="36"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
           </button>
           <button type="button" class="feedbackStar" data-star="4" aria-label="4 stars">
-            <svg viewBox="0 0 24 24" width="36" height="36"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
           </button>
           <button type="button" class="feedbackStar" data-star="5" aria-label="5 stars">
-            <svg viewBox="0 0 24 24" width="36" height="36"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="36" height="36">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
           </button>
         </div>
 
-        <div class="field" style="margin-top:16px;">
+        <div class="field" style="margin-top: 16px">
           <label for="feedbackComment">Comment (optional)</label>
           <textarea id="feedbackComment" rows="3" maxlength="1000" placeholder="Tell us what you think..."></textarea>
-          <div id="feedbackCharCount" class="muted" style="text-align:right; font-size:12px;">0 / 1000</div>
+          <div id="feedbackCharCount" class="muted" style="text-align: right; font-size: 12px">0 / 1000</div>
         </div>
 
-        <div class="row" style="justify-content:flex-end; gap:10px; margin-top:16px;">
+        <div class="row" style="justify-content: flex-end; gap: 10px; margin-top: 16px">
           <button class="btn" id="feedbackSkipBtn">Skip</button>
           <button class="btn primary" id="feedbackSubmitBtn" disabled>Submit</button>
         </div>
-        <div id="feedbackErr" class="muted" style="color:var(--bad); margin-top:8px;"></div>
+        <div id="feedbackErr" class="muted" style="color: var(--bad); margin-top: 8px"></div>
       </div>
     </div>
 
@@ -668,7 +692,9 @@
         fill: rgba(255, 255, 255, 0.25);
         stroke: rgba(255, 255, 255, 0.4);
         stroke-width: 1px;
-        transition: fill 0.15s ease, stroke 0.15s ease;
+        transition:
+          fill 0.15s ease,
+          stroke 0.15s ease;
       }
       .feedbackStar.selected svg,
       .feedbackStar.hovered svg {
@@ -699,7 +725,7 @@
       }
     </style>
 
-    <div id="ruleBookBackdrop" class="quickRefBackdrop" style="display:none;">
+    <div id="ruleBookBackdrop" class="quickRefBackdrop" style="display: none">
       <div class="quickRefPanel" role="dialog" aria-modal="true" aria-labelledby="ruleBookTitle">
         <div class="quickRefHeader">
           <h2 id="ruleBookTitle" class="quickRefTitle">Rule Book</h2>
@@ -710,7 +736,10 @@
             <h3 class="quickRefHeading">Overview</h3>
             <ul class="quickRefList">
               <li>Be the first player to reach the Victory Point (VP) target to win.</li>
-              <li>Earn VP by building settlements (1 VP), cities (2 VP), holding Longest Road (2 VP), Largest Army (2 VP), and VP development cards.</li>
+              <li>
+                Earn VP by building settlements (1 VP), cities (2 VP), holding Longest Road (2 VP), Largest Army (2 VP),
+                and VP development cards.
+              </li>
             </ul>
           </div>
 
@@ -728,9 +757,14 @@
           <div class="quickRefSection">
             <h3 class="quickRefHeading">Turn Structure</h3>
             <ul class="quickRefList">
-              <li><strong>Roll Dice:</strong> Roll two dice. All players with settlements/cities on hexes matching the number receive resources.</li>
+              <li>
+                <strong>Roll Dice:</strong> Roll two dice. All players with settlements/cities on hexes matching the
+                number receive resources.
+              </li>
               <li><strong>Trade:</strong> Propose trades with other players or trade with the bank.</li>
-              <li><strong>Build:</strong> Spend resources to build roads, settlements, cities, or buy development cards.</li>
+              <li>
+                <strong>Build:</strong> Spend resources to build roads, settlements, cities, or buy development cards.
+              </li>
               <li><strong>End Turn:</strong> Pass play to the next player.</li>
             </ul>
           </div>
@@ -750,19 +784,37 @@
           <div class="quickRefSection">
             <h3 class="quickRefHeading">Building</h3>
             <ul class="quickRefList">
-              <li><strong>Road (1 Wood + 1 Brick):</strong> Place on an edge connected to your network. Needed for Longest Road.</li>
-              <li><strong>Settlement (1 Wood + 1 Brick + 1 Sheep + 1 Wheat):</strong> Place on a vertex connected to your road, not adjacent to another settlement. Worth 1 VP. Produces 1 resource per adjacent hex.</li>
-              <li><strong>City (2 Wheat + 3 Ore):</strong> Upgrade an existing settlement. Worth 2 VP. Produces 2 resources per adjacent hex.</li>
-              <li><strong>Development Card (1 Sheep + 1 Wheat + 1 Ore):</strong> Draw from the deck. Cannot be played the same turn purchased.</li>
+              <li>
+                <strong>Road (1 Wood + 1 Brick):</strong> Place on an edge connected to your network. Needed for Longest
+                Road.
+              </li>
+              <li>
+                <strong>Settlement (1 Wood + 1 Brick + 1 Sheep + 1 Wheat):</strong> Place on a vertex connected to your
+                road, not adjacent to another settlement. Worth 1 VP. Produces 1 resource per adjacent hex.
+              </li>
+              <li>
+                <strong>City (2 Wheat + 3 Ore):</strong> Upgrade an existing settlement. Worth 2 VP. Produces 2
+                resources per adjacent hex.
+              </li>
+              <li>
+                <strong>Development Card (1 Sheep + 1 Wheat + 1 Ore):</strong> Draw from the deck. Cannot be played the
+                same turn purchased.
+              </li>
             </ul>
           </div>
 
           <div class="quickRefSection">
             <h3 class="quickRefHeading">Trading</h3>
             <ul class="quickRefList">
-              <li><strong>Player Trade:</strong> On your turn, propose trades with any combination of resources. Other players can accept or decline.</li>
+              <li>
+                <strong>Player Trade:</strong> On your turn, propose trades with any combination of resources. Other
+                players can accept or decline.
+              </li>
               <li><strong>Bank Trade (4:1):</strong> Trade 4 of any one resource for 1 of any other.</li>
-              <li><strong>3:1 Port:</strong> If you have a settlement/city on a 3:1 port, trade any 3 of one resource for 1 of any other.</li>
+              <li>
+                <strong>3:1 Port:</strong> If you have a settlement/city on a 3:1 port, trade any 3 of one resource for
+                1 of any other.
+              </li>
               <li><strong>2:1 Port:</strong> Trade 2 of the specific resource shown for 1 of any other.</li>
             </ul>
           </div>
@@ -770,7 +822,9 @@
           <div class="quickRefSection">
             <h3 class="quickRefHeading">Development Cards</h3>
             <ul class="quickRefList">
-              <li><strong>Knight:</strong> Move the robber and steal from an adjacent player. Counts toward Largest Army.</li>
+              <li>
+                <strong>Knight:</strong> Move the robber and steal from an adjacent player. Counts toward Largest Army.
+              </li>
               <li><strong>Road Building:</strong> Place 2 roads for free.</li>
               <li><strong>Year of Plenty:</strong> Take any 2 resources from the bank.</li>
               <li><strong>Monopoly:</strong> Name a resource. All players must give you all cards of that type.</li>
@@ -783,7 +837,10 @@
             <h3 class="quickRefHeading">The Robber</h3>
             <ul class="quickRefList">
               <li><strong>Rolling 7:</strong> No resources are produced. Instead, the robber activates.</li>
-              <li><strong>Discard Rule:</strong> Any player with 8 or more resource cards must discard half (rounded down).</li>
+              <li>
+                <strong>Discard Rule:</strong> Any player with 8 or more resource cards must discard half (rounded
+                down).
+              </li>
               <li><strong>Move Robber:</strong> The current player moves the robber to any hex (not where it was).</li>
               <li><strong>Steal:</strong> Steal 1 random card from a player with a settlement/city on that hex.</li>
               <li>While the robber is on a hex, it does not produce resources.</li>
@@ -793,8 +850,14 @@
           <div class="quickRefSection">
             <h3 class="quickRefHeading">Special Bonuses</h3>
             <ul class="quickRefList">
-              <li><strong>Longest Road (2 VP):</strong> Awarded to the first player with 5+ continuous road segments. If another player builds a longer road, they take it.</li>
-              <li><strong>Largest Army (2 VP):</strong> Awarded to the first player who plays 3+ Knight cards. If another player plays more knights, they take it.</li>
+              <li>
+                <strong>Longest Road (2 VP):</strong> Awarded to the first player with 5+ continuous road segments. If
+                another player builds a longer road, they take it.
+              </li>
+              <li>
+                <strong>Largest Army (2 VP):</strong> Awarded to the first player who plays 3+ Knight cards. If another
+                player plays more knights, they take it.
+              </li>
             </ul>
           </div>
 
@@ -819,9 +882,9 @@
 
     <button class="howToPlayBtn" id="howToPlayBtn" aria-label="How to play" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-        <path d="M12 17h.01"/>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
       </svg>
     </button>
 

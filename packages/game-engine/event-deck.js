@@ -159,9 +159,7 @@ export function calculateHarvestFestivalBonuses(privateByPlayerId) {
   const bonuses = {};
 
   const entries =
-    privateByPlayerId instanceof Map
-      ? [...privateByPlayerId.entries()]
-      : Object.entries(privateByPlayerId || {});
+    privateByPlayerId instanceof Map ? [...privateByPlayerId.entries()] : Object.entries(privateByPlayerId || {});
 
   for (const [playerId, priv] of entries) {
     const hand = priv?.hand;

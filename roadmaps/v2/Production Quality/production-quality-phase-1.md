@@ -1,33 +1,43 @@
 # Production Quality — Phase 1: WebGL Capability + Auto Quality Scaler + Perf HUD (P0)
 
 ## Status (Implemented)
+
 Implemented on 2026-02-14.
 
 ## Goal
+
 Ensure 3D is reliable across phones by detecting capability and auto-tuning quality settings.
 
 ## Non-goals
+
 - No full telemetry backend.
 - No remote crash reporting required.
 
 ## Player-facing outcomes
+
 - On weak devices, the game automatically chooses a lower quality profile rather than running poorly.
 
 ## Technical plan
+
 ### Server
+
 - No changes required.
 
 ### Engine
+
 - No changes.
 
 ### TV
+
 - Default to high quality if available; still clamp to avoid overdraw.
 
 ### Phone
+
 - Default to `rendererQuality: "auto"`.
 - Add a “Low Power” toggle that forces low settings.
 
 ### Shared
+
 - Implement:
   - WebGL support check (hard gate)
   - device heuristics (screen size, pixel ratio, memory hint if available)
@@ -41,24 +51,29 @@ Ensure 3D is reliable across phones by detecting capability and auto-tuning qual
   - current quality profile
 
 ## APIs & data shape changes
+
 - Client settings additions (if not already added in 3D Phase 1):
   - `rendererQuality`
   - `lowPowerMode: boolean`
 
 ## Acceptance criteria
+
 - Phones don’t overheat quickly from the board view alone.
 - Quality selection is deterministic enough to debug (“why did I get low?”).
 
 ## Manual test scenarios
-1) Open phone 3D on battery saver mode: quality goes low.
-2) Toggle low power manually: perf improves, visuals degrade gracefully.
-3) Leave game open for 20 minutes: no progressive FPS collapse.
+
+1. Open phone 3D on battery saver mode: quality goes low.
+2. Toggle low power manually: perf improves, visuals degrade gracefully.
+3. Leave game open for 20 minutes: no progressive FPS collapse.
 
 ## Risk & rollback
+
 - Risk: heuristics choose wrong quality.
 - Rollback: expose a manual selector and ship auto as opt-in at first.
 
 ## Implementation notes
+
 - Shared quality/capability module: `apps/server/public/shared/renderer-quality.js`
   - `detectWebGLSupport()` hard-gates WebGL.
   - `getDeviceHeuristics()` + `prefersLowPowerHint()` drive deterministic `resolveQualityProfile()` decisions (includes reasons for “why low?” debugging).

@@ -36,4 +36,3 @@ export function scenarioDisplay(scenarios, scenarioId, { fallbackName = "—" } 
 
   return { name, rulesSummary, description, scenario };
 }
-

@@ -7,6 +7,7 @@
 ## Player-facing outcomes
 
 ## Technical plan
+
 ### Server
 
 ### Engine
@@ -24,4 +25,3 @@
 ## Manual test scenarios
 
 ## Risk & rollback
-

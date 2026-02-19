@@ -168,7 +168,9 @@ function clampNonNegativeInt(n) {
 const LOG_RANK = { debug: 10, info: 20, warn: 30, error: 40, silent: 50 };
 
 function normalizeLogLevel(input) {
-  const v = String(input || "info").toLowerCase().trim();
+  const v = String(input || "info")
+    .toLowerCase()
+    .trim();
   if (v === "debug" || v === "info" || v === "warn" || v === "error" || v === "silent") return v;
   return "info";
 }
@@ -401,9 +403,7 @@ function safeActionId(value) {
 }
 
 function sanitizePlayerNameForJoin(name) {
-  return stripControlChars(name)
-    .trim()
-    .slice(0, 24);
+  return stripControlChars(name).trim().slice(0, 24);
 }
 
 function normalizePrivateState(input) {
@@ -413,8 +413,12 @@ function normalizePrivateState(input) {
 
   return {
     hand: nextHand,
-    devCardsInHand: Array.isArray(input?.devCardsInHand) ? input.devCardsInHand.filter((c) => DEV_CARD_PLAYABLE_TYPES.includes(c)) : [],
-    devCardsNew: Array.isArray(input?.devCardsNew) ? input.devCardsNew.filter((c) => DEV_CARD_PLAYABLE_TYPES.includes(c)) : [],
+    devCardsInHand: Array.isArray(input?.devCardsInHand)
+      ? input.devCardsInHand.filter((c) => DEV_CARD_PLAYABLE_TYPES.includes(c))
+      : [],
+    devCardsNew: Array.isArray(input?.devCardsNew)
+      ? input.devCardsNew.filter((c) => DEV_CARD_PLAYABLE_TYPES.includes(c))
+      : [],
     playedKnightsCount: clampNonNegativeInt(input?.playedKnightsCount ?? 0),
     hiddenVictoryPointsCount: clampNonNegativeInt(input?.hiddenVictoryPointsCount ?? 0)
   };
@@ -427,9 +431,7 @@ function normalizePlayerName(name) {
 
 function normalizeBoardSeed(input) {
   if (input == null) return null;
-  const seed = stripControlChars(input)
-    .trim()
-    .slice(0, 64);
+  const seed = stripControlChars(input).trim().slice(0, 64);
   return seed || null;
 }
 
@@ -609,8 +611,10 @@ function restoreRoomFromDisk(payload) {
   const roomCode = sanitizeRoomCode(saved.roomCode);
   if (!roomCode) return null;
 
-  const presetId = PRESETS.some((p) => p.id === saved.presetId) ? saved.presetId : PRESETS[0]?.id ?? "classic-balanced";
-  const themeId = THEME_PACKS.some((t) => t.id === saved.themeId) ? saved.themeId : THEME_PACKS[0]?.id ?? "aurora";
+  const presetId = PRESETS.some((p) => p.id === saved.presetId)
+    ? saved.presetId
+    : (PRESETS[0]?.id ?? "classic-balanced");
+  const themeId = THEME_PACKS.some((t) => t.id === saved.themeId) ? saved.themeId : (THEME_PACKS[0]?.id ?? "aurora");
   const boardSeed = presetId === "random-balanced" ? normalizeBoardSeed(saved.boardSeed) : null;
   const gameMode = saved.gameMode === "quick" ? "quick" : "classic";
   const houseRules = normalizeHouseRules(saved.houseRules);
@@ -723,7 +727,10 @@ async function loadRoomsFromDisk() {
         } catch (renameErr) {
           logWarn(`[catan] persisted room JSON corrupt (${name}); failed to quarantine:`, renameErr);
         }
-        logWarn(`[catan] failed to parse persisted room ${name}${quarantined ? `; quarantined to ${quarantineName}` : ""}:`, err);
+        logWarn(
+          `[catan] failed to parse persisted room ${name}${quarantined ? `; quarantined to ${quarantineName}` : ""}:`,
+          err
+        );
         continue;
       }
       const room = restoreRoomFromDisk(parsed);
@@ -777,7 +784,12 @@ function sendText(res, statusCode, text, contentType = "text/plain; charset=utf-
 }
 
 function payloadTooLarge(res) {
-  json(res, 413, { ok: false, error: apiError("REQUEST_TOO_LARGE", { maxBytes: MAX_JSON_BYTES }) }, { Connection: "close" });
+  json(
+    res,
+    413,
+    { ok: false, error: apiError("REQUEST_TOO_LARGE", { maxBytes: MAX_JSON_BYTES }) },
+    { Connection: "close" }
+  );
 }
 
 function tooManyRequests(res) {
@@ -990,7 +1002,11 @@ function ok(res, body) {
 
 function roomLastActivityAtMs(room) {
   if (!room || typeof room !== "object") return 0;
-  const last = Number.isFinite(room.lastActivityAt) ? room.lastActivityAt : Number.isFinite(room.createdAt) ? room.createdAt : 0;
+  const last = Number.isFinite(room.lastActivityAt)
+    ? room.lastActivityAt
+    : Number.isFinite(room.createdAt)
+      ? room.createdAt
+      : 0;
   return Math.max(0, last);
 }
 
@@ -1038,7 +1054,9 @@ async function pruneExpiredRooms({ reason = "ttl" } = {}) {
 
 function sanitizeRoomCode(input) {
   if (!input) return null;
-  return String(input).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return String(input)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
 function contentTypeFor(filePath) {
@@ -1121,10 +1139,7 @@ async function serveVendorThree(req, res, pathname) {
 }
 
 // Allowed files in build directory (production bundles)
-const BUILD_FILES = new Set([
-  "3d.bundle.js",
-  "3d.bundle.js.map"
-]);
+const BUILD_FILES = new Set(["3d.bundle.js", "3d.bundle.js.map"]);
 
 async function serveBuildAssets(req, res, pathname) {
   const prefix = "/build/";
@@ -1427,7 +1442,8 @@ function setRoomTimerPaused(room, paused) {
   }
 
   timer.paused = false;
-  if (Number.isFinite(timer.pausedAt)) timer.pausedTotalMs = clampNonNegativeInt(timer.pausedTotalMs + (at - timer.pausedAt));
+  if (Number.isFinite(timer.pausedAt))
+    timer.pausedTotalMs = clampNonNegativeInt(timer.pausedTotalMs + (at - timer.pausedAt));
   timer.pausedAt = null;
 }
 
@@ -1480,7 +1496,8 @@ function removePlayerFromGame(game, playerId) {
     }
     game.setup.placementOrder = nextOrder;
     game.setup.placementIndex = Math.max(0, curIdx - removedBefore);
-    if (game.setup.placementIndex >= nextOrder.length && nextOrder.length > 0) game.setup.placementIndex = nextOrder.length - 1;
+    if (game.setup.placementIndex >= nextOrder.length && nextOrder.length > 0)
+      game.setup.placementIndex = nextOrder.length - 1;
     if (game.setup.settlementsPlacedByPlayerId && typeof game.setup.settlementsPlacedByPlayerId === "object") {
       delete game.setup.settlementsPlacedByPlayerId[playerId];
     }
@@ -1519,7 +1536,8 @@ function removePlayerFromGame(game, playerId) {
       if (offer.fromPlayerId === playerId || offer.to === playerId || offer.acceptedByPlayerId === playerId) {
         offer.status = "cancelled";
       }
-      if (Array.isArray(offer.rejectedByPlayerIds)) offer.rejectedByPlayerIds = offer.rejectedByPlayerIds.filter((pid) => pid !== playerId);
+      if (Array.isArray(offer.rejectedByPlayerIds))
+        offer.rejectedByPlayerIds = offer.rejectedByPlayerIds.filter((pid) => pid !== playerId);
       if (offer.acceptedByPlayerId === playerId) offer.acceptedByPlayerId = null;
     }
   }
@@ -1887,9 +1905,7 @@ const server = http.createServer(async (req, res) => {
 
     const requestedPlayerId = isUuid(body.playerId) ? body.playerId : null;
     const existing =
-      requestedPlayerId && room.players.has(requestedPlayerId)
-        ? room.players.get(requestedPlayerId)
-        : null;
+      requestedPlayerId && room.players.has(requestedPlayerId) ? room.players.get(requestedPlayerId) : null;
 
     if (existing) {
       existing.name = name;
@@ -2248,7 +2264,8 @@ const server = http.createServer(async (req, res) => {
     maybeReassignHost(room);
 
     const maxPlayers = normalizeMaxPlayers(room.maxPlayers);
-    if (room.players.size < 3 || room.players.size > maxPlayers) return forbidden(res, "CANT_START_ROOM", { minPlayers: 3, maxPlayers });
+    if (room.players.size < 3 || room.players.size > maxPlayers)
+      return forbidden(res, "CANT_START_ROOM", { minPlayers: 3, maxPlayers });
 
     for (const t of room.disconnectTimers.values()) clearTimeout(t);
     room.disconnectTimers = new Map();
@@ -2494,7 +2511,8 @@ const server = http.createServer(async (req, res) => {
       const priv = room.privateByPlayerId.get(playerId);
       if (!priv) return sendActionErr(403, "UNKNOWN_PLAYER_ID");
       if (!hasEnoughResources(priv.hand, DEV_CARD_COST)) return sendActionErr(400, "NOT_ENOUGH_RESOURCES");
-      if (Array.isArray(room.game.devDeck) && room.game.devDeck.length === 0) return sendActionErr(400, "DEV_DECK_EMPTY");
+      if (Array.isArray(room.game.devDeck) && room.game.devDeck.length === 0)
+        return sendActionErr(400, "DEV_DECK_EMPTY");
       action = { type };
     } else if (type === "PLAY_DEV_CARD") {
       const priv = room.privateByPlayerId.get(playerId);

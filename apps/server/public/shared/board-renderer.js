@@ -112,7 +112,9 @@ export function renderBoard(container, board, options) {
   };
   stateByContainer.set(container, state);
 
-  const resolvedMode = state.failed ? "2d" : resolveRendererMode({ boardRenderer: settings?.boardRenderer, webglSupported });
+  const resolvedMode = state.failed
+    ? "2d"
+    : resolveRendererMode({ boardRenderer: settings?.boardRenderer, webglSupported });
 
   state.latestBoard = board;
   state.latestOptions = options;
@@ -143,7 +145,10 @@ export function renderBoard(container, board, options) {
       state.three = mod;
       if (state.mode !== "3d") return;
       if (token !== state.token) return;
-      mod.renderBoard3d(container, state.latestBoard, { ...(state.latestOptions || {}), rendererQuality: state.latestQuality });
+      mod.renderBoard3d(container, state.latestBoard, {
+        ...(state.latestOptions || {}),
+        rendererQuality: state.latestQuality
+      });
     })
     .catch(() => {
       state.failed = true;
