@@ -264,7 +264,7 @@ describe("humanizeErrorMessage", () => {
 
   // Host errors
   test("humanizes BAD_ADMIN_SECRET", () => {
-    assert.equal(humanizeErrorMessage("BAD_ADMIN_SECRET"), "Host controls are locked. Refresh and claim again.");
+    assert.equal(humanizeErrorMessage("BAD_ADMIN_SECRET"), "Another TV controls this room.");
   });
 
   test("humanizes HOST_CONSOLE_CLAIMED", () => {

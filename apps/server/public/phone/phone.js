@@ -234,6 +234,8 @@ let lastRevisionSeen = null;
 let lastThemeId = null;
 let mode = null; // "build_road" | "build_settlement" | "build_city" | null
 let reconnectCheckTimer = null;
+let reconnectDelay = 1200;
+const MAX_RECONNECT_DELAY = 10000;
 let autoStealKey = null;
 let notifyTimer = null;
 let actionHintOverride = null;
@@ -1613,6 +1615,30 @@ function renderRoomStateBanner(room, { context = "connected" } = {}) {
   setRoomStateBanner({ ...info, show: !hide });
 }
 
+/**
+ * Handle room not found scenario (e.g., after server restart).
+ * Clears session, shows prominent banner, focuses input for easy re-entry.
+ */
+function handleRoomNotFound() {
+  clearSession({ keepName: true });
+  elRoomInput.value = "";
+  elJoinErr.textContent = "";
+  elStatus.textContent = "Disconnected";
+  setConnectionOverlay(false);
+  elPanelTitle.textContent = "Join";
+  setView("join");
+  setRoomStateBanner({
+    tone: "warn",
+    title: "Room no longer exists",
+    hint: "The server restarted. Look at the TV for the new room code.",
+    show: true
+  });
+  // Focus the room input so users can immediately type the new code
+  requestAnimationFrame(() => {
+    if (elRoomInput) elRoomInput.focus();
+  });
+}
+
 function cancelRoomPreview() {
   roomPreviewSeq += 1;
   if (roomPreviewTimer) clearTimeout(roomPreviewTimer);
@@ -1644,7 +1670,12 @@ async function fetchRoomPreview(code, seq) {
   } catch (e) {
     if (seq !== roomPreviewSeq) return;
     if (errorCode(e) === "HTTP_404") {
-      setRoomStateBanner({ tone: "bad", title: "Room not found", hint: "Check the code on the TV.", show: true });
+      setRoomStateBanner({
+        tone: "warn",
+        title: "Room not found",
+        hint: "Look at the TV for the room code.",
+        show: true
+      });
       return;
     }
     setRoomStateBanner({ tone: "bad", title: "Can’t load room", hint: humanizeErrorMessage(e), show: true });
@@ -1806,6 +1837,7 @@ function connectStream() {
     }
     elStatus.textContent = "Live";
     setConnectionOverlay(false);
+    reconnectDelay = 1200; // Reset backoff on successful connection
     renderScheduler.schedule();
   });
 
@@ -1820,22 +1852,22 @@ function scheduleReconnectRoomCheck() {
   if (!roomCode) return;
   if (reconnectCheckTimer) return;
   const code = roomCode;
+  const currentDelay = reconnectDelay;
   reconnectCheckTimer = setTimeout(async () => {
     reconnectCheckTimer = null;
     try {
       await api(`/api/rooms/${encodeURIComponent(code)}`);
+      // Success - reset backoff delay
+      reconnectDelay = 1200;
     } catch (e) {
+      // Increase delay for next attempt (exponential backoff)
+      reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
       if (errorCode(e) === "HTTP_404" && code === roomCode) {
-        clearSession({ keepName: true });
-        elRoomInput.value = "";
-        elJoinErr.textContent = "Room not found (server restarted). Enter the new room code from the TV.";
-        elStatus.textContent = "Disconnected";
-        setConnectionOverlay(false);
-        elPanelTitle.textContent = "Join";
-        setView("join");
+        handleRoomNotFound();
+        reconnectDelay = 1200; // Reset when room not found (user needs to rejoin)
       }
     }
-  }, 1200);
+  }, currentDelay);
 }
 
 async function applyThemeFromRoom(room) {
@@ -1866,6 +1898,18 @@ function render(room, you) {
   lastYouState = you;
   applyThemeFromRoom(room);
   const me = room.players.find((p) => p.playerId === playerId) || null;
+
+  // Kick detection: if we had a playerId but are no longer in the room's players list,
+  // we were removed from the game
+  if (playerId && !me) {
+    showNotify({ tone: "warn", title: "You were removed from the game", durationMs: 5000 });
+    clearSession({ keepName: true });
+    elJoinErr.textContent = "You were removed from the game.";
+    elPanelTitle.textContent = "Join";
+    setView("join");
+    return;
+  }
+
   isHost = !!me?.isHost;
 
   if (prevRoom) maybeNotify(prevRoom, room);
@@ -2252,10 +2296,15 @@ function renderPostGame(room, me) {
   const game = room.game;
 
   const winnerId = game.winnerPlayerId || null;
-  const winner = winnerId ? (room.players || []).find((p) => p.playerId === winnerId) : null;
-  const winnerName = winner?.name || "Player";
   if (elPostGameWinner) {
-    elPostGameWinner.textContent = winnerId && winnerId === me?.playerId ? "You win!" : `Winner: ${winnerName}`;
+    if (winnerId === null) {
+      elPostGameWinner.textContent = "Game ended";
+    } else if (winnerId === me?.playerId) {
+      elPostGameWinner.textContent = "You win!";
+    } else {
+      const winner = (room.players || []).find((p) => p.playerId === winnerId) || null;
+      elPostGameWinner.textContent = `Winner: ${winner?.name || "Player"}`;
+    }
   }
 
   const breakdown = computeVpBreakdownByPlayerId(
@@ -4614,11 +4663,7 @@ if (roomCode && playerId && playerName) {
     .catch((e) => {
       // Most commonly: the server restarted and this room is gone.
       if (errorCode(e) === "HTTP_404") {
-        clearSession({ keepName: true });
-        elRoomInput.value = "";
-        elJoinErr.textContent = "Room not found (server restarted). Enter the new room code from the TV.";
-        elStatus.textContent = "Disconnected";
-        setConnectionOverlay(false);
+        handleRoomNotFound();
         return;
       }
       elJoinErr.textContent = humanizeErrorMessage(e);

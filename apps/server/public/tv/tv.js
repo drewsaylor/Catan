@@ -13,7 +13,7 @@ import { errorCode, humanizeErrorMessage } from "/shared/error-copy.js";
 import { qrSvg } from "/shared/qr.js";
 import { scenarioDisplay } from "/shared/scenarios.js";
 import { getSettings, initSettings, onSettingsChange, setSettings } from "/shared/settings.js";
-import { installAudioUnlock, playSfx, setAmbientEnabled } from "/shared/audio.js";
+import { installAudioUnlock, playSfx, setMusicMode, preloadMusic } from "/shared/audio.js";
 import { supportsWebGL } from "/shared/render-capabilities.js";
 import { createMomentQueue, detectMoments } from "/shared/moment-detector.js";
 import { createShowLayer } from "/tv/show-layer.js";
@@ -146,6 +146,7 @@ const elLobbyStartStatus = qs("#lobbyStartStatus");
 
 let roomCode = null;
 let adminSecret = null;
+let isSecondaryTv = false; // True if admin secret was rejected (another TV controls)
 let hostPinCache = null;
 let es = null;
 let lastRoomState = null;
@@ -201,7 +202,24 @@ let lastDiceRollAt = null;
 
 initSettings();
 installAudioUnlock();
-setAmbientEnabled(true);
+
+// Music state tracking
+let lastMusicMode = null;
+
+function updateMusicMode(room) {
+  let newMode = "lobby";
+  if (room?.status === "in_game" && room?.game?.phase !== "game_over") {
+    newMode = "game";
+  }
+  if (newMode !== lastMusicMode) {
+    lastMusicMode = newMode;
+    setMusicMode(newMode);
+  }
+}
+
+// Start with lobby music
+setMusicMode("lobby");
+preloadMusic();
 const show = elShowLayer
   ? createShowLayer(elShowLayer)
   : {
@@ -373,6 +391,7 @@ elDownloadSnapshotBtn?.addEventListener("click", async () => {
     await downloadRoomSnapshot();
     show.toast({ title: "Snapshot downloaded", subtitle: roomCode || "", tone: "good", durationMs: 1600 });
   } catch (e) {
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
     syncHostControls(lastRoomState);
@@ -392,6 +411,7 @@ elTimerPauseBtn?.addEventListener("click", async () => {
       durationMs: 1400
     });
   } catch (e) {
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
     elTimerPauseBtn.disabled = false;
@@ -421,6 +441,7 @@ elHostSetBtn?.addEventListener("click", async () => {
     const who = (lastRoomState?.players || []).find((p) => p.playerId === desired)?.name || "Player";
     show.toast({ title: "Host reassigned", subtitle: who, tone: "info", durationMs: 1500 });
   } catch (e) {
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
     syncHostControls(lastRoomState);
@@ -440,6 +461,7 @@ elKickList?.addEventListener("click", async (ev) => {
     await adminPost("kick", { targetPlayerId: playerId });
     show.toast({ title: "Player kicked", subtitle: who, tone: "warn", durationMs: 1600 });
   } catch (e) {
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
     btn.disabled = false;
@@ -466,6 +488,7 @@ elResetConfirmBtn?.addEventListener("click", async () => {
     if (elResetConfirmPanel) elResetConfirmPanel.style.display = "none";
     show.toast({ title: "Room reset", subtitle: "Back to lobby.", tone: "warn", durationMs: 1600 });
   } catch (e) {
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
   } finally {
     elResetConfirmBtn.disabled = false;
@@ -650,6 +673,17 @@ function isHostPinErrorMessage(message) {
   return s === "HOST_PIN_REQUIRED" || s === "BAD_HOST_PIN" || s.includes("Host PIN");
 }
 
+function isBadAdminSecretError(err) {
+  const s = String(err?.message || err?.code || err || "");
+  return s === "BAD_ADMIN_SECRET" || s.includes("Another TV controls");
+}
+
+function markAsSecondaryTv() {
+  isSecondaryTv = true;
+  adminSecret = null;
+  syncHostControls(lastRoomState);
+}
+
 async function ensureHostPin({ room = lastRoomState } = {}) {
   if (!room?.hostPinEnabled) {
     hostPinCache = null;
@@ -680,10 +714,19 @@ function syncHostControls(room) {
   const hasAdmin = hasAdminSecret();
   const players = Array.isArray(room?.players) ? room.players : [];
   const hostPlayerId = typeof room?.hostPlayerId === "string" ? room.hostPlayerId : "";
-  const canUse = hasAdmin && !!roomCode;
+  const canUse = hasAdmin && !!roomCode && !isSecondaryTv;
 
-  if (elAdminState) elAdminState.textContent = hasAdmin ? "Ready." : "Enable host controls on this TV.";
-  if (elClaimAdminBtn) elClaimAdminBtn.style.display = hasAdmin ? "none" : "";
+  // Show appropriate status message
+  let adminStateText = "Enable host controls on this TV.";
+  if (isSecondaryTv) {
+    adminStateText = "Another TV controls this room. View-only.";
+  } else if (hasAdmin) {
+    adminStateText = "Ready.";
+  }
+  if (elAdminState) elAdminState.textContent = adminStateText;
+
+  // Hide claim button if already admin or secondary; show if neither
+  if (elClaimAdminBtn) elClaimAdminBtn.style.display = hasAdmin || isSecondaryTv ? "none" : "";
   if (elDownloadSnapshotBtn) elDownloadSnapshotBtn.disabled = !canUse;
 
   const paused = !!room?.timer?.paused;
@@ -807,6 +850,7 @@ async function createNewRoom() {
     const created = await api("/api/rooms", { method: "POST" });
     roomCode = created.roomCode;
     adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
+    isSecondaryTv = false;
     storeAdminSecret(roomCode, adminSecret);
     lastRevisionSeen = null;
     lastRoomState = null;
@@ -911,6 +955,7 @@ async function claimAdminSecret() {
   const secret = typeof payload?.adminSecret === "string" ? payload.adminSecret : null;
   if (!secret) throw new Error("No adminSecret returned");
   adminSecret = secret;
+  isSecondaryTv = false;
   storeAdminSecret(roomCode, adminSecret);
   syncHostControls(lastRoomState);
 }
@@ -959,6 +1004,7 @@ async function requestThemeChange(nextThemeId) {
     show.toast({ title: "Theme updated", subtitle: "", tone: "good", durationMs: 1400 });
   } catch (e) {
     if (isHostPinErrorMessage(e?.message)) hostPinCache = null;
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     show.toast({ title: "Can't change theme", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
   } finally {
     themeUpdateInFlight = false;
@@ -980,6 +1026,7 @@ async function requestScenarioChange(nextScenarioId) {
     show.toast({ title: "Scenario updated", subtitle: "", tone: "good", durationMs: 1400 });
   } catch (e) {
     if (isHostPinErrorMessage(e?.message)) hostPinCache = null;
+    if (isBadAdminSecretError(e)) markAsSecondaryTv();
     show.toast({ title: "Can't set scenario", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
   } finally {
     scenarioUpdateInFlight = false;
@@ -2427,6 +2474,7 @@ async function ensureRoom() {
       await api(`/api/rooms/${encodeURIComponent(candidate)}`);
       roomCode = candidate;
       adminSecret = loadAdminSecret(roomCode);
+      isSecondaryTv = false;
       lastRevisionSeen = null;
       return;
     } catch {
@@ -2436,6 +2484,7 @@ async function ensureRoom() {
   const created = await api("/api/rooms", { method: "POST" });
   roomCode = created.roomCode;
   adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
+  isSecondaryTv = false;
   storeAdminSecret(roomCode, adminSecret);
   lastRevisionSeen = null;
   history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
@@ -2487,6 +2536,7 @@ function connectStream() {
     }
     setTvStatus("LIVE");
     setConnectionOverlay(false);
+    recoveryDelay = 1200; // Reset backoff on successful connection
     renderScheduler.schedule();
 
     // Check if we should show or exit attract mode based on room state
@@ -2529,29 +2579,39 @@ function connectStream() {
 }
 
 let recoveryTimer = null;
+let recoveryDelay = 1200;
+const MAX_RECOVERY_DELAY = 10000;
+
 function scheduleRoomRecovery() {
   if (recoveryTimer) return;
   const code = roomCode;
+  const currentDelay = recoveryDelay;
   recoveryTimer = setTimeout(async () => {
     recoveryTimer = null;
     try {
       await api(`/api/rooms/${encodeURIComponent(code)}`);
+      // Success - reset backoff delay
+      recoveryDelay = 1200;
     } catch (e) {
+      // Increase delay for next attempt (exponential backoff)
+      recoveryDelay = Math.min(recoveryDelay * 2, MAX_RECOVERY_DELAY);
       if (errorCode(e) === "HTTP_404" && code === roomCode) {
         try {
           const created = await api("/api/rooms", { method: "POST" });
           roomCode = created.roomCode;
           adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
+          isSecondaryTv = false;
           storeAdminSecret(roomCode, adminSecret);
           lastRevisionSeen = null;
           history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
+          recoveryDelay = 1200; // Reset on successful room creation
           connectStream();
         } catch {
           // Ignore; we'll retry on the next error tick.
         }
       }
     }
-  }, 1200);
+  }, currentDelay);
 }
 
 async function applyThemeFromRoom(room) {
@@ -2577,6 +2637,7 @@ async function applyThemeFromRoom(room) {
 
 function render(room, prevRoom) {
   applyThemeFromRoom(room);
+  updateMusicMode(room);
   setText(elRoomCode, room.roomCode);
   const joinUrl = roomUrlForPhones();
   setText(elJoinUrl, joinUrl);
@@ -2622,8 +2683,12 @@ function render(room, prevRoom) {
 
   if (elEndScreenCard) elEndScreenCard.style.display = isGameOver ? "" : "none";
   if (elEndScreenWinner) {
-    const winner = winnerPlayerId ? (room.players || []).find((p) => p.playerId === winnerPlayerId) : null;
-    elEndScreenWinner.textContent = `Winner: ${winner?.name || "—"}`;
+    if (winnerPlayerId === null) {
+      elEndScreenWinner.textContent = "Game ended (no winner)";
+    } else {
+      const winner = (room.players || []).find((p) => p.playerId === winnerPlayerId) || null;
+      elEndScreenWinner.textContent = `Winner: ${winner?.name || "—"}`;
+    }
   }
   if (elRematchBtn) {
     const playersCount = Array.isArray(room?.players) ? room.players.length : 0;

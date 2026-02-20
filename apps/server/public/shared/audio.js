@@ -17,6 +17,28 @@ let voices = [];
 let ambientEnabled = false;
 let ambientVoice = null;
 
+// Music configuration - easy to extend by adding more tracks to the game array
+const MUSIC_TRACKS = {
+  lobby: "/shared/assets/music/scape-main.mp3",
+  game: [
+    "/shared/assets/music/harmony.mp3",
+    "/shared/assets/music/sea-shanty.mp3"
+    // Add more game tracks here - they'll automatically be included in the cycle
+  ]
+};
+
+// Music state
+let currentMusicMode = null; // "lobby" | "game" | null
+let gameTrackIndex = 0;
+let musicSource = null;
+let musicGain = null;
+let nextMusicSource = null;
+let nextMusicGain = null;
+let musicEnabled = false;
+
+const MUSIC_FADE_SEC = 2.0;
+const MUSIC_CROSSFADE_SEC = 3.0;
+
 const CONCURRENCY = {
   total: 8,
   ui: 4,
@@ -100,8 +122,11 @@ function applySettingsToGraph() {
 
   if (musicVol <= 0.001 || mute) {
     if (ambientVoice) stopAmbient();
+    stopMusic();
   } else if (ambientEnabled) {
     maybeStartAmbient();
+  } else if (musicEnabled && currentMusicMode) {
+    maybeStartMusic();
   }
 }
 
@@ -129,6 +154,10 @@ export async function unlockAudio() {
 
       unlocked = true;
       if (ambientEnabled) maybeStartAmbient();
+      else if (musicEnabled && currentMusicMode) {
+        preloadMusic();
+        maybeStartMusic();
+      }
       return true;
     }
   } catch {
@@ -663,4 +692,192 @@ export function stopAmbient() {
     // Ignore.
   }
   ambientVoice = null;
+}
+
+// =============================================================================
+// Music System - File-based music with crossfades
+// =============================================================================
+
+export async function preloadMusic() {
+  const c = getAudioContext();
+  if (!c || c.state !== "running") return;
+  const urls = [MUSIC_TRACKS.lobby, ...MUSIC_TRACKS.game];
+  await Promise.all(urls.map((url) => decodeUrlToBuffer(url)));
+}
+
+function stopMusicSource(source, gain, { fadeSec = 0.5 } = {}) {
+  const c = ctx;
+  if (!c || !source || !gain) return;
+  try {
+    const t = c.currentTime;
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.value), t);
+    gain.gain.setTargetAtTime(0.0001, t, Math.max(0.01, fadeSec / 3));
+    source.stop(t + fadeSec + 0.1);
+  } catch {
+    // Ignore.
+  }
+}
+
+function stopMusic() {
+  if (musicSource && musicGain) {
+    stopMusicSource(musicSource, musicGain, { fadeSec: MUSIC_FADE_SEC });
+  }
+  if (nextMusicSource && nextMusicGain) {
+    stopMusicSource(nextMusicSource, nextMusicGain, { fadeSec: MUSIC_FADE_SEC });
+  }
+  musicSource = null;
+  musicGain = null;
+  nextMusicSource = null;
+  nextMusicGain = null;
+}
+
+async function playTrack(url, { loop = false, fadeInSec = MUSIC_FADE_SEC, targetGain = 0.8 } = {}) {
+  const c = ctx;
+  if (!c || c.state !== "running") return null;
+  ensureGraph();
+  if (!buses) return null;
+
+  const buf = await decodeUrlToBuffer(url);
+  if (!buf) return null;
+
+  const s = getSettings();
+  if (s.muteAll || clamp01(s.musicVolume) <= 0.001) return null;
+
+  try {
+    const t0 = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.loop = loop;
+
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.setTargetAtTime(targetGain, t0, Math.max(0.01, fadeInSec / 3));
+
+    src.connect(gain);
+    gain.connect(buses.duck);
+    src.start(t0);
+
+    return { source: src, gain };
+  } catch {
+    return null;
+  }
+}
+
+async function crossfadeToTrack(url, { fadeSec = MUSIC_CROSSFADE_SEC, loop = false, targetGain = 0.8 } = {}) {
+  const c = ctx;
+  if (!c || c.state !== "running") return;
+
+  // Fade out current track
+  if (musicSource && musicGain) {
+    stopMusicSource(musicSource, musicGain, { fadeSec });
+  }
+
+  // Start new track with fade in
+  const result = await playTrack(url, { loop, fadeInSec: fadeSec, targetGain });
+  if (result) {
+    musicSource = result.source;
+    musicGain = result.gain;
+  }
+}
+
+function scheduleNextGameTrack() {
+  if (currentMusicMode !== "game") return;
+  if (!musicSource) return;
+
+  musicSource.onended = async () => {
+    if (currentMusicMode !== "game") return;
+
+    gameTrackIndex = (gameTrackIndex + 1) % MUSIC_TRACKS.game.length;
+    const nextUrl = MUSIC_TRACKS.game[gameTrackIndex];
+
+    const result = await playTrack(nextUrl, { loop: false, fadeInSec: 0.5, targetGain: 0.8 });
+    if (result) {
+      musicSource = result.source;
+      musicGain = result.gain;
+      scheduleNextGameTrack();
+    }
+  };
+}
+
+async function maybeStartMusic() {
+  const c = getAudioContext();
+  if (!c || c.state !== "running") return false;
+  ctx = c;
+  ensureGraph();
+  if (!buses) return false;
+  if (musicSource) return true;
+
+  const s = getSettings();
+  if (s.muteAll || clamp01(s.musicVolume) <= 0.001) return false;
+
+  if (currentMusicMode === "lobby") {
+    const result = await playTrack(MUSIC_TRACKS.lobby, { loop: true, fadeInSec: MUSIC_FADE_SEC, targetGain: 0.8 });
+    if (result) {
+      musicSource = result.source;
+      musicGain = result.gain;
+      return true;
+    }
+  } else if (currentMusicMode === "game") {
+    const url = MUSIC_TRACKS.game[gameTrackIndex % MUSIC_TRACKS.game.length];
+    const result = await playTrack(url, { loop: false, fadeInSec: MUSIC_FADE_SEC, targetGain: 0.8 });
+    if (result) {
+      musicSource = result.source;
+      musicGain = result.gain;
+      scheduleNextGameTrack();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function setMusicMode(mode) {
+  // Disable old ambient system if it was running
+  if (ambientEnabled) {
+    ambientEnabled = false;
+    stopAmbient();
+  }
+
+  musicEnabled = true;
+
+  if (mode === currentMusicMode) return;
+
+  const prevMode = currentMusicMode;
+  currentMusicMode = mode;
+
+  if (!mode) {
+    stopMusic();
+    return;
+  }
+
+  const c = getAudioContext();
+  if (!c || c.state !== "running") return;
+
+  if (mode === "lobby") {
+    if (prevMode === "game") {
+      // Crossfade from game to lobby
+      await crossfadeToTrack(MUSIC_TRACKS.lobby, { fadeSec: MUSIC_CROSSFADE_SEC, loop: true });
+    } else {
+      // Start lobby music fresh
+      stopMusic();
+      await maybeStartMusic();
+    }
+  } else if (mode === "game") {
+    // Reset game track index when starting a new game
+    if (prevMode !== "game") {
+      gameTrackIndex = 0;
+    }
+
+    if (prevMode === "lobby") {
+      // Crossfade from lobby to first game track
+      const url = MUSIC_TRACKS.game[gameTrackIndex];
+      await crossfadeToTrack(url, { fadeSec: MUSIC_CROSSFADE_SEC, loop: false });
+      scheduleNextGameTrack();
+    } else {
+      // Start game music fresh
+      stopMusic();
+      await maybeStartMusic();
+    }
+  }
 }

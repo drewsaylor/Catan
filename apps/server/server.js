@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 
 import { createNewGame, applyAction, getPublicGameSnapshot, PRESET_META } from "../../packages/game-engine/index.js";
+import { computeLongestRoadAward } from "../../packages/game-engine/longest-road.js";
 import { RESOURCE_TYPES, emptyHand, normalizeResourceCounts } from "../../packages/shared/resources.js";
 import { BUILD_COSTS, DEV_CARD_COST, hasAnyResources, hasEnoughResources } from "./public/shared/action-gates.js";
 
@@ -1464,7 +1465,8 @@ function adminSecretFromHeaders(req) {
   return null;
 }
 
-function removePlayerFromGame(game, playerId) {
+function removePlayerFromGame(room, playerId) {
+  const game = room?.game;
   if (!game || !playerId) return;
 
   if (Array.isArray(game.turnOrder)) {
@@ -1485,6 +1487,7 @@ function removePlayerFromGame(game, playerId) {
   if (game.setup && Array.isArray(game.setup.placementOrder)) {
     const order = game.setup.placementOrder;
     const curIdx = clampNonNegativeInt(game.setup.placementIndex ?? 0);
+    const wasCurrentSetupPlayer = order[curIdx] === playerId;
     let removedBefore = 0;
     const nextOrder = [];
     for (let i = 0; i < order.length; i += 1) {
@@ -1496,9 +1499,43 @@ function removePlayerFromGame(game, playerId) {
     }
     game.setup.placementOrder = nextOrder;
     game.setup.placementIndex = Math.max(0, curIdx - removedBefore);
-    if (game.setup.placementIndex >= nextOrder.length && nextOrder.length > 0)
-      game.setup.placementIndex = nextOrder.length - 1;
-    if (game.setup.settlementsPlacedByPlayerId && typeof game.setup.settlementsPlacedByPlayerId === "object") {
+
+    // Issue 1.8: Validate setup phase after kick
+    // If the kicked player was mid-placement (setup_road), reset to setup_settlement
+    // so the next player can start fresh
+    if (wasCurrentSetupPlayer && game.subphase === "setup_road") {
+      game.subphase = "setup_settlement";
+      game.setup.lastSettlementVertexId = null;
+    }
+
+    // Check if setup is complete after removing the player
+    const n = game.turnOrder.length;
+    if (nextOrder.length === 0) {
+      // No placement slots left - setup complete or game over handled elsewhere
+      if (n > 0 && game.phase !== "game_over") {
+        game.phase = "turn";
+        game.subphase = "needs_roll";
+        game.setup = null;
+      }
+    } else if (game.setup.placementIndex >= nextOrder.length) {
+      // All placements done - transition to turn phase
+      if (n > 0 && game.phase !== "game_over") {
+        game.phase = "turn";
+        game.subphase = "needs_roll";
+        game.setup = null;
+      }
+    } else {
+      // Still in setup - ensure correct round
+      if (game.phase === "setup_round_1" || game.phase === "setup_round_2") {
+        game.phase = game.setup.placementIndex < n ? "setup_round_1" : "setup_round_2";
+      }
+    }
+
+    if (
+      game.setup &&
+      game.setup.settlementsPlacedByPlayerId &&
+      typeof game.setup.settlementsPlacedByPlayerId === "object"
+    ) {
       delete game.setup.settlementsPlacedByPlayerId[playerId];
     }
   }
@@ -1508,13 +1545,30 @@ function removePlayerFromGame(game, playerId) {
   }
 
   if (game.awards && typeof game.awards === "object") {
+    // Issue 1.2: Recalculate longest road when the holder is kicked
     if (game.awards.longestRoadPlayerId === playerId) {
-      game.awards.longestRoadPlayerId = null;
-      game.awards.longestRoadLength = 0;
+      const computed = computeLongestRoadAward(game);
+      game.awards.longestRoadPlayerId = computed.longestRoadPlayerId ?? null;
+      game.awards.longestRoadLength = computed.longestRoadLength ?? 0;
     }
+    // Issue 1.3: Recalculate largest army when the holder is kicked
     if (game.awards.largestArmyPlayerId === playerId) {
-      game.awards.largestArmyPlayerId = null;
+      const LARGEST_ARMY_MIN_KNIGHTS = 3;
+      const played = game.playedKnightsByPlayerId || {};
+      let bestPlayerId = null;
+      let bestCount = 0;
+      for (const [pid, count] of Object.entries(played)) {
+        const n = clampNonNegativeInt(count);
+        if (n >= LARGEST_ARMY_MIN_KNIGHTS && n > bestCount) {
+          bestCount = n;
+          bestPlayerId = pid;
+        }
+      }
+      game.awards.largestArmyPlayerId = bestPlayerId;
     }
+
+    // Issue 3.1: Check for game over after award recalculations
+    maybeEndGameAfterKick(room);
   }
 
   if (game.robber) {
@@ -1526,6 +1580,32 @@ function removePlayerFromGame(game, playerId) {
     }
     if (Array.isArray(game.robber.eligibleVictimPlayerIds)) {
       game.robber.eligibleVictimPlayerIds = game.robber.eligibleVictimPlayerIds.filter((pid) => pid !== playerId);
+    }
+
+    // Issue 1.4: If in robber_discard and all remaining players have discarded, advance to robber_move
+    if (game.subphase === "robber_discard") {
+      const requiredPids = Object.keys(game.robber.discardRequiredByPlayerId || {});
+      const allDone = requiredPids.every((pid) => !!game.robber.discardSubmittedByPlayerId?.[pid]);
+      if (allDone) {
+        game.subphase = "robber_move";
+      }
+    }
+
+    // Issue 1.5: If in robber_steal and no eligible victims remain, advance to main
+    if (game.subphase === "robber_steal") {
+      const victims = game.robber.eligibleVictimPlayerIds || [];
+      if (victims.length === 0) {
+        pushRoomLog(
+          room,
+          makeRoomLogEntry({
+            type: "robber",
+            message: "No one to steal from.",
+            data: {}
+          })
+        );
+        game.subphase = "main";
+        game.robber = null;
+      }
     }
   }
 
@@ -1573,6 +1653,45 @@ function maybeEndGameFromHiddenVictoryPoints(room, playerId) {
       data: { points: total, target, hiddenVictoryPointsCount: hidden }
     })
   );
+}
+
+// Issue 3.1: Check for game over after kick recalculations
+// After recalculating awards post-kick, the new award holder might have enough VP to win
+function maybeEndGameAfterKick(room) {
+  if (!room?.game) return;
+  if (room.game.phase === "game_over") return;
+  if (room.game.phase !== "turn") return;
+
+  const target = clampNonNegativeInt(room.game.victoryPointsToWin ?? 10);
+  if (target <= 0) return;
+
+  const snapshot = getPublicGameSnapshot(room.game);
+  const publicPointsByPlayerId = snapshot?.pointsByPlayerId ?? {};
+  const turnOrder = room.game.turnOrder ?? [];
+
+  // Check all remaining players for a winner
+  for (const pid of turnOrder) {
+    const publicPoints = clampNonNegativeInt(publicPointsByPlayerId[pid] ?? 0);
+    const priv = room.privateByPlayerId.get(pid);
+    const hidden = clampNonNegativeInt(priv?.hiddenVictoryPointsCount ?? 0);
+    const total = publicPoints + hidden;
+
+    if (total >= target) {
+      room.game.phase = "game_over";
+      room.game.subphase = "game_over";
+      room.game.winnerPlayerId = pid;
+      pushRoomLog(
+        room,
+        makeRoomLogEntry({
+          type: "system",
+          actorPlayerId: pid,
+          message: `Won the game with ${total} VP!`,
+          data: { points: total, target, hiddenVictoryPointsCount: hidden }
+        })
+      );
+      return; // Only one winner
+    }
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1678,7 +1797,7 @@ const server = http.createServer(async (req, res) => {
           room.game.bank[r] = Math.min(19, clampNonNegativeInt(room.game.bank?.[r] ?? 0) + n);
         }
       }
-      removePlayerFromGame(room.game, targetPlayerId);
+      removePlayerFromGame(room, targetPlayerId);
       if (wasCurrent && room.game.phase === "turn") {
         room.game.subphase = "needs_roll";
         room.game.robber = null;
@@ -1697,6 +1816,15 @@ const server = http.createServer(async (req, res) => {
 
     room.players.delete(targetPlayerId);
     room.privateByPlayerId.delete(targetPlayerId);
+    // Clean up actionResponses entries for kicked player to prevent memory leaks
+    if (room.actionResponses instanceof Map) {
+      const prefix = `${targetPlayerId}:`;
+      for (const key of room.actionResponses.keys()) {
+        if (key.startsWith(prefix)) {
+          room.actionResponses.delete(key);
+        }
+      }
+    }
     clearDisconnectTimer(room, targetPlayerId);
     if (room.hostPlayerId === targetPlayerId) maybeReassignHost(room);
     broadcastRoomState(room);
