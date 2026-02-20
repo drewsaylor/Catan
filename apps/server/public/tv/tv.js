@@ -144,6 +144,9 @@ const elLobbyScenarioDesc = qs("#lobbyScenarioDesc");
 const elLobbyThemeSelect = qs("#lobbyThemeSelect");
 const elLobbyStartStatus = qs("#lobbyStartStatus");
 
+// Main game UI wrapper - hidden during full-screen overlays
+const elWrap = qs(".wrap");
+
 let roomCode = null;
 let adminSecret = null;
 let isSecondaryTv = false; // True if admin secret was rejected (another TV controls)
@@ -188,6 +191,15 @@ let lastLobbyScenarioOptionsKey = null;
 let lastLobbyThemeOptionsKey = null;
 let lastLobbyQrUrl = null;
 let lobbyPreviewBoard = null;
+
+/**
+ * Hide .wrap when attract or lobby overlay is active.
+ * Only show .wrap during active gameplay.
+ */
+function updateWrapVisibility() {
+  if (!elWrap) return;
+  elWrap.style.display = (attractModeActive || lobbyOverlayActive) ? "none" : "";
+}
 
 const RESOURCE_TYPES = ["wood", "brick", "sheep", "wheat", "ore"];
 const QUICK_TURN_NUDGE_THRESHOLDS_MS = [45000, 75000];
@@ -2116,6 +2128,7 @@ async function showAttractMode() {
   }
 
   attractModeActive = true;
+  updateWrapVisibility();
   elAttractMode.style.display = "";
   elAttractMode.classList.remove("hiding");
 
@@ -2156,6 +2169,7 @@ async function exitAttractMode() {
   elAttractMode.classList.add("hiding");
   await sleep(350);
   attractModeActive = false;
+  updateWrapVisibility();
   elAttractMode.style.display = "none";
   elAttractMode.classList.remove("hiding");
 
@@ -2239,6 +2253,7 @@ function createLobbyPreviewBoard(scenarioId) {
 function showLobbyOverlay() {
   if (!elLobbyOverlay || lobbyOverlayActive) return;
   lobbyOverlayActive = true;
+  updateWrapVisibility();
   elLobbyOverlay.style.display = "";
   elLobbyOverlay.classList.remove("hiding");
 
@@ -2253,6 +2268,7 @@ async function hideLobbyOverlay() {
   elLobbyOverlay.classList.add("hiding");
   await sleep(300);
   lobbyOverlayActive = false;
+  updateWrapVisibility();
   elLobbyOverlay.style.display = "none";
   elLobbyOverlay.classList.remove("hiding");
 }
