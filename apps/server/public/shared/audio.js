@@ -191,9 +191,13 @@ export function installAudioUnlock(target = document) {
 function normalizeKey(key) {
   const k = String(key || "").trim();
   if (!k) return "";
+  // Existing aliases
   if (k === "victory") return "win";
   if (k === "turn_start") return "turn";
   if (k === "dice_roll") return "dice";
+  // New aliases
+  if (k === "dev_card_played") return "dev_card";
+  if (k === "dev_card_bought") return "dev_buy";
   return k;
 }
 
@@ -503,15 +507,36 @@ function playAsset(url, { volume = 1 } = {}) {
 }
 
 const SOUND_LIBRARY = {
-  ui_tick: { category: "ui", cooldownMs: 60, baseGain: 0.85, url: null },
-  ui_confirm: { category: "ui", cooldownMs: 120, baseGain: 0.95, url: null },
-  ui_bonk: { category: "ui", cooldownMs: 220, baseGain: 0.95, url: null },
-  turn: { category: "moment", cooldownMs: 650, baseGain: 1, duck: true, url: null },
-  dice: { category: "moment", cooldownMs: 450, baseGain: 1, duck: true, url: null },
-  robber: { category: "moment", cooldownMs: 1200, baseGain: 1, duck: true, url: null },
-  build: { category: "moment", cooldownMs: 260, baseGain: 0.95, duck: true, url: null },
-  trade: { category: "moment", cooldownMs: 900, baseGain: 0.95, duck: true, url: null },
-  win: { category: "moment", cooldownMs: 6000, baseGain: 1, duck: true, url: null }
+  // Tier 1 - Essential
+  ui_tick: { category: "ui", cooldownMs: 60, baseGain: 0.85, url: "/shared/assets/sfx/ui-tick.mp3" },
+  ui_confirm: { category: "ui", cooldownMs: 120, baseGain: 0.95, url: "/shared/assets/sfx/ui-confirm.mp3" },
+  ui_bonk: { category: "ui", cooldownMs: 220, baseGain: 0.95, url: "/shared/assets/sfx/ui-bonk.mp3" },
+  turn: { category: "moment", cooldownMs: 650, baseGain: 1, duck: true, url: "/shared/assets/sfx/turn.mp3" },
+  dice: { category: "moment", cooldownMs: 450, baseGain: 1, duck: true, url: "/shared/assets/sfx/dice.mp3" },
+  robber: { category: "moment", cooldownMs: 1200, baseGain: 1, duck: true, url: "/shared/assets/sfx/robber.mp3" },
+  build: { category: "moment", cooldownMs: 260, baseGain: 0.95, duck: true, url: "/shared/assets/sfx/build.mp3" },
+  trade: { category: "moment", cooldownMs: 900, baseGain: 0.95, duck: true, url: "/shared/assets/sfx/trade.mp3" },
+  win: { category: "moment", cooldownMs: 6000, baseGain: 1, duck: true, url: "/shared/assets/sfx/win.mp3" },
+
+  // Tier 2 - Major Moments
+  dev_card: { category: "moment", cooldownMs: 500, baseGain: 0.9, duck: true, url: "/shared/assets/sfx/dev-card.mp3" },
+  knight: { category: "moment", cooldownMs: 600, baseGain: 0.9, duck: true, url: "/shared/assets/sfx/knight.mp3" },
+  largest_army: { category: "moment", cooldownMs: 3000, baseGain: 1, duck: true, url: "/shared/assets/sfx/largest-army.mp3" },
+  longest_road: { category: "moment", cooldownMs: 3000, baseGain: 1, duck: true, url: "/shared/assets/sfx/longest-road.mp3" },
+  event_drawn: { category: "moment", cooldownMs: 1000, baseGain: 0.9, duck: true, url: "/shared/assets/sfx/event-drawn.mp3" },
+
+  // Tier 3 - Polish
+  monopoly: { category: "moment", cooldownMs: 500, baseGain: 0.85, duck: true, url: "/shared/assets/sfx/monopoly.mp3" },
+  year_of_plenty: { category: "moment", cooldownMs: 500, baseGain: 0.85, duck: true, url: "/shared/assets/sfx/year-of-plenty.mp3" },
+  road_building: { category: "moment", cooldownMs: 500, baseGain: 0.85, duck: true, url: "/shared/assets/sfx/road-building.mp3" },
+  steal_success: { category: "moment", cooldownMs: 400, baseGain: 0.9, duck: true, url: "/shared/assets/sfx/steal-success.mp3" },
+  steal_fail: { category: "moment", cooldownMs: 400, baseGain: 0.8, duck: true, url: "/shared/assets/sfx/steal-fail.mp3" },
+  discard: { category: "moment", cooldownMs: 500, baseGain: 0.85, duck: true, url: "/shared/assets/sfx/discard.mp3" },
+  collect: { category: "moment", cooldownMs: 300, baseGain: 0.8, duck: true, url: "/shared/assets/sfx/collect.mp3" },
+  turn_nudge: { category: "ui", cooldownMs: 5000, baseGain: 0.7, url: "/shared/assets/sfx/turn-nudge.mp3" },
+  event_ended: { category: "moment", cooldownMs: 500, baseGain: 0.75, duck: true, url: "/shared/assets/sfx/event-ended.mp3" },
+  segment_start: { category: "moment", cooldownMs: 1000, baseGain: 0.8, duck: true, url: "/shared/assets/sfx/segment-start.mp3" },
+  dev_buy: { category: "moment", cooldownMs: 400, baseGain: 0.85, duck: true, url: "/shared/assets/sfx/dev-buy.mp3" }
 };
 
 export function preloadSounds(keys = []) {
@@ -708,14 +733,22 @@ export async function preloadMusic() {
 function stopMusicSource(source, gain, { fadeSec = 0.5 } = {}) {
   const c = ctx;
   if (!c || !source || !gain) return;
+  const t = c.currentTime;
+
+  // Try to fade out gracefully (non-critical)
   try {
-    const t = c.currentTime;
     gain.gain.cancelScheduledValues(t);
-    gain.gain.setValueAtTime(Math.max(0.0001, gain.value), t);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t);
     gain.gain.setTargetAtTime(0.0001, t, Math.max(0.01, fadeSec / 3));
+  } catch {
+    // Ignore gain manipulation errors
+  }
+
+  // Always stop the source (critical)
+  try {
     source.stop(t + fadeSec + 0.1);
   } catch {
-    // Ignore.
+    // Source may already be stopped
   }
 }
 
@@ -869,14 +902,16 @@ export async function setMusicMode(mode) {
       gameTrackIndex = 0;
     }
 
+    // Always stop any existing music first to ensure clean transition
+    stopMusic();
+
     if (prevMode === "lobby") {
-      // Crossfade from lobby to first game track
+      // Start first game track fresh (lobby music already stopped)
       const url = MUSIC_TRACKS.game[gameTrackIndex];
       await crossfadeToTrack(url, { fadeSec: MUSIC_CROSSFADE_SEC, loop: false });
       scheduleNextGameTrack();
     } else {
       // Start game music fresh
-      stopMusic();
       await maybeStartMusic();
     }
   }

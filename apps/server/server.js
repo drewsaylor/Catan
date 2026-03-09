@@ -1,6 +1,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 
@@ -44,8 +45,8 @@ const SCENARIOS = [
   {
     id: "classic",
     name: "Classic",
-    description: "Standard rules • Balanced board • First to 10 VP.",
-    rulesSummary: "Classic • 10 VP • Standard dice.",
+    description: "Standard Catan rules with a balanced board. Race to build settlements, cities, and roads while trading resources with other players.",
+    rulesSummary: "10 VP to win • Balanced board • Standard dice",
     presetId: "classic-balanced",
     boardSeed: null,
     gameMode: "classic",
@@ -57,8 +58,8 @@ const SCENARIOS = [
   {
     id: "quick",
     name: "Quick",
-    description: "Shorter game • First to 8 VP • Faster turn nudges.",
-    rulesSummary: "Quick • 8 VP • Standard dice.",
+    description: "A shorter game perfect for time-limited sessions. Same great Catan gameplay with a lower victory point target for faster matches.",
+    rulesSummary: "8 VP to win • Balanced board • Faster game",
     presetId: "classic-balanced",
     boardSeed: null,
     gameMode: "quick",
@@ -70,8 +71,8 @@ const SCENARIOS = [
   {
     id: "traders-paradise",
     name: "Trader's Paradise",
-    description: "Ports + variety • Make deals early • First to 10 VP.",
-    rulesSummary: "Trader's Paradise • 10 VP • Trade-heavy board.",
+    description: "A trade-focused variant with accessible ports and resource variety. Perfect for players who love negotiation and wheeling-and-dealing.",
+    rulesSummary: "10 VP to win • Trade-heavy board • Port access",
     presetId: "trade-heavy",
     boardSeed: null,
     gameMode: "classic",
@@ -83,8 +84,8 @@ const SCENARIOS = [
   {
     id: "high-conflict",
     name: "High Conflict",
-    description: "More robber pressure • Deny routes • First to 10 VP.",
-    rulesSummary: "High Conflict • 10 VP • More 7s (robber).",
+    description: "More aggressive gameplay with increased robber activity. Block opponents, steal resources, and fight for dominance on a contested board.",
+    rulesSummary: "10 VP to win • More 7s rolled • Robber pressure",
     presetId: "high-brick-wood",
     boardSeed: null,
     gameMode: "classic",
@@ -97,8 +98,8 @@ const SCENARIOS = [
   {
     id: "party-mode",
     name: "Party Mode",
-    description: "Random events every 3 turns • Memorable moments • First to 10 VP.",
-    rulesSummary: "Party Mode • 10 VP • Event deck.",
+    description: "Unpredictable fun with random events that shake up the game every few turns. Great for casual groups who want memorable moments.",
+    rulesSummary: "10 VP to win • Event deck ON • Random surprises",
     presetId: "random-balanced",
     boardSeed: null,
     gameMode: "classic",
@@ -203,6 +204,18 @@ function logWarn(...args) {
 
 function logError(...args) {
   logAt("error", ...args);
+}
+
+function getLanIpAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return null;
 }
 
 function normalizeMaxPlayers(input) {
@@ -1715,6 +1728,13 @@ const server = http.createServer(async (req, res) => {
     return ok(res, { themes: THEME_PACKS });
   }
 
+  if (pathname === "/api/server-info" && req.method === "GET") {
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : PORT;
+    const lanIp = getLanIpAddress();
+    return ok(res, { lanIp, port });
+  }
+
   if (pathname === "/api/rooms" && req.method === "POST") {
     const room = ensureRoom(null);
     room.adminIp = normalizeIp(requestIp(req));
@@ -1986,26 +2006,7 @@ const server = http.createServer(async (req, res) => {
         if (room.status === "lobby") maybeReassignHost(room);
         broadcastRoomState(room);
 
-        if (room.status === "in_game" && room.game) {
-          clearDisconnectTimer(room, playerId);
-          const timer = setTimeout(() => {
-            // Only log if they're still disconnected after a short debounce.
-            const p = room.players.get(playerId);
-            if (!p || p.connected) return;
-            pushRoomLog(
-              room,
-              makeRoomLogEntry({
-                type: "system",
-                actorPlayerId: playerId,
-                message: "Disconnected."
-              })
-            );
-            broadcastRoomState(room);
-            clearDisconnectTimer(room, playerId);
-          }, 1200);
-          timer.unref?.();
-          room.disconnectTimers.set(playerId, timer);
-        }
+        // Note: We no longer log disconnects to game log - connection status is shown in player list
       }
     });
     return;
@@ -2032,8 +2033,19 @@ const server = http.createServer(async (req, res) => {
     if (!name) return badRequest(res, "MISSING_PLAYER_NAME");
 
     const requestedPlayerId = isUuid(body.playerId) ? body.playerId : null;
-    const existing =
+    let existing =
       requestedPlayerId && room.players.has(requestedPlayerId) ? room.players.get(requestedPlayerId) : null;
+
+    // Fallback: If playerId not recognized but game is in progress, try name matching
+    if (!existing && room.status !== "lobby") {
+      const normalizedName = name.toLowerCase().trim();
+      for (const player of room.players.values()) {
+        if (!player.connected && player.name.toLowerCase().trim() === normalizedName) {
+          existing = player;
+          break;
+        }
+      }
+    }
 
     if (existing) {
       existing.name = name;
@@ -2123,6 +2135,34 @@ const server = http.createServer(async (req, res) => {
       const pinCheck = verifyHostPin(room, body.hostPin);
       if (!pinCheck.ok) return forbidden(res, pinCheck.error);
     }
+
+    if (!("scenarioId" in body)) return badRequest(res, "MISSING_SCENARIO_ID");
+    const scenarioId = String(body.scenarioId ?? "").trim();
+    if (!scenarioId) return badRequest(res, "MISSING_SCENARIO_ID");
+    const scenario = getScenarioById(scenarioId);
+    if (!scenario) return badRequest(res, "BAD_SCENARIO");
+
+    if (!applyScenarioToRoom(room, scenario)) return badRequest(res, "BAD_SCENARIO");
+    broadcastRoomState(room);
+    return ok(res, { room: roomPublicSnapshot(room) });
+  }
+
+  const scenarioMatch = pathname.match(/^\/api\/rooms\/([A-Z0-9]{4,8})\/scenario$/);
+  if (scenarioMatch && req.method === "POST") {
+    const roomCode = sanitizeRoomCode(scenarioMatch[1]);
+    const room = getRoom(roomCode);
+    if (!room) return notFound(res);
+    if (room.status !== "lobby") return forbidden(res, "GAME_ALREADY_STARTED");
+
+    const body = await readJsonBody(req);
+    if (body === Symbol.for("too_large")) return payloadTooLarge(res);
+    if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
+    if (!isPlainObject(body)) return badRequest(res, "BAD_PAYLOAD");
+    const playerId = body.playerId;
+    if (!isUuid(playerId)) return badRequest(res, "BAD_PLAYER_ID");
+    if (!isHost(room, playerId)) return forbidden(res, "ONLY_HOST");
+    const pinCheck = verifyHostPin(room, body.hostPin);
+    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
 
     if (!("scenarioId" in body)) return badRequest(res, "MISSING_SCENARIO_ID");
     const scenarioId = String(body.scenarioId ?? "").trim();
@@ -2260,6 +2300,29 @@ const server = http.createServer(async (req, res) => {
     if (room.players.size > maxPlayers) return badRequest(res, "MAX_PLAYERS_TOO_LOW", { players: room.players.size });
 
     room.maxPlayers = maxPlayers;
+    broadcastRoomState(room);
+    return ok(res, { room: roomPublicSnapshot(room) });
+  }
+
+  const variantsMatch = pathname.match(/^\/api\/rooms\/([A-Z0-9]{4,8})\/variants$/);
+  if (variantsMatch && req.method === "POST") {
+    const roomCode = sanitizeRoomCode(variantsMatch[1]);
+    const room = getRoom(roomCode);
+    if (!room) return notFound(res);
+    if (room.status !== "lobby") return forbidden(res, "GAME_ALREADY_STARTED");
+
+    const body = await readJsonBody(req);
+    if (body === Symbol.for("too_large")) return payloadTooLarge(res);
+    if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
+    if (!isPlainObject(body)) return badRequest(res, "BAD_PAYLOAD");
+    const playerId = body.playerId;
+    if (!isUuid(playerId)) return badRequest(res, "BAD_PLAYER_ID");
+    if (!isHost(room, playerId)) return forbidden(res, "ONLY_HOST");
+    const pinCheck = verifyHostPin(room, body.hostPin);
+    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
+
+    const variants = normalizeVariants(body.variants);
+    room.variants = variants;
     broadcastRoomState(room);
     return ok(res, { room: roomPublicSnapshot(room) });
   }
@@ -2937,6 +3000,8 @@ server.listen(PORT, HOST, () => {
   const addr = server.address();
   const actualHost = typeof addr === "object" && addr ? addr.address : HOST;
   const actualPort = typeof addr === "object" && addr ? addr.port : PORT;
+  const lanIp = getLanIpAddress();
   const hostForUrl = actualHost.includes(":") ? `[${actualHost}]` : actualHost;
   logInfo(`[catan] listening on http://${hostForUrl}:${actualPort}`);
+  logInfo(`[catan] LAN IP: http://${lanIp}:${actualPort}`);
 });

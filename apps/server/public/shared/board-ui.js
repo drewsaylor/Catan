@@ -99,7 +99,7 @@ export function createBoardView(container, board) {
   const verticesById = new Map(vertices.map((v) => [v.id, v]));
 
   const hexSize = Number(board.hexSize) || 0;
-  const pad = hexSize * 0.9;
+  const pad = hexSize * 1.1;
   const bounds = board.bounds || { minX: 0, minY: 0, maxX: 0, maxY: 0 };
   const vbX = Number(bounds.minX) - pad;
   const vbY = Number(bounds.minY) - pad;
@@ -115,6 +115,74 @@ export function createBoardView(container, board) {
     role: "img",
     "aria-label": "Catan board"
   });
+
+  // Create defs for hex tile patterns
+  const defs = svgEl("defs");
+  svg.appendChild(defs);
+
+  // Track created patterns and used variants per resource
+  const createdPatterns = new Set();
+  const usedVariants = {};
+  const VARIANT_COUNT = 5;
+
+  // Get a random variant for a resource, avoiding repeats when possible
+  function getVariant(resource) {
+    if (!usedVariants[resource]) {
+      usedVariants[resource] = [];
+    }
+    const used = usedVariants[resource];
+
+    // Find available variants (not yet used)
+    const available = [];
+    for (let i = 1; i <= VARIANT_COUNT; i++) {
+      if (!used.includes(i)) available.push(i);
+    }
+
+    // Pick from available, or reset and pick any if all used
+    let variant;
+    if (available.length > 0) {
+      variant = available[Math.floor(Math.random() * available.length)];
+    } else {
+      // All variants used, reset and pick randomly
+      usedVariants[resource] = [];
+      variant = Math.floor(Math.random() * VARIANT_COUNT) + 1;
+    }
+
+    usedVariants[resource].push(variant);
+    return variant;
+  }
+
+  // Create a hex tile pattern for a specific hex (each hex gets unique pattern)
+  let patternCounter = 0;
+  function createHexPattern(resource) {
+    const variant = resource === "desert" ? 5 : getVariant(resource);
+    const patternId = `hex-pattern-${resource}-${patternCounter++}`;
+
+    const pattern = svgEl("pattern");
+    setSvgAttrs(pattern, {
+      id: patternId,
+      patternUnits: "objectBoundingBox",
+      patternContentUnits: "objectBoundingBox",
+      width: "1",
+      height: "1"
+    });
+
+    const image = svgEl("image");
+    setSvgAttrs(image, {
+      href: `/shared/tiles/hex-${resource}-${variant}.png`,
+      x: "0",
+      y: "0",
+      width: "1",
+      height: "1",
+      preserveAspectRatio: "none"
+    });
+
+    pattern.appendChild(image);
+    defs.appendChild(pattern);
+    createdPatterns.add(patternId);
+
+    return { fill: `url(#${patternId})`, imageEl: image };
+  }
 
   const hexLayer = svgEl("g");
   hexLayer.setAttribute("class", "hex-layer");
@@ -160,23 +228,6 @@ export function createBoardView(container, board) {
     }
   };
 
-  const portAbbr = (kind) => {
-    switch (kind) {
-      case "wood":
-        return "Wd";
-      case "brick":
-        return "Br";
-      case "sheep":
-        return "Sh";
-      case "wheat":
-        return "Wh";
-      case "ore":
-        return "Or";
-      default:
-        return "";
-    }
-  };
-
   const hexEls = new Map();
   for (const h of hexes) {
     if (!h?.id) continue;
@@ -193,7 +244,21 @@ export function createBoardView(container, board) {
     group.setAttribute("data-hex-id", String(h.id));
 
     const poly = svgEl("polygon");
-    setSvgAttrs(poly, { points: pts, fill: resourceFill(h.resource) });
+    // Use pattern fill for textured hexes, with solid color as fallback stored in data attribute
+    const resource = h.resource || "desert";
+    const { fill: patternFill, imageEl } = createHexPattern(resource);
+    const fallbackFill = resourceFill(h.resource);
+    setSvgAttrs(poly, {
+      points: pts,
+      fill: patternFill,
+      "data-fallback-fill": fallbackFill
+    });
+
+    // Fall back to solid color if pattern image fails to load
+    imageEl.addEventListener("error", () => {
+      poly.setAttribute("fill", fallbackFill);
+    });
+
     group.appendChild(poly);
 
     const hintPoly = svgEl("polygon");
@@ -263,13 +328,25 @@ export function createBoardView(container, board) {
     robberGroup.setAttribute("class", "robber");
     robberGroup.style.display = "none";
 
-    const robberCircle = svgEl("circle");
-    setSvgAttrs(robberCircle, {
-      cx: fmt2(Number(h.center?.x)),
-      cy: fmt2(Number(h.center?.y) - hexSize * 0.22),
-      r: fmt2(hexSize * 0.12)
+    // Add hex highlight border (red glow effect)
+    const highlightPoly = svgEl("polygon");
+    highlightPoly.setAttribute("class", "robber-highlight");
+    highlightPoly.setAttribute("points", pts);
+    robberGroup.appendChild(highlightPoly);
+
+    // Add robber icon image
+    const robberIcon = svgEl("image");
+    const iconSize = hexSize * 0.9;
+    robberIcon.setAttribute("class", "robber-icon");
+    setSvgAttrs(robberIcon, {
+      href: "/shared/icons/robber.png",
+      x: fmt2(Number(h.center?.x) - iconSize / 2),
+      y: fmt2(Number(h.center?.y) - iconSize / 2),
+      width: fmt2(iconSize),
+      height: fmt2(iconSize),
+      preserveAspectRatio: "xMidYMid meet"
     });
-    robberGroup.appendChild(robberCircle);
+    robberGroup.appendChild(robberIcon);
     group.appendChild(robberGroup);
 
     hexLayer.appendChild(group);
@@ -283,25 +360,29 @@ export function createBoardView(container, board) {
     const vB = verticesById.get(vertexIds[1]);
     if (!vA || !vB) continue;
 
-    const mx = (vA.x + vB.x) / 2;
-    const my = (vA.y + vB.y) / 2;
+    // Board center for determining which vertex is "outer"
     const cx = (Number(bounds.minX) + Number(bounds.maxX)) / 2;
     const cy = (Number(bounds.minY) + Number(bounds.maxY)) / 2;
-    let dx = mx - cx;
-    let dy = my - cy;
+
+    // Pick the vertex further from center (the "outer" vertex)
+    const distA = Math.hypot(vA.x - cx, vA.y - cy);
+    const distB = Math.hypot(vB.x - cx, vB.y - cy);
+    const anchorVertex = distA >= distB ? vA : vB;
+
+    // Position boat outward from the anchor vertex
+    let dx = anchorVertex.x - cx;
+    let dy = anchorVertex.y - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len;
     dy /= len;
-    const offset = hexSize * 0.42;
-    const px = mx + dx * offset;
-    const py = my + dy * offset;
+    const offset = hexSize * 0.55;
+    const px = anchorVertex.x + dx * offset;
+    const py = anchorVertex.y + dy * offset;
 
     const kind = p.kind === "generic" ? "generic" : String(p.kind || "");
     const ratioText = kind === "generic" ? "3:1" : "2:1";
-    const fill = kind === "generic" ? "rgba(10, 16, 30, 0.82)" : resourceFill(kind);
-    const sub = kind === "generic" ? "" : portAbbr(kind);
     const title = kind === "generic" ? "3:1 port" : `2:1 ${kind} port`;
-    const pr = hexSize * 0.12;
+    const boatSize = hexSize * 0.6;
 
     const group = svgEl("g");
     group.setAttribute("class", "port");
@@ -311,35 +392,32 @@ export function createBoardView(container, board) {
     titleEl.textContent = title;
     group.appendChild(titleEl);
 
+    // Draw stem from anchor vertex to boat position
     const stem = svgEl("line");
     stem.setAttribute("class", "port-stem");
-    setSvgAttrs(stem, { x1: fmt2(mx), y1: fmt2(my), x2: fmt2(px), y2: fmt2(py) });
+    setSvgAttrs(stem, { x1: fmt2(anchorVertex.x), y1: fmt2(anchorVertex.y), x2: fmt2(px), y2: fmt2(py) });
     group.appendChild(stem);
 
-    const circle = svgEl("circle");
-    circle.setAttribute("class", "port-circle");
-    setSvgAttrs(circle, { cx: fmt2(px), cy: fmt2(py), r: fmt2(pr), fill });
-    group.appendChild(circle);
+    // Add boat icon image
+    const boatImg = svgEl("image");
+    boatImg.setAttribute("class", "port-boat");
+    setSvgAttrs(boatImg, {
+      href: `/shared/icons/port-boat-${kind}.png`,
+      x: fmt2(px - boatSize / 2),
+      y: fmt2(py - boatSize / 2),
+      width: fmt2(boatSize),
+      height: fmt2(boatSize),
+      preserveAspectRatio: "xMidYMid meet"
+    });
+    group.appendChild(boatImg);
 
+    // Add ratio text below boat
     const text = svgEl("text");
-    text.setAttribute("class", "port-text");
+    text.setAttribute("class", "port-ratio");
     text.setAttribute("text-anchor", "middle");
-    if (kind === "generic") {
-      setSvgAttrs(text, { x: fmt2(px), y: fmt2(py + hexSize * 0.05) });
-      text.textContent = ratioText;
-      group.appendChild(text);
-    } else {
-      setSvgAttrs(text, { x: fmt2(px), y: fmt2(py - hexSize * 0.02) });
-      text.textContent = ratioText;
-      group.appendChild(text);
-
-      const subEl = svgEl("text");
-      subEl.setAttribute("class", "port-sub");
-      subEl.setAttribute("text-anchor", "middle");
-      setSvgAttrs(subEl, { x: fmt2(px), y: fmt2(py + hexSize * 0.11) });
-      subEl.textContent = sub;
-      group.appendChild(subEl);
-    }
+    setSvgAttrs(text, { x: fmt2(px), y: fmt2(py + boatSize * 0.7) });
+    text.textContent = ratioText;
+    group.appendChild(text);
 
     portLayer.appendChild(group);
   }

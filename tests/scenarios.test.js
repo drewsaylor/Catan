@@ -190,7 +190,7 @@ describe("scenarioDisplay", () => {
 
     assert.equal(result.name.length, 36); // maxLen for name
     assert.equal(result.rulesSummary.length, 90); // maxLen for rulesSummary
-    assert.equal(result.description.length, 120); // maxLen for description
+    assert.equal(result.description.length, 300); // maxLen for description
   });
 
   test("handles scenario with missing fields", () => {

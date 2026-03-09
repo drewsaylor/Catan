@@ -48,8 +48,6 @@ const elReducedMotionBtn = qs("#reducedMotionBtn");
 const elLowPowerModeBtn = qs("#lowPowerModeBtn");
 const elHighContrastBtn = qs("#highContrastBtn");
 const elColorblindBtn = qs("#colorblindBtn");
-const elBoardRendererBtn = qs("#boardRendererBtn");
-const elBoardRendererHint = qs("#boardRendererHint");
 const elSfxVolume = qs("#sfxVolume");
 const elMusicVolume = qs("#musicVolume");
 const elPanelTitle = qs("#panelTitle");
@@ -69,17 +67,21 @@ const elScenarioSummary = qs("#scenarioSummary");
 const elReadyBtn = qs("#readyBtn");
 const elHostTag = qs("#hostTag");
 const elHostControls = qs("#hostControls");
+const elScenarioSelect = qs("#scenarioSelect");
+const elScenarioDescription = qs("#scenarioDescription");
+const elScenarioDescText = qs("#scenarioDescText");
+const elScenarioConfigPills = qs("#scenarioConfigPills");
 const elPresetSelect = qs("#presetSelect");
 const elThemeSelect = qs("#themeSelect");
 const elGameModeSelect = qs("#gameModeSelect");
 const elMaxPlayersSelect = qs("#maxPlayersSelect");
+const elEventDeckToggleBtn = qs("#eventDeckToggleBtn");
 const elAdvancedBtn = qs("#advancedBtn");
 const elAdvancedPanel = qs("#advancedPanel");
 const elVpTargetSelect = qs("#vpTargetSelect");
 const elVpTargetHint = qs("#vpTargetHint");
 const elBoardSeedField = qs("#boardSeedField");
 const elBoardSeedInput = qs("#boardSeedInput");
-const elEmotesToggleBtn = qs("#emotesToggleBtn");
 const elHostPinInput = qs("#hostPinInput");
 const elHostPinState = qs("#hostPinState");
 const elHostPinSetBtn = qs("#hostPinSetBtn");
@@ -103,13 +105,23 @@ const elResourcesBarCard = qs("#resourcesBarCard");
 const elPrimaryActionCard = qs("#primaryActionCard");
 const elPrimaryBtn = qs("#primaryBtn");
 const elActionHint = qs("#actionHint");
-const elEndTurnBtn = qs("#endTurnBtn");
-const elEmoteStrip = qs("#emoteStrip");
 const elBoardShell = qs("#boardShell");
 const elBoardFrame = qs("#boardFrame");
 const elBoardResetBtn = qs("#boardResetBtn");
 const elBoardFullscreenBtn = qs("#boardFullscreenBtn");
 const elBoard = qs("#board");
+const elBuildFlowOverlay = qs("#buildFlowOverlay");
+const elBuildFlowTitle = qs("#buildFlowTitle");
+const elBuildFlowBoard = qs("#buildFlowBoard");
+const elBuildFlowBoardMount = qs("#buildFlowBoardMount");
+const elBuildFlowCancelBtn = qs("#buildFlowCancelBtn");
+const elBuildFlowHint = qs("#buildFlowHint");
+const elDiscardModal = qs("#discardModal");
+const elDiscardModalHint = qs("#discardModalHint");
+const elDiscardModalSelected = qs("#discardModalSelected");
+const elDiscardModalRequired = qs("#discardModalRequired");
+const elDiscardModalSubmitBtn = qs("#discardModalSubmitBtn");
+const elDiscardModalErr = qs("#discardModalErr");
 const elMainActions = qs("#mainActions");
 const elBuildRoadBtn = qs("#buildRoadBtn");
 const elBuildSettlementBtn = qs("#buildSettlementBtn");
@@ -196,6 +208,17 @@ const elStealErr = qs("#stealErr");
 const elNotifyBanner = qs("#notifyBanner");
 const elNotifyTitle = qs("#notifyTitle");
 const elNotifyHint = qs("#notifyHint");
+const elNotifyActionBtn = qs("#notifyActionBtn");
+const elNotifyDismissBtn = qs("#notifyDismissBtn");
+const elLogBtn = qs("#logBtn");
+const elLogBackdrop = qs("#logBackdrop");
+const elLogCloseBtn = qs("#logCloseBtn");
+const elLogModal = qs("#logModal");
+const elBuildTabRoadBtn = qs("#buildTabRoadBtn");
+const elBuildTabSettlementBtn = qs("#buildTabSettlementBtn");
+const elBuildTabCityBtn = qs("#buildTabCityBtn");
+const elBuildTabDevCardBtn = qs("#buildTabDevCardBtn");
+const elBuildHint = qs("#buildHint");
 const elHelpBtn = qs("#helpBtn");
 const elHelpBackdrop = qs("#helpBackdrop");
 const elHelpCloseBtn = qs("#helpCloseBtn");
@@ -233,6 +256,9 @@ let lastRenderedRoomState = null;
 let lastRevisionSeen = null;
 let lastThemeId = null;
 let mode = null; // "build_road" | "build_settlement" | "build_city" | null
+let buildFlowActive = false; // true when fullscreen build overlay is showing
+let buildFlowMode = null; // "road" | "settlement" | "city" | "road_building"
+let discardModalState = { required: 0, selected: {}, open: false };
 let reconnectCheckTimer = null;
 let reconnectDelay = 1200;
 const MAX_RECONNECT_DELAY = 10000;
@@ -250,12 +276,15 @@ let activeTab = localStorage.getItem("catan.phoneTab") || "board";
 let lastPlayersRenderKey = null;
 let lastLogRenderKey = null;
 let lastBoardRenderKey = null;
+let lastScenarioOptionsRenderKey = null;
 let lastTradeToOptionsRenderKey = null;
 let lastTradeOffersRenderKey = null;
 let lastSentTradeOffer = null;
 let lastStealTargetsRenderKey = null;
 let rematchInFlight = false;
-let emoteCooldownUntil = 0;
+let lastResourceCounts = null; // Track previous resource counts for notifications
+let notifyActionCallback = null; // Callback for notification action button
+let notifyTapCallback = null; // Callback for tapping notification body
 const momentQueue = createMomentQueue({ maxQueue: 18, maxSeen: 512, cooldownMsByKind: { trade_open: 1400 } });
 const HOST_ADVANCED_OPEN_KEY = "catan.phone.hostAdvancedOpen";
 let hostAdvancedOpen = localStorage.getItem(HOST_ADVANCED_OPEN_KEY) === "1";
@@ -454,23 +483,6 @@ function syncSettingsUi(settings) {
   if (elColorblindBtn) {
     elColorblindBtn.textContent = settings?.colorblind ? "On" : "Off";
     elColorblindBtn.setAttribute("aria-pressed", settings?.colorblind ? "true" : "false");
-  }
-  if (elBoardRendererBtn || elBoardRendererHint) {
-    const webglOk = supportsWebGL();
-    const wants3d = settings?.boardRenderer === "3d";
-    const is3d = webglOk && wants3d;
-
-    if (elBoardRendererBtn) {
-      elBoardRendererBtn.textContent = is3d ? "3D" : "2D";
-      elBoardRendererBtn.disabled = !webglOk;
-      elBoardRendererBtn.setAttribute("aria-pressed", is3d ? "true" : "false");
-    }
-
-    if (elBoardRendererHint) {
-      if (!webglOk && wants3d) elBoardRendererHint.textContent = "WebGL unavailable • Using 2D.";
-      else if (!webglOk) elBoardRendererHint.textContent = "3D unavailable on this device.";
-      else elBoardRendererHint.textContent = "2D is safest • 3D is beta.";
-    }
   }
   if (elSfxVolume) elSfxVolume.value = String(Math.round((settings?.sfxVolume ?? 0) * 100));
   if (elMusicVolume) elMusicVolume.value = String(Math.round((settings?.musicVolume ?? 0) * 100));
@@ -949,6 +961,12 @@ function clearNotify() {
   elNotifyBanner.classList.remove("show");
   if (notifyTimer) clearTimeout(notifyTimer);
   notifyTimer = null;
+  notifyActionCallback = null;
+  notifyTapCallback = null;
+  if (elNotifyActionBtn) {
+    elNotifyActionBtn.style.display = "none";
+    elNotifyActionBtn.textContent = "";
+  }
 }
 
 function maybeHaptic(tone) {
@@ -970,7 +988,7 @@ function feedbackGood(sfxKey, { gain = 1 } = {}) {
   if (sfxKey) playSfx(sfxKey, { gain });
 }
 
-function showNotify({ title, hint = "", tone = "info", durationMs = 3600 } = {}) {
+function showNotify({ title, hint = "", tone = "info", durationMs = 3600, action = null, onTap = null } = {}) {
   if (!elNotifyBanner || !elNotifyTitle || !elNotifyHint) return;
 
   if (notifyTimer) clearTimeout(notifyTimer);
@@ -981,6 +999,21 @@ function showNotify({ title, hint = "", tone = "info", durationMs = 3600 } = {})
   setText(elNotifyTitle, title || "");
   setText(elNotifyHint, hint || "");
   elNotifyHint.style.display = hint ? "" : "none";
+
+  // Handle action button
+  notifyActionCallback = action?.callback || null;
+  if (elNotifyActionBtn) {
+    if (action?.label && action?.callback) {
+      elNotifyActionBtn.textContent = action.label;
+      elNotifyActionBtn.style.display = "";
+    } else {
+      elNotifyActionBtn.textContent = "";
+      elNotifyActionBtn.style.display = "none";
+    }
+  }
+
+  // Handle tap callback
+  notifyTapCallback = onTap || null;
 
   elNotifyBanner.classList.remove("good", "warn", "bad", "info");
   if (tone) elNotifyBanner.classList.add(tone);
@@ -1087,14 +1120,31 @@ function handleMoment(moment) {
     if (!pid || pid !== playerId) return;
 
     let hint = "Make your move.";
-    if (expectedNow === "ROLL_DICE") hint = "Roll dice to start.";
-    else if (expectedNow === "PLACE_SETTLEMENT") hint = "Place a settlement: tap a highlighted spot.";
+    let action = null;
+    if (expectedNow === "ROLL_DICE") {
+      hint = "Roll dice to start your turn.";
+      action = {
+        label: "Roll Dice",
+        callback: async () => {
+          if (!roomCode || !playerId) return;
+          try {
+            await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "ROLL_DICE" }
+            });
+            feedbackGood("dice", { gain: 0.9 });
+          } catch (e) {
+            showErrorToast(e);
+          }
+        }
+      };
+    } else if (expectedNow === "PLACE_SETTLEMENT") hint = "Place a settlement: tap a highlighted spot.";
     else if (expectedNow === "PLACE_ROAD") hint = "Place a road: tap a highlighted edge.";
     else if (expectedNow === "MOVE_ROBBER") hint = "Move the robber.";
     else if (expectedNow === "STEAL_CARD") hint = "Steal a card.";
     else if (expectedNow === "DISCARD_CARDS") hint = "Discard cards if needed.";
-    else if (game.phase === "turn" && game.subphase === "main") hint = "Build, trade, or end your turn.";
-    showNotify({ tone: "good", title: "Your turn", hint, durationMs: 3400 });
+    else if (game.phase === "turn" && game.subphase === "main") hint = "Build, trade, buy dev cards, or end your turn.";
+    showNotify({ tone: "good", title: "Your turn", hint, durationMs: 4200, action });
     return;
   }
 
@@ -1153,8 +1203,9 @@ function handleMoment(moment) {
     showNotify({
       tone: "info",
       title: "Trade offer",
-      hint: `From ${nameFor(fromPlayerId)}. Scroll to Trade to respond.`,
-      durationMs: 5200
+      hint: `From ${nameFor(fromPlayerId)}. Tap to view.`,
+      durationMs: 5200,
+      onTap: () => setActiveTab("trade", { persist: true })
     });
     return;
   }
@@ -1790,7 +1841,6 @@ function clearSession({ keepName = true } = {}) {
   lastTradeOffersRenderKey = null;
   lastSentTradeOffer = null;
   lastStealTargetsRenderKey = null;
-  emoteCooldownUntil = 0;
   momentQueue.clear();
   renderScheduler.cancel();
   cancelRoomPreview();
@@ -1946,6 +1996,7 @@ function render(room, you) {
     // Host controls
     elHostControls.style.display = isHost ? "" : "none";
     if (isHost) {
+      renderScenarioSelect(room);
       renderPresetSelect(room);
       renderThemeSelect(room);
       renderBoardSeedControls(room);
@@ -1976,18 +2027,19 @@ function render(room, you) {
     setPostGameUiVisible(false);
 
     const nextLogKey = alwaysRenderEnabled ? null : phoneLogRenderKey(room.game.log, room.players);
-    if (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey) {
+    if (elLog && (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey)) {
       renderLog(elLog, room.game.log, { players: room.players });
       lastLogRenderKey = nextLogKey;
     }
 
     renderPrimaryAction(room, me, you);
-    renderEmoteStrip(room);
+    renderBuildTab(room, me, you);
     if (shouldShowBoardTab(room, me) && activeTab !== "board") setActiveTab("board");
     updateTabUi(room, me);
     renderBoardUi(room, prevRoom, me);
     renderMainActions(room, me);
     renderRobberFlow(room, me, you);
+    maybeShowDiscardModal(room, me);
     renderTrade(room, me, you);
     renderBankTrade(room, me, you);
     renderDevCards(room, me, you);
@@ -2126,7 +2178,74 @@ function phoneBoardRenderKey({
   return parts.join("|");
 }
 
+function scenariosRenderKey(scenarios) {
+  return Array.isArray(scenarios) ? scenarios.map((s) => s?.id || "").join(",") : "";
+}
+
+function getEffectiveVp(room) {
+  const gameMode = room?.gameMode === "quick" ? "quick" : "classic";
+  const customVp = room?.settings?.houseRules?.victoryPointsToWin;
+  if (Number.isFinite(customVp)) return Math.floor(customVp);
+  return gameMode === "quick" ? 8 : 10;
+}
+
+function getScenarioConfigSummary(room, scenario) {
+  const vp = getEffectiveVp(room);
+  const eventDeck = room?.variants?.eventDeckEnabled === true;
+  const presets = room?.presets || [];
+  const preset = presets.find((p) => p?.id === room?.presetId);
+  const boardType = preset?.name || "Balanced";
+
+  const pills = [];
+  pills.push(`${vp} VP`);
+  pills.push(boardType);
+  if (eventDeck) pills.push("Event Deck");
+  return pills;
+}
+
+function renderScenarioSelect(room) {
+  if (!elScenarioSelect) return;
+
+  const scenarios = Array.isArray(room?.scenarios) ? room.scenarios : [];
+  const scenarioId = typeof room?.settings?.scenarioId === "string" ? room.settings.scenarioId : "";
+
+  // Update select options if needed
+  const key = scenariosRenderKey(scenarios);
+  if (key !== lastScenarioOptionsRenderKey) {
+    lastScenarioOptionsRenderKey = key;
+    const html = scenarios
+      .map(
+        (s) =>
+          `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`
+      )
+      .join("");
+    elScenarioSelect.innerHTML = html;
+  }
+
+  // Set current value
+  const hasOption = scenarios.some((s) => s?.id === scenarioId);
+  if (hasOption && elScenarioSelect.value !== scenarioId) {
+    elScenarioSelect.value = scenarioId;
+  }
+
+  // Render description
+  const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "—" });
+  if (elScenarioDescText) {
+    elScenarioDescText.textContent = display.description || display.rulesSummary || "";
+  }
+
+  // Render config pills
+  if (elScenarioConfigPills) {
+    const scenario = scenarios.find((s) => s?.id === scenarioId);
+    const pills = getScenarioConfigSummary(room, scenario);
+    elScenarioConfigPills.innerHTML = pills
+      .map((p) => `<span class="configPill">${escapeHtml(p)}</span>`)
+      .join("");
+  }
+}
+
 function renderPresetSelect(room) {
+  if (!elPresetSelect) return;
   const presets = room.presets || [];
   const html = presets
     .map(
@@ -2218,10 +2337,11 @@ function renderHouseRulesControls(room) {
       customVp != null ? `Custom: ${customVp} VP (default ${defaultVp})` : `Default: ${defaultVp} VP`;
   }
 
-  const emotesEnabled = room?.settings?.houseRules?.emotesEnabled !== false;
-  if (elEmotesToggleBtn) {
-    elEmotesToggleBtn.textContent = emotesEnabled ? "On" : "Off";
-    elEmotesToggleBtn.setAttribute("aria-pressed", emotesEnabled ? "true" : "false");
+  // Event deck toggle
+  const eventDeckEnabled = room?.variants?.eventDeckEnabled === true;
+  if (elEventDeckToggleBtn) {
+    elEventDeckToggleBtn.textContent = eventDeckEnabled ? "On" : "Off";
+    elEventDeckToggleBtn.setAttribute("aria-pressed", eventDeckEnabled ? "true" : "false");
   }
 
   renderHostPinControls(room);
@@ -2372,8 +2492,9 @@ function renderPostGame(room, me) {
 function renderPrimaryAction(room, me, you) {
   const myTurn = me?.playerId === room.game.currentPlayerId;
   const expected = room.game.hints?.expected || null;
-  elEndTurnBtn.style.display = "none";
-  elEndTurnBtn.classList.remove("primary");
+
+  // Store action type in dataset for click handler
+  elPrimaryBtn.dataset.action = "";
 
   if (room.game.phase === "game_over") {
     elPrimaryBtn.disabled = true;
@@ -2409,7 +2530,28 @@ function renderPrimaryAction(room, me, you) {
 
   if (!myTurn) {
     elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = "Waiting…";
+
+    // Calculate turns until user's turn
+    const turnOrder = room.game.turnOrder || [];
+    const currentIndex = room.game.currentPlayerIndex || 0;
+    const myIndex = turnOrder.indexOf(me?.playerId);
+
+    if (myIndex >= 0 && turnOrder.length > 0) {
+      let turnsAway;
+      if (myIndex > currentIndex) {
+        turnsAway = myIndex - currentIndex;
+      } else {
+        turnsAway = turnOrder.length - currentIndex + myIndex;
+      }
+
+      if (turnsAway === 1) {
+        elPrimaryBtn.textContent = "Your turn next";
+      } else {
+        elPrimaryBtn.textContent = `${turnsAway} turns away`;
+      }
+    } else {
+      elPrimaryBtn.textContent = "Waiting…";
+    }
     return;
   }
 
@@ -2428,56 +2570,18 @@ function renderPrimaryAction(room, me, you) {
   if (expected === "ROLL_DICE") {
     elPrimaryBtn.disabled = false;
     elPrimaryBtn.textContent = "Roll dice";
+    elPrimaryBtn.dataset.action = "roll";
     return;
   }
 
-  elPrimaryBtn.disabled = true;
-  elPrimaryBtn.textContent = "Main phase";
+  // Main phase - show End Turn button
   if (room.game.phase === "turn" && room.game.subphase === "main") {
-    elEndTurnBtn.style.display = "";
-    if (room.gameMode === "quick" && myTurn) {
-      const game = room.game;
-      const hand = you?.hand || {};
-      const total = RESOURCE_TYPES.reduce((acc, r) => acc + parseNonNegativeInt(hand?.[r] ?? 0), 0);
-
-      const gateCtx = { game, playerId: me?.playerId || null, you };
-      const canBuildRoad = !gateAction(gateCtx, { type: "BUILD_ROAD" }) && legalRoadEdges(game, me.playerId).length > 0;
-      const canBuildSettlement =
-        !gateAction(gateCtx, { type: "BUILD_SETTLEMENT" }) && legalSettlementVertices(game, me.playerId).length > 0;
-      const canBuildCity =
-        !gateAction(gateCtx, { type: "BUILD_CITY" }) && legalCityVertices(game, me.playerId).length > 0;
-
-      const canBuyDevCard = !gateAction(gateCtx, { type: "BUY_DEV_CARD" });
-      const canPlayDevCard =
-        !game.devCardPlayedThisTurn &&
-        Array.isArray(you?.devCardsInHand) &&
-        you.devCardsInHand.some((c) => DEV_CARD_TYPES.includes(c));
-
-      const { ratios } = computeBankTradeRates(game, me?.playerId);
-      let canBankTrade = false;
-      for (const giveType of RESOURCE_TYPES) {
-        const ratio = parseNonNegativeInt(ratios?.[giveType] ?? 4) || 4;
-        if (parseNonNegativeInt(hand[giveType] ?? 0) < ratio) continue;
-        for (const receiveType of RESOURCE_TYPES) {
-          if (receiveType === giveType) continue;
-          if (parseNonNegativeInt(game.bank?.[receiveType] ?? 0) > 0) {
-            canBankTrade = true;
-            break;
-          }
-        }
-        if (canBankTrade) break;
-      }
-
-      const canDoSomething =
-        canBuildRoad ||
-        canBuildSettlement ||
-        canBuildCity ||
-        canBuyDevCard ||
-        canPlayDevCard ||
-        canBankTrade ||
-        total > 0;
-      elEndTurnBtn.classList.toggle("primary", !canDoSomething);
-    }
+    elPrimaryBtn.disabled = false;
+    elPrimaryBtn.textContent = "End turn";
+    elPrimaryBtn.dataset.action = "end_turn";
+  } else {
+    elPrimaryBtn.disabled = true;
+    elPrimaryBtn.textContent = "Waiting…";
   }
 }
 
@@ -2808,7 +2912,11 @@ function setBoardFullscreen(on) {
   if (!elBoardShell) return;
   elBoardShell.classList.toggle("fullscreen", !!on);
   document.body.classList.toggle("board-fullscreen", !!on);
-  if (elBoardFullscreenBtn) elBoardFullscreenBtn.textContent = on ? "Exit" : "Full screen";
+  if (elBoardFullscreenBtn) {
+    elBoardFullscreenBtn.innerHTML = on
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+  }
 }
 
 function setSuppressBoardClick() {
@@ -3236,16 +3344,243 @@ function renderActionHint(room, me) {
   } else if (expected === "PLACE_ROAD") {
     text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
   } else if (game.phase === "turn" && game.subphase === "main") {
-    text = getWhatsNextCopy(game, { playerId: me?.playerId, expected, isMyTurn: true, currentPlayerName: currentName });
+    text = "Main phase: Build, trade with players or bank, buy dev cards, or end your turn.";
   }
 
   setText(elActionHint, text);
 }
 
-function renderEmoteStrip(room) {
-  if (!elEmoteStrip) return;
-  const enabled = room?.settings?.houseRules?.emotesEnabled !== false;
-  elEmoteStrip.style.display = enabled ? "" : "none";
+// =============================================================================
+// Build Flow Overlay (Fullscreen Build Mode)
+// =============================================================================
+
+function openBuildFlowOverlay(buildMode) {
+  if (!elBuildFlowOverlay) return;
+  buildFlowActive = true;
+  buildFlowMode = buildMode;
+
+  const titles = {
+    road: "Place Road",
+    settlement: "Place Settlement",
+    city: "Upgrade to City",
+    road_building: "Road Building (2 roads)"
+  };
+
+  if (elBuildFlowTitle) elBuildFlowTitle.textContent = titles[buildMode] || "Build";
+  if (elBuildFlowHint) elBuildFlowHint.textContent = "Tap a highlighted location";
+
+  elBuildFlowOverlay.style.display = "";
+  renderBuildFlowBoard();
+}
+
+function closeBuildFlowOverlay({ success = false } = {}) {
+  if (!elBuildFlowOverlay) return;
+  buildFlowActive = false;
+  buildFlowMode = null;
+  mode = null;
+  elBuildFlowOverlay.style.display = "none";
+
+  // Re-render main board
+  if (lastRoomState) renderScheduler.schedule();
+}
+
+function renderBuildFlowBoard() {
+  if (!elBuildFlowBoardMount || !lastRoomState?.game) return;
+
+  const room = lastRoomState;
+  const game = room.game;
+  const me = room.players?.find((p) => p.playerId === playerId) || null;
+  const myTurn = me?.playerId === game.currentPlayerId;
+
+  let selectableEdgeIds = [];
+  let selectableVertexIds = [];
+
+  if (buildFlowMode === "road" && myTurn) {
+    selectableEdgeIds = legalRoadEdges(game, me?.playerId) || [];
+  } else if (buildFlowMode === "settlement" && myTurn) {
+    selectableVertexIds = legalSettlementVertices(game, me?.playerId) || [];
+  } else if (buildFlowMode === "city" && myTurn) {
+    selectableVertexIds = legalCityVertices(game, me?.playerId) || [];
+  } else if (buildFlowMode === "road_building" && myTurn) {
+    selectableEdgeIds = game.hints?.legalEdgeIds || [];
+  }
+
+  renderBoard(elBuildFlowBoardMount, game.board, {
+    players: room.players,
+    structures: game.structures,
+    robberHexId: game.robberHexId,
+    selectableEdgeIds,
+    selectableVertexIds,
+    captureAllEdges: selectableEdgeIds.length > 0,
+    captureAllVertices: selectableVertexIds.length > 0,
+    onEdgeClick: async (edgeId) => {
+      if (!myTurn) return;
+      try {
+        if (buildFlowMode === "road") {
+          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+            method: "POST",
+            body: { playerId, type: "BUILD_ROAD", edgeId }
+          });
+          feedbackGood("build", { gain: 0.85 });
+          closeBuildFlowOverlay({ success: true });
+        } else if (buildFlowMode === "road_building") {
+          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+            method: "POST",
+            body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
+          });
+          feedbackGood("build", { gain: 0.85 });
+          // Check if road building is complete (placed 2 roads)
+          const expected = lastRoomState?.game?.hints?.expected;
+          if (expected !== "DEV_ROAD_BUILDING_PLACE_ROAD") {
+            closeBuildFlowOverlay({ success: true });
+          } else {
+            renderBuildFlowBoard();
+          }
+        }
+      } catch (e) {
+        showErrorToast(e);
+      }
+    },
+    onVertexClick: async (vertexId) => {
+      if (!myTurn) return;
+      try {
+        if (buildFlowMode === "settlement") {
+          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+            method: "POST",
+            body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
+          });
+          feedbackGood("build", { gain: 0.85 });
+          closeBuildFlowOverlay({ success: true });
+        } else if (buildFlowMode === "city") {
+          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+            method: "POST",
+            body: { playerId, type: "BUILD_CITY", vertexId }
+          });
+          feedbackGood("build", { gain: 0.85 });
+          closeBuildFlowOverlay({ success: true });
+        }
+      } catch (e) {
+        showErrorToast(e);
+      }
+    },
+    onIllegalClick: ({ kind }) => {
+      let hint = "";
+      if (kind === "edge") hint = "Tap a highlighted edge.";
+      else if (kind === "vertex") hint = "Tap a highlighted spot.";
+      playSfx("ui_bonk", { gain: 0.75 });
+      showNotify({ tone: "bad", title: "Not legal there.", hint, durationMs: 1500 });
+    }
+  });
+}
+
+// =============================================================================
+// Discard Modal (Fullscreen Discard UI)
+// =============================================================================
+
+function openDiscardModal(required) {
+  if (!elDiscardModal) return;
+  discardModalState = {
+    required,
+    selected: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+    open: true
+  };
+
+  const you = lastYouState;
+  const hand = you?.hand || {};
+
+  // Update required count
+  if (elDiscardModalRequired) elDiscardModalRequired.textContent = String(required);
+  if (elDiscardModalHint) {
+    elDiscardModalHint.textContent = `A 7 was rolled. Discard ${required} card${required === 1 ? "" : "s"}.`;
+  }
+
+  // Update have counts
+  for (const res of RESOURCE_TYPES) {
+    const haveEl = document.getElementById(`discardModal${res.charAt(0).toUpperCase() + res.slice(1)}Have`);
+    if (haveEl) haveEl.textContent = `(${parseNonNegativeInt(hand[res] ?? 0)})`;
+    const valueEl = document.getElementById(`discardModal${res.charAt(0).toUpperCase() + res.slice(1)}Value`);
+    if (valueEl) valueEl.textContent = "0";
+  }
+
+  updateDiscardModalUI();
+  elDiscardModal.style.display = "";
+}
+
+function closeDiscardModal() {
+  if (!elDiscardModal) return;
+  discardModalState.open = false;
+  elDiscardModal.style.display = "none";
+}
+
+function updateDiscardModalUI() {
+  const { required, selected } = discardModalState;
+  const total = RESOURCE_TYPES.reduce((acc, r) => acc + (selected[r] || 0), 0);
+
+  if (elDiscardModalSelected) elDiscardModalSelected.textContent = String(total);
+  if (elDiscardModalSubmitBtn) {
+    elDiscardModalSubmitBtn.disabled = total !== required;
+  }
+}
+
+function adjustDiscardAmount(resource, delta) {
+  const you = lastYouState;
+  const hand = you?.hand || {};
+  const have = parseNonNegativeInt(hand[resource] ?? 0);
+  const current = discardModalState.selected[resource] || 0;
+  const newValue = Math.max(0, Math.min(have, current + delta));
+  discardModalState.selected[resource] = newValue;
+
+  const valueEl = document.getElementById(`discardModal${resource.charAt(0).toUpperCase() + resource.slice(1)}Value`);
+  if (valueEl) valueEl.textContent = String(newValue);
+
+  updateDiscardModalUI();
+}
+
+async function submitDiscard() {
+  if (!roomCode || !playerId) return;
+  const { required, selected } = discardModalState;
+  const total = RESOURCE_TYPES.reduce((acc, r) => acc + (selected[r] || 0), 0);
+
+  if (total !== required) {
+    if (elDiscardModalErr) elDiscardModalErr.textContent = `Select exactly ${required} cards.`;
+    return;
+  }
+
+  if (elDiscardModalSubmitBtn) elDiscardModalSubmitBtn.disabled = true;
+  if (elDiscardModalErr) elDiscardModalErr.textContent = "";
+
+  try {
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "DISCARD_CARDS", cards: selected }
+    });
+    feedbackGood("ui_confirm", { gain: 0.8 });
+    closeDiscardModal();
+  } catch (e) {
+    if (elDiscardModalErr) elDiscardModalErr.textContent = humanizeErrorMessage(e, { room: lastRoomState });
+    if (elDiscardModalSubmitBtn) elDiscardModalSubmitBtn.disabled = false;
+  }
+}
+
+// Check if discard modal should be shown
+function maybeShowDiscardModal(room, me) {
+  const game = room?.game;
+  if (!game) return;
+
+  const expected = game.hints?.expected;
+  if (expected !== "DISCARD_CARDS") {
+    if (discardModalState.open) closeDiscardModal();
+    return;
+  }
+
+  const required = parseNonNegativeInt(game.hints?.discardRequiredByPlayerId?.[me?.playerId] ?? 0);
+  const submitted = !!game.hints?.discardSubmittedByPlayerId?.[me?.playerId];
+
+  if (required > 0 && !submitted && !discardModalState.open) {
+    openDiscardModal(required);
+  } else if ((required === 0 || submitted) && discardModalState.open) {
+    closeDiscardModal();
+  }
 }
 
 function renderResources(you) {
@@ -3262,6 +3597,80 @@ function renderResources(you) {
   if (elResCountWheat) elResCountWheat.textContent = String(wheat);
   if (elResCountOre) elResCountOre.textContent = String(ore);
   if (elResTotalValue) elResTotalValue.textContent = String(wood + brick + sheep + wheat + ore);
+
+  // Check for resource gains and notify
+  checkResourceGains(hand);
+}
+
+function checkResourceGains(currentHand) {
+  if (!lastResourceCounts) {
+    lastResourceCounts = { ...currentHand };
+    return;
+  }
+
+  const gains = [];
+  for (const res of RESOURCE_TYPES) {
+    const prev = parseNonNegativeInt(lastResourceCounts[res] ?? 0);
+    const curr = parseNonNegativeInt(currentHand[res] ?? 0);
+    const diff = curr - prev;
+    if (diff > 0) {
+      const name = res.charAt(0).toUpperCase() + res.slice(1);
+      gains.push(`+${diff} ${name}`);
+    }
+  }
+
+  lastResourceCounts = { ...currentHand };
+
+  if (gains.length > 0) {
+    showNotify({
+      tone: "good",
+      title: "Resources gained",
+      hint: gains.join(", "),
+      durationMs: 2800
+    });
+  }
+}
+
+function renderBuildTab(room, me, you) {
+  const game = room?.game || null;
+  const hand = you?.hand || {};
+
+  const inMain = game?.phase === "turn" && game?.subphase === "main";
+  const myTurn = !!me?.playerId && me.playerId === game?.currentPlayerId;
+  const canBuild = inMain && myTurn;
+
+  // Build costs
+  const roadCost = { wood: 1, brick: 1 };
+  const settlementCost = { wood: 1, brick: 1, sheep: 1, wheat: 1 };
+  const cityCost = { wheat: 2, ore: 3 };
+  const devCardCost = { sheep: 1, wheat: 1, ore: 1 };
+
+  const canAffordRoad = hasEnough(hand, roadCost);
+  const canAffordSettlement = hasEnough(hand, settlementCost);
+  const canAffordCity = hasEnough(hand, cityCost);
+  const canAffordDevCard = hasEnough(hand, devCardCost);
+
+  if (elBuildTabRoadBtn) {
+    elBuildTabRoadBtn.disabled = !canBuild || !canAffordRoad;
+  }
+  if (elBuildTabSettlementBtn) {
+    elBuildTabSettlementBtn.disabled = !canBuild || !canAffordSettlement;
+  }
+  if (elBuildTabCityBtn) {
+    elBuildTabCityBtn.disabled = !canBuild || !canAffordCity;
+  }
+  if (elBuildTabDevCardBtn) {
+    const deckSize = parseNonNegativeInt(game?.devDeckCount ?? 0);
+    elBuildTabDevCardBtn.disabled = !canBuild || !canAffordDevCard || deckSize <= 0;
+  }
+
+  if (elBuildHint) {
+    if (!canBuild) {
+      setText(elBuildHint, myTurn ? "Roll dice first, then build during main phase." : "Wait for your turn to build.");
+    } else {
+      setText(elBuildHint, "Tap a button to start building, then select a location on the board.");
+    }
+  }
 }
 
 function renderTrade(room, me, you) {
@@ -3278,14 +3687,39 @@ function renderTrade(room, me, you) {
   const myTurn = !!me?.playerId && me.playerId === game.currentPlayerId;
   const canCreate = inMain && myTurn;
 
-  setText(
-    elTradeHint,
-    inMain
-      ? canCreate
-        ? "Propose a trade. Other players can accept or reject."
-        : "Respond to the current player's trade offers."
-      : "Trading unlocks during the main phase (after dice)."
-  );
+  // Get current player info for hint messages
+  const currentPlayer = room.players?.find(p => p.playerId === game.currentPlayerId);
+  const currentName = currentPlayer?.name || "the current player";
+
+  // Render open offers (needed for hint text)
+  const openOffers = (game.tradeOffers || []).filter((o) => o && o.status === "open");
+
+  let tradeHintText;
+  if (canCreate) {
+    tradeHintText = "Propose a trade. Other players can accept or reject.";
+  } else if (inMain) {
+    const hasOffers = openOffers.some(o => o.to === "all" || o.to === me?.playerId);
+    if (hasOffers) {
+      tradeHintText = `${currentName} is trading. Respond to their offers below, or wait for your turn to propose trades.`;
+    } else {
+      tradeHintText = `Waiting for ${currentName} to finish their turn. You can offer trades during your main phase (after rolling dice).`;
+    }
+  } else {
+    // Not in main phase - explain what's happening
+    const expected = game.hints?.expected || "";
+    if (expected === "ROLL_DICE") {
+      tradeHintText = `Waiting for ${currentName} to roll. Trading happens during the main phase (after dice).`;
+    } else if (expected === "DISCARD_CARDS") {
+      tradeHintText = "Robber activated! Trading resumes after discards and robber placement.";
+    } else if (expected === "MOVE_ROBBER" || expected === "STEAL_CARD") {
+      tradeHintText = "Robber in progress. Trading resumes after steal.";
+    } else if (game.phase?.startsWith("setup")) {
+      tradeHintText = "Setup phase. Trading begins after setup is complete.";
+    } else {
+      tradeHintText = `Waiting for ${currentName}. You can offer trades on your turn (after rolling dice).`;
+    }
+  }
+  setText(elTradeHint, tradeHintText);
 
   elTradeCreatePanel.style.display = canCreate ? "" : "none";
 
@@ -3305,20 +3739,26 @@ function renderTrade(room, me, you) {
     }
   }
 
-  // Clamp draft values to sensible ranges.
+  // Update give dropdowns based on player's hand.
   const hand = you?.hand || {};
   for (const r of RESOURCE_TYPES) {
     const maxGive = parseNonNegativeInt(hand[r] ?? 0);
     const giveEl = tradeGiveInputs[r];
     if (giveEl) {
-      giveEl.max = String(maxGive);
-      clampInput(giveEl, 0, maxGive);
+      const currentVal = parseNonNegativeInt(giveEl.value);
+      // Rebuild options if max changed
+      const options = [];
+      for (let i = 0; i <= maxGive; i++) {
+        options.push(`<option value="${i}">${i}</option>`);
+      }
+      giveEl.innerHTML = options.join("");
+      giveEl.value = String(Math.min(currentVal, maxGive));
+      giveEl.disabled = maxGive === 0;
+      // Grey out the field if player has none
+      const fieldEl = giveEl.closest(".tradeGiveField");
+      if (fieldEl) fieldEl.classList.toggle("disabled", maxGive === 0);
     }
-    const wantEl = tradeWantInputs[r];
-    if (wantEl) {
-      wantEl.max = "19";
-      clampInput(wantEl, 0, 19);
-    }
+    // Want selects have fixed options (0-4), no need to update
   }
 
   const give = countsFromInputs(tradeGiveInputs);
@@ -3328,8 +3768,7 @@ function renderTrade(room, me, you) {
   if (elTradeRepeatBtn) elTradeRepeatBtn.disabled = !canCreate || !lastSentTradeOffer;
   if (elTradeSuggestBtn) elTradeSuggestBtn.disabled = !canCreate || !hasAnyResources(hand);
 
-  // Render open offers.
-  const openOffers = (game.tradeOffers || []).filter((o) => o && o.status === "open");
+  // Render open offers (openOffers already computed above for hint text).
   const offers = openOffers.filter((o) => o.to === "all" || o.to === me?.playerId || o.fromPlayerId === me?.playerId);
   const nextOffersKey = alwaysRenderEnabled
     ? null
@@ -3356,7 +3795,19 @@ function renderTrade(room, me, you) {
   if (alwaysRenderEnabled || nextOffersKey !== lastTradeOffersRenderKey) {
     const prevScrollTop = elTradeOffers.scrollTop;
     if (!offers.length) {
-      elTradeOffers.innerHTML = `<div class="muted">No open offers.</div>`;
+      if (canCreate) {
+        elTradeOffers.innerHTML = `<div class="muted">No open offers. Create one above!</div>`;
+      } else if (inMain) {
+        elTradeOffers.innerHTML = `<div class="muted tradeWaitingInfo">
+          <div>No trade offers right now.</div>
+          <div style="margin-top: 6px; opacity: 0.8">You can propose trades on your turn, after rolling dice.</div>
+        </div>`;
+      } else {
+        elTradeOffers.innerHTML = `<div class="muted tradeWaitingInfo">
+          <div>Trading is paused.</div>
+          <div style="margin-top: 6px; opacity: 0.8">Offers can be made during the main phase (after rolling).</div>
+        </div>`;
+      }
     } else {
       const playerById = new Map((room.players || []).map((p) => [p.playerId, p]));
       elTradeOffers.innerHTML = offers
@@ -3418,10 +3869,14 @@ function renderBankTrade(room, me, you) {
   const canTrade = inMain && myTurn;
 
   if (!canTrade) {
-    setText(
-      elBankTradeHint,
-      inMain ? "Only the current player can bank trade." : "Bank trading unlocks during your main phase (after dice)."
-    );
+    const currentPlayer = room.players?.find(p => p.playerId === game.currentPlayerId);
+    const currentName = currentPlayer?.name || "the current player";
+
+    if (inMain) {
+      setText(elBankTradeHint, `${currentName} is taking their turn. You can bank trade on your turn.`);
+    } else {
+      setText(elBankTradeHint, "Bank trading is available during your main phase (after rolling dice).");
+    }
     elBankTradePanel.style.display = "none";
     if (elBankTradeErr) elBankTradeErr.textContent = "";
     return;
@@ -3539,6 +3994,15 @@ function renderDevCards(room, me, you) {
   const canBuy = canInteract && deckCount > 0 && canAffordBuy;
   if (elDevBuyBtn) elDevBuyBtn.disabled = !canBuy;
 
+  // Dev card type to icon path mapping
+  const DEV_CARD_ICONS = {
+    knight: '/shared/icons/dev-knight.png',
+    road_building: '/shared/icons/dev-road-building.png',
+    year_of_plenty: '/shared/icons/dev-year-of-plenty.png',
+    monopoly: '/shared/icons/dev-monopoly.png',
+    victory_point: '/shared/icons/dev-victory-point.png'
+  };
+
   // In-hand playable cards.
   const inHandCounts = countsByValue(you?.devCardsInHand);
   const canPlay = canInteract && !playedThisTurn;
@@ -3548,8 +4012,10 @@ function renderDevCards(room, me, you) {
       const name = titleDevCard(t);
       const label = n === 1 ? name : `${name} ×${n}`;
       const disabled = !canPlay ? "disabled" : "";
-      return `<div class="row" style="justify-content:space-between;">
-        <div>${escapeHtml(label)}</div>
+      const iconSrc = DEV_CARD_ICONS[t] || '/shared/icons/dev-card-back.png';
+      return `<div class="devCardRow">
+        <img src="${iconSrc}" alt="" class="devCardIcon" />
+        <div class="devCardLabel">${escapeHtml(label)}</div>
         <button class="btn primary" data-dev-play="${escapeHtml(t)}" ${disabled}>Play</button>
       </div>`;
     })
@@ -3566,8 +4032,10 @@ function renderDevCards(room, me, you) {
       const n = parseNonNegativeInt(newCounts[t] ?? 0);
       const name = titleDevCard(t);
       const label = n === 1 ? name : `${name} ×${n}`;
-      return `<div class="row" style="justify-content:space-between;">
-        <div>${escapeHtml(label)}</div>
+      const iconSrc = DEV_CARD_ICONS[t] || '/shared/icons/dev-card-back.png';
+      return `<div class="devCardRow">
+        <img src="${iconSrc}" alt="" class="devCardIcon" />
+        <div class="devCardLabel">${escapeHtml(label)}</div>
         <span class="tag">New</span>
       </div>`;
     })
@@ -3722,15 +4190,6 @@ elColorblindBtn?.addEventListener("click", () => {
   setSettings({ colorblind: !s.colorblind });
 });
 
-elBoardRendererBtn?.addEventListener("click", () => {
-  if (!supportsWebGL()) return;
-  const s = getSettings();
-  const next = s.boardRenderer === "3d" ? "auto" : "3d";
-  setSettings({ boardRenderer: next });
-  lastBoardRenderKey = null;
-  renderScheduler.schedule();
-});
-
 elSfxVolume?.addEventListener("input", () => {
   setSettings({ sfxVolume: Number(elSfxVolume.value) / 100 });
 });
@@ -3775,7 +4234,16 @@ elReadyBtn.addEventListener("click", async () => {
   }
 });
 
-elPresetSelect.addEventListener("change", async () => {
+elScenarioSelect?.addEventListener("change", async () => {
+  if (!roomCode || !playerId) return;
+  try {
+    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/scenario`, { playerId, scenarioId: elScenarioSelect.value });
+  } catch (e) {
+    showErrorToast(e);
+  }
+});
+
+elPresetSelect?.addEventListener("change", async () => {
   if (!roomCode || !playerId) return;
   try {
     await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/preset`, { playerId, presetId: elPresetSelect.value });
@@ -3834,23 +4302,20 @@ elVpTargetSelect?.addEventListener("change", async () => {
   }
 });
 
-elEmotesToggleBtn?.addEventListener("click", async () => {
+elEventDeckToggleBtn?.addEventListener("click", async () => {
   if (!roomCode || !playerId) return;
-  const current = lastRoomState?.settings?.houseRules;
-  const nextHouseRules = current && typeof current === "object" && !Array.isArray(current) ? { ...current } : {};
-  const enabled = nextHouseRules.emotesEnabled !== false;
-  if (enabled) nextHouseRules.emotesEnabled = false;
-  else delete nextHouseRules.emotesEnabled;
-  const houseRules = Object.keys(nextHouseRules).length ? nextHouseRules : null;
+  const current = lastRoomState?.variants || {};
+  const eventDeckEnabled = current.eventDeckEnabled !== true;
+  const variants = { ...current, eventDeckEnabled };
 
   try {
-    if (elEmotesToggleBtn) elEmotesToggleBtn.disabled = true;
-    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/houseRules`, { playerId, houseRules });
+    if (elEventDeckToggleBtn) elEventDeckToggleBtn.disabled = true;
+    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/variants`, { playerId, variants });
   } catch (e) {
-    showErrorToast(e, { title: "Can't update emotes" });
+    showErrorToast(e, { title: "Can't update event deck" });
     renderHouseRulesControls(lastRoomState);
   } finally {
-    if (elEmotesToggleBtn) elEmotesToggleBtn.disabled = false;
+    if (elEventDeckToggleBtn) elEventDeckToggleBtn.disabled = false;
   }
 });
 
@@ -3953,93 +4418,81 @@ elPostGameRematchBtn?.addEventListener("click", async () => {
 elPrimaryBtn.addEventListener("click", async () => {
   if (!roomCode || !playerId) return;
   if (!lastRoomState?.game) return;
-  if ((lastRoomState.game.hints?.expected || null) !== "ROLL_DICE") return;
+
+  const action = elPrimaryBtn.dataset.action;
+  if (!action) return;
+
   animatePressEffect(elPrimaryBtn);
+
   try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
-      method: "POST",
-      body: { playerId, type: "ROLL_DICE" }
-    });
-    feedbackGood("dice", { gain: 0.9 });
+    if (action === "roll") {
+      await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+        method: "POST",
+        body: { playerId, type: "ROLL_DICE" }
+      });
+      feedbackGood("dice", { gain: 0.9 });
+    } else if (action === "end_turn") {
+      await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+        method: "POST",
+        body: { playerId, type: "END_TURN" }
+      });
+      feedbackGood("turn", { gain: 0.75 });
+    }
   } catch (e) {
     showErrorToast(e);
-  }
-});
-
-elEndTurnBtn.addEventListener("click", async () => {
-  if (!roomCode || !playerId) return;
-  animatePressEffect(elEndTurnBtn);
-  try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
-      method: "POST",
-      body: { playerId, type: "END_TURN" }
-    });
-    feedbackGood("turn", { gain: 0.75 });
-  } catch (e) {
-    showErrorToast(e);
-  }
-});
-
-elEmoteStrip?.addEventListener("click", async (ev) => {
-  const target = ev.target instanceof Element ? ev.target : null;
-  const btn = target?.closest("[data-emote]");
-  if (!btn) return;
-  if (!roomCode || !playerId) return;
-  if (lastRoomState?.settings?.houseRules?.emotesEnabled === false) return;
-
-  const emote = btn.getAttribute("data-emote") || "";
-  if (!emote) return;
-
-  const now = Date.now();
-  if (now < emoteCooldownUntil) return;
-  emoteCooldownUntil = now + 650;
-
-  try {
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/emote`, { method: "POST", body: { playerId, emote } });
-    feedbackGood("ui_tick", { gain: 0.8 });
-  } catch (e) {
-    const code = errorCode(e);
-    if (code === "EMOTE_COOLDOWN" || code === "RATE_LIMIT") return;
-    showErrorToast(e, { title: "Can't emote", durationMs: 2400 });
   }
 });
 
 elBuildRoadBtn.addEventListener("click", () => {
-  if (mode !== "build_road") {
-    const blockCode = elBuildRoadBtn?.dataset?.blockCode || "";
-    if (blockCode) return showErrorToast(blockCode, { title: "Can't build road" });
-  }
+  const blockCode = elBuildRoadBtn?.dataset?.blockCode || "";
+  if (blockCode) return showErrorToast(blockCode, { title: "Can't build road" });
   triggerPressFeedback(elBuildRoadBtn, "light");
-  mode = mode === "build_road" ? null : "build_road";
-  if (mode) setActiveTab("board", { persist: true });
-  if (lastRoomState) renderScheduler.schedule();
+  mode = "build_road";
+  openBuildFlowOverlay("road");
 });
 
 elBuildSettlementBtn.addEventListener("click", () => {
-  if (mode !== "build_settlement") {
-    const blockCode = elBuildSettlementBtn?.dataset?.blockCode || "";
-    if (blockCode) return showErrorToast(blockCode, { title: "Can't build settlement" });
-  }
+  const blockCode = elBuildSettlementBtn?.dataset?.blockCode || "";
+  if (blockCode) return showErrorToast(blockCode, { title: "Can't build settlement" });
   triggerPressFeedback(elBuildSettlementBtn, "light");
-  mode = mode === "build_settlement" ? null : "build_settlement";
-  if (mode) setActiveTab("board", { persist: true });
-  if (lastRoomState) renderScheduler.schedule();
+  mode = "build_settlement";
+  openBuildFlowOverlay("settlement");
 });
 
 elBuildCityBtn.addEventListener("click", () => {
-  if (mode !== "build_city") {
-    const blockCode = elBuildCityBtn?.dataset?.blockCode || "";
-    if (blockCode) return showErrorToast(blockCode, { title: "Can't build city" });
-  }
+  const blockCode = elBuildCityBtn?.dataset?.blockCode || "";
+  if (blockCode) return showErrorToast(blockCode, { title: "Can't build city" });
   triggerPressFeedback(elBuildCityBtn, "light");
-  mode = mode === "build_city" ? null : "build_city";
-  if (mode) setActiveTab("board", { persist: true });
-  if (lastRoomState) renderScheduler.schedule();
+  mode = "build_city";
+  openBuildFlowOverlay("city");
 });
 
 elCancelModeBtn.addEventListener("click", () => {
-  mode = null;
-  if (lastRoomState) renderScheduler.schedule();
+  closeBuildFlowOverlay();
+});
+
+elBuildFlowCancelBtn?.addEventListener("click", () => {
+  closeBuildFlowOverlay();
+});
+
+// Discard Modal Event Listeners
+elDiscardModalSubmitBtn?.addEventListener("click", () => {
+  submitDiscard();
+});
+
+// Discard modal +/- buttons
+document.querySelectorAll(".discardPlusBtn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const res = btn.getAttribute("data-resource");
+    if (res) adjustDiscardAmount(res, 1);
+  });
+});
+
+document.querySelectorAll(".discardMinusBtn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const res = btn.getAttribute("data-resource");
+    if (res) adjustDiscardAmount(res, -1);
+  });
 });
 
 function clearTradeForm() {
@@ -4249,7 +4702,7 @@ elDevBuyBtn?.addEventListener("click", async () => {
       method: "POST",
       body: { playerId, type: "BUY_DEV_CARD" }
     });
-    feedbackGood("ui_confirm", { gain: 0.85 });
+    feedbackGood("dev_buy");
   } catch (e) {
     showErrorToast(e, { title: "Can't buy dev card" });
     if (elDevCardsErr) elDevCardsErr.textContent = humanizeErrorMessage(e, { room: lastRoomState });
@@ -4283,7 +4736,10 @@ elDevCardsInHand?.addEventListener("click", async (ev) => {
       method: "POST",
       body: { playerId, type: "PLAY_DEV_CARD", card }
     });
-    feedbackGood("ui_confirm", { gain: 0.85 });
+    // Play card-specific sound
+    if (card === "knight") feedbackGood("knight");
+    else if (card === "road_building") feedbackGood("road_building");
+    else feedbackGood("dev_card");
   } catch (e) {
     showErrorToast(e, { title: "Can't play dev card" });
     if (elDevCardsErr) elDevCardsErr.textContent = humanizeErrorMessage(e, { room: lastRoomState });
@@ -4331,7 +4787,7 @@ elDevYopPlayBtn?.addEventListener("click", async () => {
       method: "POST",
       body: { playerId, type: "PLAY_DEV_CARD", card: "year_of_plenty", take }
     });
-    feedbackGood("ui_confirm", { gain: 0.85 });
+    feedbackGood("year_of_plenty");
     devPlayMode = null;
     setInputsToZero(devYopInputs);
   } catch (e) {
@@ -4355,7 +4811,7 @@ elDevMonopolyPlayBtn?.addEventListener("click", async () => {
       method: "POST",
       body: { playerId, type: "PLAY_DEV_CARD", card: "monopoly", resourceType }
     });
-    feedbackGood("ui_confirm", { gain: 0.85 });
+    feedbackGood("monopoly");
     devPlayMode = null;
   } catch (e) {
     showErrorToast(e, { title: "Can't play Monopoly" });
@@ -4648,6 +5104,85 @@ function checkHintTriggers(room, me, you) {
     }
   }
 }
+
+// --- Notification action button ---
+elNotifyActionBtn?.addEventListener("click", () => {
+  if (notifyActionCallback) {
+    notifyActionCallback();
+    clearNotify();
+  }
+});
+
+elNotifyDismissBtn?.addEventListener("click", () => {
+  clearNotify();
+});
+
+// Tap notification body to trigger onTap callback
+elNotifyBanner?.querySelector(".notifyContent")?.addEventListener("click", () => {
+  if (notifyTapCallback) {
+    notifyTapCallback();
+    clearNotify();
+  }
+});
+
+// --- Build tab buttons ---
+elBuildTabRoadBtn?.addEventListener("click", () => {
+  triggerPressFeedback(elBuildTabRoadBtn, "light");
+  mode = "build_road";
+  setActiveTab("board", { persist: true });
+  if (lastRoomState) renderScheduler.schedule();
+});
+
+elBuildTabSettlementBtn?.addEventListener("click", () => {
+  triggerPressFeedback(elBuildTabSettlementBtn, "light");
+  mode = "build_settlement";
+  setActiveTab("board", { persist: true });
+  if (lastRoomState) renderScheduler.schedule();
+});
+
+elBuildTabCityBtn?.addEventListener("click", () => {
+  triggerPressFeedback(elBuildTabCityBtn, "light");
+  mode = "build_city";
+  setActiveTab("board", { persist: true });
+  if (lastRoomState) renderScheduler.schedule();
+});
+
+elBuildTabDevCardBtn?.addEventListener("click", async () => {
+  if (!roomCode || !playerId) return;
+  if (!lastRoomState?.game) return;
+  triggerPressFeedback(elBuildTabDevCardBtn, "light");
+  try {
+    await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
+      method: "POST",
+      body: { playerId, type: "BUY_DEV_CARD" }
+    });
+    feedbackGood("card", { gain: 0.85 });
+  } catch (e) {
+    showErrorToast(e, { title: "Can't buy dev card" });
+  }
+});
+
+// --- Log modal ---
+function openLogModal() {
+  if (!elLogBackdrop) return;
+  elLogBackdrop.style.display = "";
+  // Render log in modal
+  if (lastRoomState?.game?.log) {
+    renderLog(elLogModal, lastRoomState.game.log, { players: lastRoomState.players });
+  }
+  requestAnimationFrame(() => elLogCloseBtn?.focus());
+}
+
+function closeLogModal() {
+  if (!elLogBackdrop) return;
+  elLogBackdrop.style.display = "none";
+}
+
+elLogBtn?.addEventListener("click", openLogModal);
+elLogCloseBtn?.addEventListener("click", closeLogModal);
+elLogBackdrop?.addEventListener("click", (ev) => {
+  if (ev.target === elLogBackdrop) closeLogModal();
+});
 
 // --- Boot ---
 loadIdentity();

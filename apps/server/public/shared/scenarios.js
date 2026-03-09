@@ -32,7 +32,7 @@ export function scenarioDisplay(scenarios, scenarioId, { fallbackName = "—" } 
 
   const name = scenario ? safeUiText(scenario?.name, { maxLen: 36 }) : safeUiText(fallbackName, { maxLen: 36 });
   const rulesSummary = scenario ? safeUiText(scenario?.rulesSummary, { maxLen: 90 }) : "";
-  const description = scenario ? safeUiText(scenario?.description, { maxLen: 120 }) : "";
+  const description = scenario ? safeUiText(scenario?.description, { maxLen: 300 }) : "";
 
   return { name, rulesSummary, description, scenario };
 }

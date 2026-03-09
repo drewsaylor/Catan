@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" width="400" height="320">
+  <defs>
+    <!-- Wood grain texture gradient -->
+    <linearGradient id="woodGrain" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A0693A"/>
+      <stop offset="25%" style="stop-color:#8B5A2B"/>
+      <stop offset="50%" style="stop-color:#9B6934"/>
+      <stop offset="75%" style="stop-color:#7D4E24"/>
+      <stop offset="100%" style="stop-color:#8B5A2B"/>
+    </linearGradient>
+
+    <!-- Wood border/edge gradient -->
+    <linearGradient id="woodEdge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#6B4423"/>
+      <stop offset="50%" style="stop-color:#5C3A1D"/>
+      <stop offset="100%" style="stop-color:#4A2F18"/>
+    </linearGradient>
+
+    <!-- Gold text gradient -->
+    <linearGradient id="goldText" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE4A8"/>
+      <stop offset="40%" style="stop-color:#D4A84B"/>
+      <stop offset="100%" style="stop-color:#B8860B"/>
+    </linearGradient>
+
+    <!-- Ribbon gradient (deep red) -->
+    <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#C41E3A"/>
+      <stop offset="50%" style="stop-color:#8B0000"/>
+      <stop offset="100%" style="stop-color:#5C0015"/>
+    </linearGradient>
+
+    <!-- Shadow filter -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="4" stdDeviation="5" flood-color="#1a0f05" flood-opacity="0.6"/>
+    </filter>
+
+    <!-- Inner shadow for depth -->
+    <filter id="innerGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Hanging chains/ropes -->
+  <g filter="url(#dropShadow)">
+    <ellipse cx="100" cy="20" rx="8" ry="5" fill="#5C3A1D"/>
+    <ellipse cx="300" cy="20" rx="8" ry="5" fill="#5C3A1D"/>
+    <path d="M100 20 Q95 35 100 50 Q105 35 100 20" fill="none" stroke="#5C3A1D" stroke-width="6"/>
+    <path d="M300 20 Q295 35 300 50 Q305 35 300 20" fill="none" stroke="#5C3A1D" stroke-width="6"/>
+  </g>
+
+  <!-- Main wooden sign shape (shield/tavern board) -->
+  <g filter="url(#dropShadow)">
+    <!-- Outer wooden frame -->
+    <path d="M60 50
+             L340 50
+             Q355 50 355 65
+             L355 190
+             Q355 210 340 225
+             L210 235
+             Q200 240 200 250
+             L200 250
+             Q200 240 190 235
+             L60 225
+             Q45 210 45 190
+             L45 65
+             Q45 50 60 50 Z"
+          fill="url(#woodEdge)"/>
+
+    <!-- Inner wooden face -->
+    <path d="M70 58
+             L330 58
+             Q342 58 342 70
+             L342 185
+             Q342 200 330 212
+             L208 222
+             Q200 226 200 234
+             L200 234
+             Q200 226 192 222
+             L70 212
+             Q58 200 58 185
+             L58 70
+             Q58 58 70 58 Z"
+          fill="url(#woodGrain)"/>
+
+    <!-- Wood grain lines for texture -->
+    <g stroke="#6B4423" stroke-width="1" opacity="0.3">
+      <path d="M80 70 Q200 75 320 70" fill="none"/>
+      <path d="M75 100 Q200 105 325 100" fill="none"/>
+      <path d="M70 130 Q200 135 330 130" fill="none"/>
+      <path d="M75 160 Q200 165 325 160" fill="none"/>
+      <path d="M85 190 Q200 195 315 190" fill="none"/>
+    </g>
+
+    <!-- Decorative nail heads -->
+    <circle cx="80" cy="70" r="4" fill="#4A2F18"/>
+    <circle cx="320" cy="70" r="4" fill="#4A2F18"/>
+    <circle cx="75" cy="200" r="4" fill="#4A2F18"/>
+    <circle cx="325" cy="200" r="4" fill="#4A2F18"/>
+  </g>
+
+  <!-- CATAN text on the sign -->
+  <text x="200" y="155" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="80" font-weight="bold" letter-spacing="6"
+        fill="url(#goldText)"
+        stroke="#3D2415" stroke-width="3"
+        paint-order="stroke fill">CATAN</text>
+
+  <!-- Decorative line under CATAN -->
+  <line x1="100" y1="175" x2="145" y2="175" stroke="#D4A84B" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="160" cy="175" r="3" fill="#B8860B"/>
+  <circle cx="200" cy="175" r="4" fill="#D4A84B"/>
+  <circle cx="240" cy="175" r="3" fill="#B8860B"/>
+  <line x1="255" y1="175" x2="300" y2="175" stroke="#D4A84B" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- LAN EDITION Ribbon -->
+  <g filter="url(#dropShadow)">
+    <!-- Ribbon left fold -->
+    <path d="M45 255 L70 270 L70 290 L45 275 Z" fill="#5C0015"/>
+
+    <!-- Ribbon right fold -->
+    <path d="M355 255 L330 270 L330 290 L355 275 Z" fill="#5C0015"/>
+
+    <!-- Main ribbon body -->
+    <path d="M70 255 L330 255 L330 295 L70 295 Z" fill="url(#ribbonGrad)"/>
+
+    <!-- Ribbon left end (cut shape) -->
+    <path d="M30 260 L70 255 L70 295 L30 290 L45 275 Z" fill="url(#ribbonGrad)"/>
+
+    <!-- Ribbon right end (cut shape) -->
+    <path d="M370 260 L330 255 L330 295 L370 290 L355 275 Z" fill="url(#ribbonGrad)"/>
+
+    <!-- Ribbon highlight -->
+    <path d="M70 255 L330 255 L330 265 L70 265 Z" fill="rgba(255,255,255,0.15)"/>
+  </g>
+
+  <!-- LAN EDITION text on ribbon -->
+  <text x="200" y="283" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="24" font-weight="bold" letter-spacing="4"
+        fill="#FFE4A8"
+        stroke="#3D1515" stroke-width="1"
+        paint-order="stroke fill">LAN EDITION</text>
+</svg>

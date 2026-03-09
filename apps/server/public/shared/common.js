@@ -275,12 +275,21 @@ function renderEntry(entry, playerById) {
   </div>`;
 }
 
-export function renderLog(logEl, entries, { players = [] } = {}) {
+export function renderLog(logEl, entries, { players = [], reversed = false } = {}) {
   const playerById = new Map((players || []).map((p) => [p.playerId, p]));
-  const list = (entries || [])
+  let list = (entries || [])
     .slice(-60)
-    .map((e) => renderEntry(e, playerById))
-    .join("");
-  logEl.innerHTML = `<div class="logList">${list || `<div class="muted">No events yet.</div>`}</div>`;
-  logEl.scrollTop = logEl.scrollHeight;
+    .map((e) => renderEntry(e, playerById));
+
+  // Reverse if requested (newest at top for TV display)
+  if (reversed) {
+    list = list.reverse();
+  }
+
+  logEl.innerHTML = `<div class="logList">${list.join("") || `<div class="muted">No events yet.</div>`}</div>`;
+
+  // Only auto-scroll if not reversed (phone view)
+  if (!reversed) {
+    logEl.scrollTop = logEl.scrollHeight;
+  }
 }

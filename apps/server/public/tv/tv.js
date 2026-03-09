@@ -26,8 +26,7 @@ import {
   fetchThemeIndex,
   getAvailableThemes
 } from "/shared/theme-loader.js";
-import { getTipsForContext } from "/shared/tips-catalog.js";
-import { createDice3dPanel, createBoardFxHelper, createResourceFlyoutManager } from "/shared/board-3d.js";
+// 3D rendering removed - using 2D only
 // Extracted modules for TV functionality (Phase 3 modularization)
 import {
   computeShowBeats as computeShowBeatsModule,
@@ -96,8 +95,6 @@ const elMuteAllBtn = qs("#muteAllBtn");
 const elReducedMotionBtn = qs("#reducedMotionBtn");
 const elHighContrastBtn = qs("#highContrastBtn");
 const elColorblindBtn = qs("#colorblindBtn");
-const elBoardRendererBtn = qs("#boardRendererBtn");
-const elBoardRendererHint = qs("#boardRendererHint");
 const elShowQrBtn = qs("#showQrBtn");
 const elSfxVolume = qs("#sfxVolume");
 const elMusicVolume = qs("#musicVolume");
@@ -125,8 +122,6 @@ const elHostErr = qs("#hostErr");
 
 // Attract Mode Elements
 const elAttractMode = qs("#attractMode");
-const elAttractBoard = qs("#attractBoard");
-const elAttractTip = qs("#attractTip");
 const elAttractQr = qs("#attractQr");
 const elAttractCreateBtn = qs("#attractCreateBtn");
 
@@ -135,12 +130,15 @@ const elLobbyOverlay = qs("#lobbyOverlay");
 const elLobbyRoomCode = qs("#lobbyRoomCode");
 const elLobbyQr = qs("#lobbyQr");
 const elLobbyJoinUrl = qs("#lobbyJoinUrl");
-const elLobbyJoinRoomCode = qs("#lobbyJoinRoomCode");
 const elLobbyPlayers = qs("#lobbyPlayers");
 const elLobbyPlayersEmpty = qs("#lobbyPlayersEmpty");
 const elLobbyBoardPreview = qs("#lobbyBoardPreview");
 const elLobbyScenarioSelect = qs("#lobbyScenarioSelect");
 const elLobbyScenarioDesc = qs("#lobbyScenarioDesc");
+const elLobbyScenarioTitle = qs("#lobbyScenarioTitle");
+const elLobbyScenarioSubtitle = qs("#lobbyScenarioSubtitle");
+const elLobbyScenarioDescription = qs("#lobbyScenarioDescription");
+const elLobbyConfigPills = qs("#lobbyConfigPills");
 const elLobbyThemeSelect = qs("#lobbyThemeSelect");
 const elLobbyStartStatus = qs("#lobbyStartStatus");
 
@@ -150,6 +148,7 @@ const elWrap = qs(".wrap");
 let roomCode = null;
 let adminSecret = null;
 let isSecondaryTv = false; // True if admin secret was rejected (another TV controls)
+let serverLanIp = null; // LAN IP from server for QR codes
 let hostPinCache = null;
 let es = null;
 let lastRoomState = null;
@@ -176,12 +175,8 @@ let lastBoardRenderKey = null;
 // Attract Mode State
 // =============================================================================
 let attractModeActive = false;
-let attractTipIndex = 0;
-let attractTipTimer = null;
 let attractIdleTimer = null;
-let attractBoard3dModule = null;
 const ATTRACT_IDLE_TIMEOUT_MS = 30000; // 30 seconds of no room/players triggers attract
-const ATTRACT_TIP_INTERVAL_MS = 5500; // Rotate tips every 5.5 seconds
 
 // =============================================================================
 // Lobby Overlay State
@@ -205,11 +200,30 @@ const RESOURCE_TYPES = ["wood", "brick", "sheep", "wheat", "ore"];
 const QUICK_TURN_NUDGE_THRESHOLDS_MS = [45000, 75000];
 
 // =============================================================================
-// 3D Dice + FX State (Phase 7)
+// Resource Distribution Helpers (for dice roll display)
 // =============================================================================
-let dice3dPanel = null;
-let boardFxHelper = null;
-let resourceFlyoutManager = null;
+
+/**
+ * Get tone for resource type (for hex pulsing)
+ */
+function getResourceTone(resource) {
+  switch (resource) {
+    case "wood":
+      return "good"; // green
+    case "brick":
+      return "warn"; // orange/yellow
+    case "sheep":
+      return "good"; // light green
+    case "wheat":
+      return "warn"; // yellow
+    case "ore":
+      return "info"; // gray/blue
+    default:
+      return "info";
+  }
+}
+
+// 3D rendering removed - using 2D only
 let lastDiceRollAt = null;
 
 initSettings();
@@ -262,23 +276,6 @@ function syncSettingsUi(settings) {
     elColorblindBtn.textContent = settings?.colorblind ? "On" : "Off";
     elColorblindBtn.setAttribute("aria-pressed", settings?.colorblind ? "true" : "false");
   }
-  if (elBoardRendererBtn || elBoardRendererHint) {
-    const webglOk = supportsWebGL();
-    const wants3d = settings?.boardRenderer === "3d";
-    const is3d = webglOk && wants3d;
-
-    if (elBoardRendererBtn) {
-      elBoardRendererBtn.textContent = is3d ? "3D" : "2D";
-      elBoardRendererBtn.disabled = !webglOk;
-      elBoardRendererBtn.setAttribute("aria-pressed", is3d ? "true" : "false");
-    }
-
-    if (elBoardRendererHint) {
-      if (!webglOk && wants3d) elBoardRendererHint.textContent = "WebGL unavailable • Using 2D.";
-      else if (!webglOk) elBoardRendererHint.textContent = "3D unavailable on this device.";
-      else elBoardRendererHint.textContent = "2D is safest • 3D is beta.";
-    }
-  }
   if (elShowQrBtn) {
     elShowQrBtn.textContent = settings?.showQr ? "On" : "Off";
     elShowQrBtn.setAttribute("aria-pressed", settings?.showQr ? "true" : "false");
@@ -288,18 +285,6 @@ function syncSettingsUi(settings) {
   }
   if (elSfxVolume) elSfxVolume.value = String(Math.round((settings?.sfxVolume ?? 0) * 100));
   if (elMusicVolume) elMusicVolume.value = String(Math.round((settings?.musicVolume ?? 0) * 100));
-
-  // === UPDATE 3D DICE + FX HELPERS WITH SETTINGS ===
-  if (dice3dPanel) {
-    dice3dPanel.setReducedMotion(!!settings?.reducedMotion);
-  }
-  if (boardFxHelper) {
-    boardFxHelper.setReducedMotion(!!settings?.reducedMotion);
-    boardFxHelper.setQuality(settings?.boardRenderer === "3d" ? "auto" : "medium");
-  }
-  if (resourceFlyoutManager) {
-    resourceFlyoutManager.setReducedMotion(!!settings?.reducedMotion);
-  }
 }
 
 function isSettingsOpen() {
@@ -528,19 +513,6 @@ elColorblindBtn?.addEventListener("click", () => {
   setSettings({ colorblind: !s.colorblind });
 });
 
-elBoardRendererBtn?.addEventListener("click", () => {
-  if (!supportsWebGL()) return;
-  const s = getSettings();
-  const next = s.boardRenderer === "3d" ? "auto" : "3d";
-  setSettings({ boardRenderer: next });
-  lastBoardRenderKey = null;
-  try {
-    renderScheduler.schedule();
-  } catch {
-    // Ignore.
-  }
-});
-
 elShowQrBtn?.addEventListener("click", () => {
   const s = getSettings();
   setSettings({ showQr: !s.showQr });
@@ -564,7 +536,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, Math.floor(ms || 0))));
 }
 
-function playerRow(p, { mode, currentPlayerId, pointsByPlayerId, victoryPointsToWin, winnerPlayerId }) {
+function playerRow(p, {
+  mode,
+  currentPlayerId,
+  pointsByPlayerId,
+  victoryPointsToWin,
+  winnerPlayerId,
+  knightsByPlayerId,
+  largestArmyPlayerId,
+  longestRoadPlayerId
+}) {
   const inGame = mode === "in_game";
   const isGameOver = inGame && !!winnerPlayerId;
   const isTurn = inGame && !isGameOver && currentPlayerId && p.playerId === currentPlayerId;
@@ -584,10 +565,40 @@ function playerRow(p, { mode, currentPlayerId, pointsByPlayerId, victoryPointsTo
       ? `<span class="tag">${escapeHtml(points)}/${escapeHtml(target)} VP</span>`
       : `<span class="tag">${escapeHtml(points)} VP</span>`;
   const winnerTag = winnerPlayerId === p.playerId ? `<span class="tag good">Winner</span>` : "";
+
+  // Build badges for knights and awards (in-game only)
+  let badgesHtml = "";
+  if (inGame) {
+    const badges = [];
+    const knights = knightsByPlayerId?.[p.playerId] ?? 0;
+    const hasLargestArmy = p.playerId === largestArmyPlayerId;
+    const hasLongestRoad = p.playerId === longestRoadPlayerId;
+
+    // Knight count (show if > 0)
+    if (knights > 0) {
+      const knightClass = hasLargestArmy ? "playerBadge award" : "playerBadge muted";
+      badges.push(`<span class="${knightClass}"><img src="/shared/icons/dev-knight.png" class="badgeIcon" alt="Knights">${knights}</span>`);
+    }
+
+    // Largest Army award
+    if (hasLargestArmy) {
+      badges.push(`<img src="/shared/icons/award-largest-army.png" class="awardIcon" alt="Largest Army" title="Largest Army">`);
+    }
+
+    // Longest Road award
+    if (hasLongestRoad) {
+      badges.push(`<img src="/shared/icons/award-longest-road.png" class="awardIcon" alt="Longest Road" title="Longest Road">`);
+    }
+
+    if (badges.length > 0) {
+      badgesHtml = `<div class="playerBadges">${badges.join("")}</div>`;
+    }
+  }
+
   const right =
     mode === "lobby"
       ? `<div style="display:flex; gap:8px; align-items:center;">${hostTag}${readyTag}</div>`
-      : `<div style="display:flex; gap:8px; align-items:center;">${winnerTag}${vpTag}</div>`;
+      : `<div style="display:flex; gap:8px; align-items:center;">${badgesHtml}${winnerTag}${vpTag}</div>`;
   return `
     <div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="--pc:${escapeHtml(p.color)};">
       <div class="name">
@@ -607,7 +618,9 @@ function escapeHtml(s) {
 }
 
 function roomUrlForPhones() {
-  const base = `${location.protocol}//${location.host}`;
+  // Use LAN IP if available, otherwise fall back to current host
+  const host = serverLanIp ? `${serverLanIp}:${location.port || (location.protocol === "https:" ? 443 : 80)}` : location.host;
+  const base = `${location.protocol}//${host}`;
   return `${base}/phone?room=${encodeURIComponent(roomCode)}`;
 }
 
@@ -879,20 +892,6 @@ async function createNewRoom() {
     lastLobbyQrUrl = null;
     lobbyPreviewBoard = null;
 
-    // === CLEANUP 3D DICE + FX HELPERS ===
-    if (dice3dPanel) {
-      dice3dPanel.destroy();
-      dice3dPanel = null;
-    }
-    if (boardFxHelper) {
-      boardFxHelper.destroy();
-      boardFxHelper = null;
-    }
-    if (resourceFlyoutManager) {
-      resourceFlyoutManager.destroy();
-      resourceFlyoutManager = null;
-    }
-
     history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
     connectStream();
   } catch (e) {
@@ -1159,6 +1158,7 @@ async function runBeat(beat) {
     if (game.currentPlayerId !== beat?.playerId) return wait(0);
     if (game.subphase !== "needs_roll" && game.subphase !== "main") return wait(0);
 
+    playSfx("turn_nudge");
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
     flashClass(elPhasePill, "cardFlash", d(520));
     await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1600) });
@@ -1195,20 +1195,12 @@ async function runBeat(beat) {
   }
 
   // -------------------------------------------------------------------------
-  // Dice Roll - show the result with appropriate fanfare + 3D dice animation
+  // Dice Roll - show the result with appropriate fanfare
   // -------------------------------------------------------------------------
   if (type === "dice_roll") {
     flashClass(elDiceBox, "diceRolling", d(650));
     playSfx("dice");
     const sum = beat?.sum;
-    const diceD1 = beat?.d1;
-    const diceD2 = beat?.d2;
-
-    // Trigger 3D dice animation if available and not already animating
-    if (dice3dPanel && !dice3dPanel.isAnimating && diceD1 && diceD2) {
-      dice3dPanel.setReducedMotion(reducedMotion);
-      dice3dPanel.animateRoll(diceD1, diceD2, reducedMotion ? 100 : d(400));
-    }
 
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
     await show.showMoment({
@@ -1217,6 +1209,31 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: sum === 7 ? d(1200) : d(900)
     });
+
+    // Show resources collected message (if not 7)
+    if (sum && sum !== 7) {
+      const room = lastRoomState;
+      const game = room?.game || null;
+      const board = game?.board || null;
+
+      if (board?.hexes) {
+        const matchingHexes = (board.hexes || []).filter(
+          (h) => h?.token === sum && h?.resource && h.resource !== "desert" && h.id !== game?.robberHexId
+        );
+
+        if (matchingHexes.length > 0) {
+          const resourceNames = [...new Set(matchingHexes.map((h) => h.resource))];
+          const resourceText = resourceNames.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
+          await show.toast({
+            title: "Resources collected",
+            subtitle: resourceText,
+            tone: "good",
+            durationMs: d(1600)
+          });
+        }
+      }
+    }
+
     return wait(660);
   }
 
@@ -1282,17 +1299,6 @@ async function runBeat(beat) {
     if (!hexEl && hexId) await applyBoardMoment(elBoard, { kind: "robber_moved", data: { hexId } });
     show.spotlightElement(hexEl, { tone: "warn", pad: 18, durationMs: d(900), pulse: true, shade: 0.42 });
 
-    // === PARTICLE FX: Show robber effect ===
-    if (boardFxHelper && !reducedMotion && hexEl) {
-      const rect = hexEl.getBoundingClientRect();
-      const boardRect = elBoard.getBoundingClientRect();
-      const position = {
-        x: rect.left + rect.width / 2 - boardRect.left,
-        y: rect.top + rect.height / 2 - boardRect.top
-      };
-      boardFxHelper.showRobberEffect(position);
-    }
-
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
     show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1400) });
     return wait(700);
@@ -1313,8 +1319,8 @@ async function runBeat(beat) {
   // -------------------------------------------------------------------------
   if (type === "robber_stole") {
     const didSteal = beat?.didSteal !== false;
-    if (didSteal) playSfx("ui_confirm", { gain: 0.8 });
-    else playSfx("ui_bonk", { gain: 0.7 });
+    if (didSteal) playSfx("steal_success");
+    else playSfx("steal_fail");
     const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
     await show.showMoment({
       title: hostCopy.title,
@@ -1362,17 +1368,6 @@ async function runBeat(beat) {
       if (momentKind) await applyBoardMoment(elBoard, { kind: momentKind, data });
     }
     show.spotlightElement(target, { tone: "good", pad: 18, durationMs: d(850), pulse: true, shade: 0.34 });
-
-    // === PARTICLE FX: Show build effect for settlement/city ===
-    if (boardFxHelper && !reducedMotion && (kind === "settlement" || kind === "city") && target) {
-      const rect = target.getBoundingClientRect();
-      const boardRect = elBoard.getBoundingClientRect();
-      const position = {
-        x: rect.left + rect.width / 2 - boardRect.left,
-        y: rect.top + rect.height / 2 - boardRect.top
-      };
-      boardFxHelper.showBuildEffect(position, { tone: "good", particleCount: kind === "city" ? 14 : 10 });
-    }
 
     return wait(620);
   }
@@ -1464,6 +1459,7 @@ async function runBeat(beat) {
   // Segment Transition - show when game moves to new phase
   // -------------------------------------------------------------------------
   if (type === "segment_transition") {
+    playSfx("segment_start");
     const hostCopy = beat?.copy || { title: "Phase Change", subtitle: "", tone: "info" };
     await show.showMoment({
       title: hostCopy.title,
@@ -1479,7 +1475,7 @@ async function runBeat(beat) {
   // -------------------------------------------------------------------------
   if (type === "event_drawn") {
     flashClass(elPhasePill, "cardFlash", d(900));
-    playSfx("trade", { gain: 0.9 });
+    playSfx("event_drawn");
     const eventName = beat?.eventName || "Event";
     const eventShortText = beat?.eventShortText || "";
     await show.showMoment({
@@ -1496,6 +1492,7 @@ async function runBeat(beat) {
   // Event Ended - party mode event expired
   // -------------------------------------------------------------------------
   if (type === "event_ended") {
+    playSfx("event_ended");
     const eventName = beat?.eventName || "Event";
     await show.toast({
       title: `${eventName} ended`,
@@ -1953,7 +1950,7 @@ function computeShowBeats(prevRoom, room) {
 }
 
 // =============================================================================
-// Attract Mode - Jackbox-like idle screen with 3D board preview
+// Attract Mode - Jackbox-like idle screen with board preview
 // =============================================================================
 
 /**
@@ -2106,13 +2103,8 @@ function createAttractSampleBoard() {
   };
 }
 
-let attractSampleBoard = null;
-let attractTips = [];
-
 async function initAttractMode() {
   if (!elAttractMode) return;
-  attractSampleBoard = createAttractSampleBoard();
-  attractTips = getTipsForContext("lobby", { limit: 8, shuffle: true });
   elAttractCreateBtn?.addEventListener("click", async () => {
     await exitAttractMode();
   });
@@ -2133,39 +2125,17 @@ async function showAttractMode() {
   elAttractMode.classList.remove("hiding");
 
   if (elAttractQr) {
-    const baseUrl = `${location.protocol}//${location.host}/phone${roomCode ? `?room=${roomCode}` : ""}`;
+    const attractUrl = roomCode ? roomUrlForPhones() : `${location.protocol}//${location.host}/phone`;
     try {
-      elAttractQr.innerHTML = qrSvg(baseUrl, { margin: 4, label: "Join Catan" });
+      elAttractQr.innerHTML = qrSvg(attractUrl, { margin: 4, label: "Join Catan" });
     } catch {
       elAttractQr.innerHTML = "";
-    }
-  }
-
-  attractTipIndex = 0;
-  if (attractTips.length > 0 && elAttractTip) {
-    elAttractTip.textContent = attractTips[0].text;
-    startAttractTipCarousel();
-  }
-
-  if (elAttractBoard && attractSampleBoard) {
-    try {
-      renderBoard(elAttractBoard, attractSampleBoard, {
-        players: [],
-        structures: { roads: {}, settlements: {} },
-        selectableVertexIds: [],
-        selectableEdgeIds: [],
-        selectableHexIds: [],
-        robberHexId: "H9"
-      });
-    } catch (err) {
-      console.warn("[catan] Failed to render attract mode board:", err);
     }
   }
 }
 
 async function exitAttractMode() {
   if (!elAttractMode || !attractModeActive) return;
-  stopAttractTipCarousel();
   elAttractMode.classList.add("hiding");
   await sleep(350);
   attractModeActive = false;
@@ -2178,30 +2148,6 @@ async function exitAttractMode() {
   if (room && room.status === "lobby") {
     showLobbyOverlay();
     renderLobbyOverlay(room);
-  }
-}
-
-function startAttractTipCarousel() {
-  stopAttractTipCarousel();
-  if (!elAttractTip || attractTips.length === 0) return;
-  attractTipTimer = setInterval(() => {
-    if (!attractModeActive) {
-      stopAttractTipCarousel();
-      return;
-    }
-    elAttractTip.classList.add("fading");
-    setTimeout(() => {
-      attractTipIndex = (attractTipIndex + 1) % attractTips.length;
-      elAttractTip.textContent = attractTips[attractTipIndex].text;
-      elAttractTip.classList.remove("fading");
-    }, 300);
-  }, ATTRACT_TIP_INTERVAL_MS);
-}
-
-function stopAttractTipCarousel() {
-  if (attractTipTimer) {
-    clearInterval(attractTipTimer);
-    attractTipTimer = null;
   }
 }
 
@@ -2284,6 +2230,30 @@ function renderLobbyQr(url) {
   }
 }
 
+/**
+ * Scale the URL text to match the room code width.
+ */
+function scaleUrlToMatchRoomCode() {
+  if (!elLobbyRoomCode || !elLobbyJoinUrl) return;
+
+  const roomCodeWidth = elLobbyRoomCode.offsetWidth;
+  if (roomCodeWidth <= 0) return;
+
+  // Binary search for font size that makes URL match room code width
+  let minSize = 8;
+  let maxSize = 40;
+  while (maxSize - minSize > 1) {
+    const mid = (minSize + maxSize) / 2;
+    elLobbyJoinUrl.style.fontSize = mid + "px";
+    if (elLobbyJoinUrl.offsetWidth > roomCodeWidth) {
+      maxSize = mid;
+    } else {
+      minSize = mid;
+    }
+  }
+  elLobbyJoinUrl.style.fontSize = minSize + "px";
+}
+
 function renderLobbyPlayers(players) {
   if (!elLobbyPlayers) return;
 
@@ -2320,30 +2290,74 @@ function renderLobbyPlayers(players) {
   elLobbyPlayers.innerHTML = html;
 }
 
+function getEffectiveVpForLobby(room) {
+  const gameMode = room?.gameMode === "quick" ? "quick" : "classic";
+  const customVp = room?.settings?.houseRules?.victoryPointsToWin;
+  if (Number.isFinite(customVp)) return Math.floor(customVp);
+  return gameMode === "quick" ? 8 : 10;
+}
+
+function getLobbyConfigPills(room, scenario) {
+  const pills = [];
+  const vp = getEffectiveVpForLobby(room);
+  const eventDeck = room?.variants?.eventDeckEnabled === true;
+  const presets = room?.presets || [];
+  const preset = presets.find((p) => p?.id === room?.presetId);
+  const boardType = preset?.name || "Balanced";
+
+  pills.push({ label: `${vp} VP to win`, highlight: false });
+  pills.push({ label: boardType, highlight: false });
+  if (eventDeck) {
+    pills.push({ label: "Event Deck", highlight: true });
+  }
+  return pills;
+}
+
 function renderLobbyScenarios(room) {
-  if (!elLobbyScenarioSelect) return;
-
   const { scenarioId, scenarios } = scenarioMeta(room);
-  const nextOptionsKey = scenariosKey(scenarios);
+  const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "Classic" });
+  const scenario = scenarios.find((s) => s?.id === scenarioId);
 
-  if (nextOptionsKey !== lastLobbyScenarioOptionsKey) {
-    elLobbyScenarioSelect.innerHTML = scenarios
-      .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`)
+  // Render scenario title
+  if (elLobbyScenarioTitle) {
+    setText(elLobbyScenarioTitle, display.name);
+  }
+
+  // Render scenario description
+  if (elLobbyScenarioDescription) {
+    setText(elLobbyScenarioDescription, display.description || "");
+  }
+
+  // Render config pills
+  if (elLobbyConfigPills) {
+    const pills = getLobbyConfigPills(room, scenario);
+    elLobbyConfigPills.innerHTML = pills
+      .map((p) => `<span class="configPill${p.highlight ? " highlight" : ""}">${escapeHtml(p.label)}</span>`)
       .join("");
-    lastLobbyScenarioOptionsKey = nextOptionsKey;
   }
 
-  const hasOption = scenarios.some((s) => s?.id === scenarioId);
-  if (hasOption && elLobbyScenarioSelect.value !== scenarioId) {
-    elLobbyScenarioSelect.value = scenarioId;
+  // Update legacy dropdown for backwards compatibility
+  if (elLobbyScenarioSelect) {
+    const nextOptionsKey = scenariosKey(scenarios);
+
+    if (nextOptionsKey !== lastLobbyScenarioOptionsKey) {
+      elLobbyScenarioSelect.innerHTML = scenarios
+        .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`)
+        .join("");
+      lastLobbyScenarioOptionsKey = nextOptionsKey;
+    }
+
+    const hasOption = scenarios.some((s) => s?.id === scenarioId);
+    if (hasOption && elLobbyScenarioSelect.value !== scenarioId) {
+      elLobbyScenarioSelect.value = scenarioId;
+    }
+
+    const canChange = room?.status === "lobby" && hasAdminSecret() && !scenarioUpdateInFlight;
+    elLobbyScenarioSelect.disabled = !canChange;
   }
 
-  const canChange = room?.status === "lobby" && hasAdminSecret() && !scenarioUpdateInFlight;
-  elLobbyScenarioSelect.disabled = !canChange;
-
-  // Update description
+  // Update description (legacy)
   if (elLobbyScenarioDesc) {
-    const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "—" });
     setText(elLobbyScenarioDesc, display.description);
   }
 }
@@ -2428,7 +2442,6 @@ function renderLobbyOverlay(room) {
 
   // Update room code
   if (elLobbyRoomCode) setText(elLobbyRoomCode, room.roomCode || "-----");
-  if (elLobbyJoinRoomCode) setText(elLobbyJoinRoomCode, room.roomCode || "-----");
 
   // Update join URL
   const joinUrl = roomUrlForPhones();
@@ -2440,6 +2453,8 @@ function renderLobbyOverlay(room) {
     } catch {
       setText(elLobbyJoinUrl, joinUrl);
     }
+    // Scale URL to match room code width after text is set
+    requestAnimationFrame(scaleUrlToMatchRoomCode);
   }
 
   // Render QR code
@@ -2479,6 +2494,11 @@ elLobbyThemeSelect?.addEventListener("change", async () => {
   if (nextThemeId && nextThemeId !== currentThemeId) {
     await requestThemeChange(nextThemeId);
   }
+});
+
+// Rescale URL on window resize when lobby is active
+window.addEventListener("resize", () => {
+  if (lobbyOverlayActive) scaleUrlToMatchRoomCode();
 });
 
 async function ensureRoom() {
@@ -2784,7 +2804,10 @@ function render(room, prevRoom) {
         currentPlayerId,
         pointsByPlayerId,
         victoryPointsToWin,
-        winnerPlayerId
+        winnerPlayerId,
+        knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
+        largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
+        longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
       });
   if (alwaysRenderEnabled || nextPlayersKey !== lastPlayersRenderKey) {
     elPlayers.innerHTML = room.players
@@ -2794,7 +2817,10 @@ function render(room, prevRoom) {
           currentPlayerId,
           pointsByPlayerId,
           victoryPointsToWin,
-          winnerPlayerId
+          winnerPlayerId,
+          knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
+          largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
+          longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
         })
       )
       .join("");
@@ -2807,22 +2833,13 @@ function render(room, prevRoom) {
       elBoard.innerHTML = `<div class="muted">Start a game to see the board.</div>`;
       lastBoardRenderKey = nextBoardKey;
     }
-    // === CLEANUP 3D DICE + FX when game ends ===
-    if (dice3dPanel) {
-      dice3dPanel.destroy();
-      dice3dPanel = null;
-    }
-    if (boardFxHelper) {
-      boardFxHelper.destroy();
-      boardFxHelper = null;
-    }
     lastDiceRollAt = null;
 
     elDiceBox.innerHTML = renderDice(null);
     if (elOffersCard) elOffersCard.style.display = "none";
     const nextLogKey = alwaysRenderEnabled ? null : `room:${room.roomCode}|log:none`;
     if (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey) {
-      renderLog(elLog, [], { players: room.players });
+      renderLog(elLog, [], { players: room.players, reversed: true });
       lastLogRenderKey = nextLogKey;
     }
     return;
@@ -2830,37 +2847,14 @@ function render(room, prevRoom) {
 
   elDiceBox.innerHTML = renderDice(room.game.lastRoll);
 
-  // === 3D DICE PANEL: Initialize and sync ===
-  if (supportsWebGL() && elDiceBox && !dice3dPanel) {
-    dice3dPanel = createDice3dPanel(elDiceBox, { size: 56, gap: 10 });
-    if (dice3dPanel) {
-      dice3dPanel.setReducedMotion(!!getSettings()?.reducedMotion);
-      dice3dPanel.mount();
-    }
-  }
-  // Update 3D dice values when lastRoll changes (without animation - animation happens in runBeat)
-  if (dice3dPanel && room.game.lastRoll) {
-    const d1 = room.game.lastRoll.d1;
-    const d2 = room.game.lastRoll.d2;
-    const rollAt = room.game.lastRoll.at;
-    // Only set values immediately if this is not a fresh roll (already seen)
-    if (d1 && d2 && rollAt === lastDiceRollAt) {
-      dice3dPanel.setValues(d1, d2, true);
-    }
-    lastDiceRollAt = rollAt;
-  }
-
-  // === BOARD FX HELPER: Initialize ===
-  if (elBoard && !boardFxHelper) {
-    boardFxHelper = createBoardFxHelper(elBoard, {
-      reducedMotion: !!getSettings()?.reducedMotion,
-      quality: getSettings()?.boardRenderer === "3d" ? "auto" : "medium"
-    });
+  // Track last dice roll
+  if (room.game.lastRoll) {
+    lastDiceRollAt = room.game.lastRoll.at;
   }
 
   const nextLogKey = alwaysRenderEnabled ? null : tvLogRenderKey(room.game.log, room.players);
   if (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey) {
-    renderLog(elLog, room.game.log, { players: room.players });
+    renderLog(elLog, room.game.log, { players: room.players, reversed: true });
     lastLogRenderKey = nextLogKey;
   }
 
@@ -2901,13 +2895,23 @@ function playerDisplayKey(players) {
 
 function tvPlayersRenderKey(
   room,
-  { mode = "", currentPlayerId = null, pointsByPlayerId = {}, victoryPointsToWin = 0, winnerPlayerId = null } = {}
+  {
+    mode = "",
+    currentPlayerId = null,
+    pointsByPlayerId = {},
+    victoryPointsToWin = 0,
+    winnerPlayerId = null,
+    knightsByPlayerId = {},
+    largestArmyPlayerId = null,
+    longestRoadPlayerId = null
+  } = {}
 ) {
   const players = Array.isArray(room?.players) ? room.players : [];
   const rows = players
     .map((p) => {
       const pid = stableRoomPart(p?.playerId);
       const points = Math.max(0, Math.floor(pointsByPlayerId?.[pid] ?? 0));
+      const knights = Math.max(0, Math.floor(knightsByPlayerId?.[pid] ?? 0));
       return [
         pid,
         stableRoomPart(p?.name),
@@ -2915,7 +2919,8 @@ function tvPlayersRenderKey(
         p?.connected ? "1" : "0",
         p?.ready ? "1" : "0",
         p?.isHost ? "1" : "0",
-        String(points)
+        String(points),
+        String(knights)
       ].join(",");
     })
     .join(";");
@@ -2925,6 +2930,8 @@ function tvPlayersRenderKey(
     `turn:${stableRoomPart(currentPlayerId)}`,
     `winner:${stableRoomPart(winnerPlayerId)}`,
     `target:${stableRoomPart(victoryPointsToWin)}`,
+    `la:${stableRoomPart(largestArmyPlayerId)}`,
+    `lr:${stableRoomPart(longestRoadPlayerId)}`,
     rows
   ].join("|");
 }
@@ -3041,6 +3048,16 @@ async function initThemes() {
 }
 
 await initThemes();
+
+// Fetch server info (LAN IP) for proper QR codes
+try {
+  const serverInfo = await api("/api/server-info");
+  if (serverInfo?.lanIp) {
+    serverLanIp = serverInfo.lanIp;
+  }
+} catch {
+  // Ignore - will fall back to location.host
+}
 
 // Create room and connect SSE, then show attract mode
 // The QR code will include the room code so phones can join directly

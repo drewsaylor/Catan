@@ -29,12 +29,15 @@ function escapeHtml(s) {
  * @param {HTMLElement} options.elLobbyRoomCode - Room code display
  * @param {HTMLElement} options.elLobbyQr - QR code container
  * @param {HTMLElement} options.elLobbyJoinUrl - Join URL display
- * @param {HTMLElement} options.elLobbyJoinRoomCode - Room code in URL
  * @param {HTMLElement} options.elLobbyPlayers - Players list container
  * @param {HTMLElement} options.elLobbyPlayersEmpty - Empty state message
  * @param {HTMLElement} options.elLobbyBoardPreview - Board preview container
- * @param {HTMLElement} options.elLobbyScenarioSelect - Scenario dropdown
- * @param {HTMLElement} options.elLobbyScenarioDesc - Scenario description
+ * @param {HTMLElement} options.elLobbyScenarioSelect - Scenario dropdown (legacy)
+ * @param {HTMLElement} options.elLobbyScenarioDesc - Scenario description (legacy)
+ * @param {HTMLElement} options.elLobbyScenarioTitle - Scenario title display
+ * @param {HTMLElement} options.elLobbyScenarioSubtitle - Scenario subtitle
+ * @param {HTMLElement} options.elLobbyScenarioDescription - Scenario description display
+ * @param {HTMLElement} options.elLobbyConfigPills - Config pills container
  * @param {HTMLElement} options.elLobbyThemeSelect - Theme dropdown
  * @param {HTMLElement} options.elLobbyStartStatus - Start status message
  * @param {Function} options.onScenarioChange - Callback for scenario changes
@@ -47,12 +50,15 @@ export function createLobbyOverlayController({
   elLobbyRoomCode,
   elLobbyQr,
   elLobbyJoinUrl,
-  elLobbyJoinRoomCode,
   elLobbyPlayers,
   elLobbyPlayersEmpty,
   elLobbyBoardPreview,
   elLobbyScenarioSelect,
   elLobbyScenarioDesc,
+  elLobbyScenarioTitle,
+  elLobbyScenarioSubtitle,
+  elLobbyScenarioDescription,
+  elLobbyConfigPills,
   elLobbyThemeSelect,
   elLobbyStartStatus,
   onScenarioChange,
@@ -64,6 +70,31 @@ export function createLobbyOverlayController({
   let lastScenarioOptionsKey = null;
   let lastThemeOptionsKey = null;
   let previewBoard = null;
+  let resizeObserver = null;
+
+  /**
+   * Scale the URL text to match the room code width.
+   */
+  function scaleUrlToMatchRoomCode() {
+    if (!elLobbyRoomCode || !elLobbyJoinUrl) return;
+
+    const roomCodeWidth = elLobbyRoomCode.offsetWidth;
+    if (roomCodeWidth <= 0) return;
+
+    // Binary search for font size that makes URL match room code width
+    let minSize = 8;
+    let maxSize = 40;
+    while (maxSize - minSize > 1) {
+      const mid = (minSize + maxSize) / 2;
+      elLobbyJoinUrl.style.fontSize = mid + "px";
+      if (elLobbyJoinUrl.offsetWidth > roomCodeWidth) {
+        maxSize = mid;
+      } else {
+        minSize = mid;
+      }
+    }
+    elLobbyJoinUrl.style.fontSize = minSize + "px";
+  }
 
   function show() {
     if (!elLobbyOverlay || isActive) return;
@@ -129,31 +160,74 @@ export function createLobbyOverlayController({
     return list.map((s) => s?.id || "").join(",");
   }
 
-  function renderScenarios(room) {
-    if (!elLobbyScenarioSelect) return;
+  function getEffectiveVp(room) {
+    const gameMode = room?.gameMode === "quick" ? "quick" : "classic";
+    const customVp = room?.settings?.houseRules?.victoryPointsToWin;
+    if (Number.isFinite(customVp)) return Math.floor(customVp);
+    return gameMode === "quick" ? 8 : 10;
+  }
 
+  function getConfigPills(room, scenario) {
+    const pills = [];
+    const vp = getEffectiveVp(room);
+    const eventDeck = room?.variants?.eventDeckEnabled === true;
+    const presets = room?.presets || [];
+    const preset = presets.find((p) => p?.id === room?.presetId);
+    const boardType = preset?.name || "Balanced";
+
+    pills.push({ label: `${vp} VP to win`, highlight: false });
+    pills.push({ label: boardType, highlight: false });
+    if (eventDeck) {
+      pills.push({ label: "Event Deck", highlight: true });
+    }
+    return pills;
+  }
+
+  function renderScenarios(room) {
     const scenarios = Array.isArray(room?.settings?.scenarios) ? room.settings.scenarios : [];
     const currentId = typeof room?.settings?.scenarioId === "string" ? room.settings.scenarioId : "";
-    const key = scenariosKey(scenarios);
+    const display = scenarioDisplay(scenarios, currentId, { fallbackName: currentId || "Classic" });
+    const scenario = scenarios.find((s) => s?.id === currentId);
 
-    if (key !== lastScenarioOptionsKey) {
-      lastScenarioOptionsKey = key;
-      const opts = scenarios
-        .map((s) => {
-          const id = escapeHtml(s?.id || "");
-          const name = escapeHtml(s?.name || id);
-          return `<option value="${id}">${name}</option>`;
-        })
-        .join("");
-      elLobbyScenarioSelect.innerHTML = opts;
+    // Render scenario title
+    if (elLobbyScenarioTitle) {
+      elLobbyScenarioTitle.textContent = display.name;
     }
 
-    if (elLobbyScenarioSelect.value !== currentId) {
-      elLobbyScenarioSelect.value = currentId;
+    // Render scenario description
+    if (elLobbyScenarioDescription) {
+      elLobbyScenarioDescription.textContent = display.description || "";
+    }
+
+    // Render config pills
+    if (elLobbyConfigPills) {
+      const pills = getConfigPills(room, scenario);
+      elLobbyConfigPills.innerHTML = pills
+        .map((p) => `<span class="configPill${p.highlight ? " highlight" : ""}">${escapeHtml(p.label)}</span>`)
+        .join("");
+    }
+
+    // Legacy dropdown support (for backwards compatibility)
+    if (elLobbyScenarioSelect) {
+      const key = scenariosKey(scenarios);
+      if (key !== lastScenarioOptionsKey) {
+        lastScenarioOptionsKey = key;
+        const opts = scenarios
+          .map((s) => {
+            const id = escapeHtml(s?.id || "");
+            const name = escapeHtml(s?.name || id);
+            return `<option value="${id}">${name}</option>`;
+          })
+          .join("");
+        elLobbyScenarioSelect.innerHTML = opts;
+      }
+
+      if (elLobbyScenarioSelect.value !== currentId) {
+        elLobbyScenarioSelect.value = currentId;
+      }
     }
 
     if (elLobbyScenarioDesc) {
-      const display = scenarioDisplay(scenarios, currentId);
       elLobbyScenarioDesc.textContent = display.rulesSummary || display.description || "";
     }
   }
@@ -243,10 +317,11 @@ export function createLobbyOverlayController({
     const joinUrl = `${location.protocol}//${location.host}/phone?room=${encodeURIComponent(roomCode)}`;
 
     if (elLobbyRoomCode) elLobbyRoomCode.textContent = roomCode;
-    if (elLobbyJoinRoomCode) elLobbyJoinRoomCode.textContent = roomCode;
     if (elLobbyJoinUrl) {
       const displayUrl = `${location.host}/phone`;
       elLobbyJoinUrl.textContent = displayUrl;
+      // Scale URL to match room code width after text is set
+      requestAnimationFrame(scaleUrlToMatchRoomCode);
     }
 
     renderQr(joinUrl);
@@ -270,6 +345,14 @@ export function createLobbyOverlayController({
         const nextId = elLobbyThemeSelect.value;
         if (nextId) await onThemeChange(nextId);
       });
+    }
+
+    // Rescale URL on window resize
+    if (elLobbyRoomCode && elLobbyJoinUrl) {
+      resizeObserver = new ResizeObserver(() => {
+        if (isActive) scaleUrlToMatchRoomCode();
+      });
+      resizeObserver.observe(elLobbyRoomCode);
     }
   }
 

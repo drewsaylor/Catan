@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Catan (Phone)</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="stylesheet" href="/shared/styles.css" />
     <style>
       /* Press feedback animation for interactive elements */
@@ -39,7 +40,7 @@
   <body class="phone" data-view="join">
     <div class="wrap">
       <div class="topbar">
-        <h1>Catan LAN</h1>
+        <img class="phoneLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
         <div class="topPills">
           <div class="pill">
             <span class="k">Phone</span>
@@ -96,20 +97,14 @@
 
             <div id="hostControls" class="stack" style="display: none">
               <div class="field">
-                <label for="presetSelect">Preset</label>
-                <select id="presetSelect"></select>
+                <label for="scenarioSelect">Scenario</label>
+                <select id="scenarioSelect"></select>
               </div>
-              <div class="field">
-                <label for="themeSelect">Theme</label>
-                <select id="themeSelect"></select>
+              <div id="scenarioDescription" class="scenarioDescPanel">
+                <div id="scenarioDescText" class="muted"></div>
+                <div id="scenarioConfigPills" class="scenarioConfigPills"></div>
               </div>
-              <div class="field">
-                <label for="gameModeSelect">Mode</label>
-                <select id="gameModeSelect">
-                  <option value="classic">Classic</option>
-                  <option value="quick">Quick Game</option>
-                </select>
-              </div>
+
               <div class="field">
                 <label for="maxPlayersSelect">Max players</label>
                 <select id="maxPlayersSelect">
@@ -119,8 +114,9 @@
                   <option value="6">6</option>
                 </select>
               </div>
+
               <button class="btn" id="advancedBtn" aria-expanded="false" aria-controls="advancedPanel">
-                Advanced ▸
+                Advanced Settings
               </button>
               <div id="advancedPanel" class="stack" style="display: none">
                 <div class="field">
@@ -141,6 +137,11 @@
                   <div id="vpTargetHint" class="muted"></div>
                 </div>
 
+                <div class="field">
+                  <label for="presetSelect">Board Layout</label>
+                  <select id="presetSelect"></select>
+                </div>
+
                 <div class="field" id="boardSeedField" style="display: none">
                   <label for="boardSeedInput">Board seed (optional)</label>
                   <input id="boardSeedInput" autocomplete="off" placeholder="Blank = random" />
@@ -149,10 +150,15 @@
 
                 <div class="row" style="justify-content: space-between; align-items: center">
                   <div>
-                    <div style="font-weight: 700">Emotes</div>
-                    <div class="muted">Quick reactions during the game.</div>
+                    <div style="font-weight: 700">Event Deck</div>
+                    <div class="muted">Random events every few turns.</div>
                   </div>
-                  <button class="btn" id="emotesToggleBtn" aria-pressed="true">On</button>
+                  <button class="btn" id="eventDeckToggleBtn" aria-pressed="false">Off</button>
+                </div>
+
+                <div class="field">
+                  <label for="themeSelect">Theme</label>
+                  <select id="themeSelect"></select>
                 </div>
 
                 <div class="field">
@@ -167,6 +173,12 @@
                 <div id="hostPinErr" class="muted"></div>
               </div>
               <button class="btn primary" id="startBtn" disabled>Start game</button>
+
+              <!-- Hidden selects for legacy game mode - controlled by scenario -->
+              <select id="gameModeSelect" style="display: none">
+                <option value="classic">Classic</option>
+                <option value="quick">Quick Game</option>
+              </select>
             </div>
 
             <div class="spacer"></div>
@@ -180,6 +192,7 @@
                 <span id="vpLabel" class="v">0/10</span>
               </div>
               <span id="winnerTag" class="tag good" style="display: none">Winner</span>
+              <button class="btn icon" id="helpBtn" aria-label="Help">?</button>
             </div>
 
             <div id="eventBanner" class="stateBanner good" style="display: none" aria-live="polite">
@@ -230,22 +243,8 @@
             </div>
 
             <div class="card primaryActionCard" id="primaryActionCard">
-              <div class="row primaryActionHeader">
-                <h2>Primary action</h2>
-                <button class="btn icon" id="helpBtn" aria-label="Help">?</button>
-              </div>
               <button class="btn primary" id="primaryBtn" aria-describedby="actionHint">…</button>
               <div id="actionHint" class="muted"></div>
-              <button class="btn" id="endTurnBtn" style="display: none">End turn</button>
-              <div
-                id="emoteStrip"
-                class="row"
-                style="justify-content: flex-start; gap: 8px; flex-wrap: wrap; margin-top: 10px; display: none"
-              >
-                <button class="btn" data-emote="nice" aria-label="Emote: Nice">Nice!</button>
-                <button class="btn" data-emote="ouch" aria-label="Emote: Ouch">Ouch</button>
-                <button class="btn" data-emote="gg" aria-label="Emote: GG">GG</button>
-              </div>
             </div>
 
             <div id="mainActions" style="display: none; gap: 10px; flex-wrap: wrap">
@@ -306,23 +305,26 @@
               <button class="btn tabBtn" data-tab="trade" role="tab" aria-selected="false">
                 Trade <span class="tabBadge" data-tab-badge="trade" style="display: none"></span>
               </button>
-              <button class="btn tabBtn" data-tab="more" role="tab" aria-selected="false">More</button>
+              <button class="btn tabBtn" data-tab="build" role="tab" aria-selected="false">Build</button>
             </div>
 
             <div class="tabPanel" data-tab-panel="board" role="tabpanel">
               <div class="boardShell" id="boardShell">
-                <div class="row" style="align-items: center">
-                  <div class="pill">
-                    <span class="k">Board</span>
-                    <span class="v">Pan/zoom</span>
-                  </div>
-                  <div style="display: flex; gap: 8px; align-items: center">
-                    <button class="btn" id="boardResetBtn">Reset</button>
-                    <button class="btn" id="boardFullscreenBtn">Full screen</button>
-                  </div>
-                </div>
                 <div id="boardFrame" class="boardFrame">
                   <div id="board" class="boardMount"></div>
+                  <div class="boardOverlayControls">
+                    <button class="btn icon boardOverlayBtn" id="boardResetBtn" aria-label="Reset view">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                      </svg>
+                    </button>
+                    <button class="btn icon boardOverlayBtn" id="boardFullscreenBtn" aria-label="Fullscreen">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -341,25 +343,25 @@
                   <div class="field">
                     <label>Give</label>
                     <div class="tradeGrid">
-                      <div class="field">
+                      <div class="field tradeGiveField" data-resource="wood">
                         <label for="tradeGiveWood">Wood</label>
-                        <input id="tradeGiveWood" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeGiveWood"><option value="0">0</option></select>
                       </div>
-                      <div class="field">
+                      <div class="field tradeGiveField" data-resource="brick">
                         <label for="tradeGiveBrick">Brick</label>
-                        <input id="tradeGiveBrick" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeGiveBrick"><option value="0">0</option></select>
                       </div>
-                      <div class="field">
+                      <div class="field tradeGiveField" data-resource="sheep">
                         <label for="tradeGiveSheep">Sheep</label>
-                        <input id="tradeGiveSheep" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeGiveSheep"><option value="0">0</option></select>
                       </div>
-                      <div class="field">
+                      <div class="field tradeGiveField" data-resource="wheat">
                         <label for="tradeGiveWheat">Wheat</label>
-                        <input id="tradeGiveWheat" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeGiveWheat"><option value="0">0</option></select>
                       </div>
-                      <div class="field">
+                      <div class="field tradeGiveField" data-resource="ore">
                         <label for="tradeGiveOre">Ore</label>
-                        <input id="tradeGiveOre" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeGiveOre"><option value="0">0</option></select>
                       </div>
                     </div>
                   </div>
@@ -369,23 +371,23 @@
                     <div class="tradeGrid">
                       <div class="field">
                         <label for="tradeWantWood">Wood</label>
-                        <input id="tradeWantWood" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeWantWood"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
                       </div>
                       <div class="field">
                         <label for="tradeWantBrick">Brick</label>
-                        <input id="tradeWantBrick" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeWantBrick"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
                       </div>
                       <div class="field">
                         <label for="tradeWantSheep">Sheep</label>
-                        <input id="tradeWantSheep" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeWantSheep"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
                       </div>
                       <div class="field">
                         <label for="tradeWantWheat">Wheat</label>
-                        <input id="tradeWantWheat" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeWantWheat"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
                       </div>
                       <div class="field">
                         <label for="tradeWantOre">Ore</label>
-                        <input id="tradeWantOre" inputmode="numeric" type="number" min="0" value="0" />
+                        <select id="tradeWantOre"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
                       </div>
                     </div>
                   </div>
@@ -440,16 +442,53 @@
               </div>
             </div>
 
-            <div class="tabPanel" data-tab-panel="more" role="tabpanel" hidden>
+            <div class="tabPanel" data-tab-panel="build" role="tabpanel" hidden>
+              <div class="card" style="padding: 12px" id="buildCard">
+                <h2 style="margin: 0 0 10px 0">Build</h2>
+                <div id="buildHint" class="muted" style="margin-bottom: 10px">Spend resources to expand your empire.</div>
+
+                <div class="buildGrid" id="buildGrid">
+                  <button class="btn buildBtn" id="buildTabRoadBtn" disabled>
+                    <img src="/shared/icons/building-road.png" alt="" class="buildBtnIcon" />
+                    <span class="buildBtnLabel">Road</span>
+                    <span class="buildBtnCost">
+                      <img src="/shared/icons/wood.png" alt="Wood" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/brick.png" alt="Brick" class="buildCostIcon" /><span>1</span>
+                    </span>
+                  </button>
+                  <button class="btn buildBtn" id="buildTabSettlementBtn" disabled>
+                    <img src="/shared/icons/building-settlement.png" alt="" class="buildBtnIcon" />
+                    <span class="buildBtnLabel">Settlement</span>
+                    <span class="buildBtnCost">
+                      <img src="/shared/icons/wood.png" alt="Wood" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/brick.png" alt="Brick" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/sheep.png" alt="Sheep" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/wheat.png" alt="Wheat" class="buildCostIcon" /><span>1</span>
+                    </span>
+                  </button>
+                  <button class="btn buildBtn" id="buildTabCityBtn" disabled>
+                    <img src="/shared/icons/building-city.png" alt="" class="buildBtnIcon" />
+                    <span class="buildBtnLabel">City</span>
+                    <span class="buildBtnCost">
+                      <img src="/shared/icons/wheat.png" alt="Wheat" class="buildCostIcon" /><span>2</span>
+                      <img src="/shared/icons/ore.png" alt="Ore" class="buildCostIcon" /><span>3</span>
+                    </span>
+                  </button>
+                  <button class="btn buildBtn" id="buildTabDevCardBtn" disabled>
+                    <img src="/shared/icons/dev-card-back.png" alt="" class="buildBtnIcon" />
+                    <span class="buildBtnLabel">Dev Card</span>
+                    <span class="buildBtnCost">
+                      <img src="/shared/icons/sheep.png" alt="Sheep" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/wheat.png" alt="Wheat" class="buildCostIcon" /><span>1</span>
+                      <img src="/shared/icons/ore.png" alt="Ore" class="buildCostIcon" /><span>1</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               <div class="card" style="padding: 12px" id="devCardsCard">
                 <h2 style="margin: 0 0 10px 0">Dev cards</h2>
                 <div id="devCardsHint" class="muted" style="margin-bottom: 10px"></div>
-
-                <div class="row" style="justify-content: flex-start; gap: 10px; flex-wrap: wrap">
-                  <button class="btn primary" id="devBuyBtn" disabled>Buy dev card</button>
-                  <span class="tag" id="devDeckTag">Deck: —</span>
-                  <span class="tag" id="devPlayLimitTag" style="display: none">1/turn</span>
-                </div>
 
                 <div id="devCardsInHand" class="stack" style="margin-top: 10px"></div>
                 <div id="devCardsNew" class="stack"></div>
@@ -502,12 +541,12 @@
                   <span class="tag" id="devKnightsTag">Knights: —</span>
                   <span class="tag" id="devLargestArmyTag">Largest Army: —</span>
                   <span class="tag" id="devHiddenVpTag">Hidden VP: —</span>
+                  <span class="tag" id="devDeckTag">Deck: —</span>
+                  <span class="tag" id="devPlayLimitTag" style="display: none">1/turn</span>
                 </div>
 
                 <div id="devCardsErr" class="muted"></div>
               </div>
-
-              <div class="log" id="log"></div>
             </div>
           </div>
         </div>
@@ -527,6 +566,87 @@
       <div class="connectionOverlayCard">
         <div id="connectionTitle" class="connectionOverlayTitle">Rejoining…</div>
         <div id="connectionHint" class="connectionOverlayHint">Hold tight — your seat is saved.</div>
+      </div>
+    </div>
+
+    <div id="buildFlowOverlay" class="buildFlowOverlay" style="display: none">
+      <div class="buildFlowContent">
+        <div class="buildFlowHeader">
+          <span id="buildFlowTitle" class="buildFlowTitle">Place Road</span>
+          <button class="btn danger" id="buildFlowCancelBtn">Cancel</button>
+        </div>
+        <div id="buildFlowBoard" class="buildFlowBoard">
+          <div id="buildFlowBoardMount" class="boardMount"></div>
+        </div>
+        <div id="buildFlowHint" class="buildFlowHint muted">Tap a highlighted location</div>
+      </div>
+    </div>
+
+    <div id="discardModal" class="discardModal" style="display: none">
+      <div class="discardModalContent">
+        <h2 class="discardModalTitle">Discard Cards</h2>
+        <div id="discardModalHint" class="discardModalHint muted">A 7 was rolled. Discard half your cards.</div>
+
+        <div class="discardModalResources" id="discardModalResources">
+          <div class="discardResRow" data-resource="wood">
+            <img class="discardResIcon" src="/shared/icons/wood.png" alt="Wood" />
+            <span class="discardResName">Wood</span>
+            <span class="discardResHave" id="discardModalWoodHave">0</span>
+            <div class="discardResInput">
+              <button class="btn icon discardMinusBtn" data-resource="wood" aria-label="Decrease wood">−</button>
+              <span class="discardResValue" id="discardModalWoodValue">0</span>
+              <button class="btn icon discardPlusBtn" data-resource="wood" aria-label="Increase wood">+</button>
+            </div>
+          </div>
+          <div class="discardResRow" data-resource="brick">
+            <img class="discardResIcon" src="/shared/icons/brick.png" alt="Brick" />
+            <span class="discardResName">Brick</span>
+            <span class="discardResHave" id="discardModalBrickHave">0</span>
+            <div class="discardResInput">
+              <button class="btn icon discardMinusBtn" data-resource="brick" aria-label="Decrease brick">−</button>
+              <span class="discardResValue" id="discardModalBrickValue">0</span>
+              <button class="btn icon discardPlusBtn" data-resource="brick" aria-label="Increase brick">+</button>
+            </div>
+          </div>
+          <div class="discardResRow" data-resource="sheep">
+            <img class="discardResIcon" src="/shared/icons/sheep.png" alt="Sheep" />
+            <span class="discardResName">Sheep</span>
+            <span class="discardResHave" id="discardModalSheepHave">0</span>
+            <div class="discardResInput">
+              <button class="btn icon discardMinusBtn" data-resource="sheep" aria-label="Decrease sheep">−</button>
+              <span class="discardResValue" id="discardModalSheepValue">0</span>
+              <button class="btn icon discardPlusBtn" data-resource="sheep" aria-label="Increase sheep">+</button>
+            </div>
+          </div>
+          <div class="discardResRow" data-resource="wheat">
+            <img class="discardResIcon" src="/shared/icons/wheat.png" alt="Wheat" />
+            <span class="discardResName">Wheat</span>
+            <span class="discardResHave" id="discardModalWheatHave">0</span>
+            <div class="discardResInput">
+              <button class="btn icon discardMinusBtn" data-resource="wheat" aria-label="Decrease wheat">−</button>
+              <span class="discardResValue" id="discardModalWheatValue">0</span>
+              <button class="btn icon discardPlusBtn" data-resource="wheat" aria-label="Increase wheat">+</button>
+            </div>
+          </div>
+          <div class="discardResRow" data-resource="ore">
+            <img class="discardResIcon" src="/shared/icons/ore.png" alt="Ore" />
+            <span class="discardResName">Ore</span>
+            <span class="discardResHave" id="discardModalOreHave">0</span>
+            <div class="discardResInput">
+              <button class="btn icon discardMinusBtn" data-resource="ore" aria-label="Decrease ore">−</button>
+              <span class="discardResValue" id="discardModalOreValue">0</span>
+              <button class="btn icon discardPlusBtn" data-resource="ore" aria-label="Increase ore">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="discardModalFooter">
+          <div class="discardModalProgress">
+            <span id="discardModalSelected">0</span> / <span id="discardModalRequired">0</span> selected
+          </div>
+          <button class="btn primary" id="discardModalSubmitBtn" disabled>Submit Discard</button>
+        </div>
+        <div id="discardModalErr" class="muted" style="color: var(--bad); margin-top: 8px"></div>
       </div>
     </div>
 
@@ -580,14 +700,6 @@
             </button>
           </div>
 
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">Board renderer</div>
-              <div class="muted" id="boardRendererHint">2D is safest • 3D is beta.</div>
-            </div>
-            <button class="btn" id="boardRendererBtn" aria-pressed="false" aria-label="Board renderer">2D</button>
-          </div>
-
           <div class="field">
             <label for="sfxVolume">SFX volume</label>
             <input id="sfxVolume" type="range" min="0" max="100" value="90" />
@@ -599,7 +711,9 @@
           </div>
 
           <div class="spacer"></div>
-          <button class="btn" id="ruleBookBtn">Rule Book</button>
+          <div style="font-weight: 700">How to Play</div>
+          <div class="muted" style="margin-bottom: 10px">New to Catan? Learn the basics.</div>
+          <button class="btn" id="ruleBookBtn" style="width: 100%">Rule Book</button>
         </div>
       </div>
     </div>
@@ -874,19 +988,36 @@
     </div>
 
     <div id="notifyBanner" class="notifyBanner" aria-live="polite" aria-atomic="true">
-      <div id="notifyTitle" class="notifyTitle"></div>
-      <div id="notifyHint" class="notifyHint"></div>
+      <div class="notifyContent">
+        <div id="notifyTitle" class="notifyTitle"></div>
+        <div id="notifyHint" class="notifyHint"></div>
+      </div>
+      <button id="notifyActionBtn" class="btn notifyActionBtn" style="display: none"></button>
+      <button id="notifyDismissBtn" class="notifyDismissBtn" aria-label="Dismiss">&times;</button>
     </div>
 
     <div id="hintContainer" class="hintContainer" aria-live="polite" aria-atomic="true"></div>
 
-    <button class="howToPlayBtn" id="howToPlayBtn" aria-label="How to play" type="button">
+    <button class="logBtn" id="logBtn" aria-label="Game log" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <path d="M12 17h.01" />
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <line x1="10" y1="9" x2="8" y2="9" />
       </svg>
     </button>
+
+    <div id="logBackdrop" class="modalBackdrop" style="display: none">
+      <div class="card modalPanel logModal" role="dialog" aria-modal="true" aria-label="Game Log">
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h2 style="margin: 0">Game Log</h2>
+          <button class="btn" id="logCloseBtn">Close</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="log logModalContent" id="logModal"></div>
+      </div>
+    </div>
 
     <script src="/shared/hints.js"></script>
     <script type="module" src="/phone/phone.js"></script>
