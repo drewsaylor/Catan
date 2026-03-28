@@ -434,7 +434,7 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
       9, 3, 4, 5, 6,
       8, 10, 8, 3, 12, 9,
       5, 11, 2, null, 10, 4, 3,
-      12, 9, 11, 2, 10, 5,
+      8, 9, 11, 2, 10, 5,
       3, 4, null, 9, 11,
       5, 11, 4, 12
     ];
@@ -484,7 +484,7 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
       4, 11, 3, 9, 2, 12, 5,
       10, 4, 11, 3, 9, 10,
       11, 4, 3, null, 5,
-      9, 2, 9, 9
+      8, 2, 9, 9
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [5, 31]) };
   }
@@ -506,7 +506,7 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
       9, 4, 10, 6, 12,
       8, 3, 8, 5, 9, 4,
       10, null, 12, 6, 11, null, 2,
-      3, 5, 9, 4, 10, 12,
+      3, 5, 9, 4, 10, 11,
       11, 2, 3, 5, 9,
       4, 10, 12, 11,
     ];
