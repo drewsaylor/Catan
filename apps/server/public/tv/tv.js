@@ -72,6 +72,7 @@ const elModeName = qs("#modeName");
 const elThemeName = qs("#themeName");
 const elPlayerCount = qs("#playerCount");
 const elPlayers = qs("#players");
+const elPlayerBar = qs("#playerBar");
 const elBoard = qs("#board");
 const elSideTitle = qs("#sideTitle");
 const elJoinInfo = qs("#joinInfo");
@@ -608,6 +609,58 @@ function playerRow(p, {
       ${right}
     </div>
   `;
+}
+
+function cssColorToRgb(color) {
+  const map = {
+    red: "192,57,43", blue: "41,128,185", white: "236,240,241",
+    orange: "230,126,34", green: "39,174,96", brown: "142,109,71"
+  };
+  return map[color] || "255,255,255";
+}
+
+function playerBarCard(p, {
+  currentPlayerId,
+  pointsByPlayerId,
+  victoryPointsToWin,
+  winnerPlayerId,
+  knightsByPlayerId,
+  largestArmyPlayerId,
+  longestRoadPlayerId
+}) {
+  const isTurn = currentPlayerId && p.playerId === currentPlayerId && !winnerPlayerId;
+  const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
+  const cls = ["playerBarCard"];
+  if (isTurn) cls.push("turn");
+  if (!p.connected) cls.push("disconnected");
+
+  const points = Math.max(0, Math.floor(pointsByPlayerId?.[p.playerId] ?? 0));
+  const target = Math.max(0, Math.floor(victoryPointsToWin ?? 0));
+  const knights = knightsByPlayerId?.[p.playerId] ?? 0;
+  const hasLargestArmy = p.playerId === largestArmyPlayerId;
+  const hasLongestRoad = p.playerId === longestRoadPlayerId;
+  const isWinner = winnerPlayerId === p.playerId;
+
+  const parts = [];
+  if (target > 0) parts.push(`${points}/${target} VP`);
+  else parts.push(`${points} VP`);
+  if (knights > 0) parts.push(`\u2694 ${knights}`);
+  if (hasLargestArmy) parts.push("\uD83D\uDEE1\uFE0F");
+  if (hasLongestRoad) parts.push("\uD83D\uDEE4\uFE0F");
+  if (isWinner) parts.push("\uD83C\uDFC6");
+
+  const bgStyle = isTurn
+    ? `background:rgba(${cssColorToRgb(p.color)},0.15);`
+    : "";
+
+  return `<div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="${bgStyle}">
+    <span class="barDot" style="background:${dotColor};"></span>
+    <div class="barInfo">
+      <div class="barName">${escapeHtml(p.name)}</div>
+      <div class="barMeta">${escapeHtml(parts.join(" \u00B7 "))}</div>
+    </div>
+    <span class="turnBadge">Turn</span>
+  </div>`;
 }
 
 function escapeHtml(s) {
@@ -1166,7 +1219,9 @@ async function runBeat(beat) {
     if (beat?.expected === "ROLL_DICE") {
       show.spotlightElement(elDiceBox, { tone: "warn", pad: 14, durationMs: d(900), pulse: true, shade: 0.36 });
     } else {
-      const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) || null;
+      const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
+        || elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
+        || null;
       show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(900), pulse: false, shade: 0.32 });
     }
 
@@ -1189,7 +1244,9 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: d(1150)
     });
-    const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) || null;
+    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
+      || elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
+      || null;
     show.spotlightElement(rowEl, { tone: "info", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
     return wait(640);
   }
@@ -1255,7 +1312,8 @@ async function runBeat(beat) {
         tone: "warn",
         durationMs: d(1500)
       });
-      show.spotlightElement(elPlayers, { tone: "warn", pad: 12, durationMs: d(850), pulse: false, shade: 0.34 });
+      const spotlightTarget = (lastRoomState?.players?.length >= 5 && elPlayerBar) ? elPlayerBar : elPlayers;
+      show.spotlightElement(spotlightTarget, { tone: "warn", pad: 12, durationMs: d(850), pulse: false, shade: 0.34 });
       return wait(720);
     }
 
@@ -1328,7 +1386,9 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: didSteal ? d(1400) : d(1300)
     });
-    const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`) || null;
+    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`)
+      || elPlayers?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`)
+      || null;
     show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
     return wait(700);
   }
@@ -1450,7 +1510,9 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: d(2000)
     });
-    const rowEl = elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) || null;
+    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`)
+      || elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`)
+      || null;
     show.spotlightElement(rowEl, { tone: "good", pad: 10, durationMs: d(1400), pulse: false, shade: 0.32 });
     return wait(1100);
   }
@@ -2825,6 +2887,22 @@ function render(room, prevRoom) {
       )
       .join("");
     lastPlayersRenderKey = nextPlayersKey;
+  }
+
+  if (elPlayerBar && room.players.length >= 5) {
+    elPlayerBar.innerHTML = room.players
+      .map((p) =>
+        playerBarCard(p, {
+          currentPlayerId,
+          pointsByPlayerId,
+          victoryPointsToWin,
+          winnerPlayerId,
+          knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
+          largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
+          longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
+        })
+      )
+      .join("");
   }
 
   if (!room.game) {
