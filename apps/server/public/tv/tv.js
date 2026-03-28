@@ -658,13 +658,13 @@ function playerBarCard(
   const hasLongestRoad = p.playerId === longestRoadPlayerId;
   const isWinner = winnerPlayerId === p.playerId;
 
-  const parts = [];
-  if (target > 0) parts.push(`${points}/${target} VP`);
-  else parts.push(`${points} VP`);
-  if (knights > 0) parts.push(`\u2694 ${knights}`);
-  if (hasLargestArmy) parts.push("\uD83D\uDEE1\uFE0F");
-  if (hasLongestRoad) parts.push("\uD83D\uDEE4\uFE0F");
-  if (isWinner) parts.push("\uD83C\uDFC6");
+  const vpText = target > 0 ? `${points}/${target} VP` : `${points} VP`;
+
+  const badgeHtml = [];
+  if (knights > 0) badgeHtml.push(`<span class="barBadge barKnights">\u2694\uFE0F ${knights}</span>`);
+  if (hasLargestArmy) badgeHtml.push(`<span class="barBadge barAward">\uD83D\uDEE1\uFE0F Army</span>`);
+  if (hasLongestRoad) badgeHtml.push(`<span class="barBadge barAward">\uD83D\uDEE4\uFE0F Road</span>`);
+  if (isWinner) badgeHtml.push(`<span class="barBadge barWinner">\uD83C\uDFC6 Winner</span>`);
 
   const bgStyle = isTurn ? `background:rgba(${cssColorToRgb(p.color)},0.15);` : "";
 
@@ -672,8 +672,9 @@ function playerBarCard(
     <span class="barDot" style="background:${dotColor};"></span>
     <div class="barInfo">
       <div class="barName">${escapeHtml(p.name)}</div>
-      <div class="barMeta">${escapeHtml(parts.join(" \u00B7 "))}</div>
+      <div class="barVP">${escapeHtml(vpText)}</div>
     </div>
+    ${badgeHtml.length > 0 ? `<div class="barBadges">${badgeHtml.join("")}</div>` : ""}
     <span class="turnBadge">Turn</span>
   </div>`;
 }
@@ -1208,10 +1209,11 @@ function flashClass(el, cls, durationMs = 650) {
 async function runBeat(beat) {
   const reducedMotion = !!getSettings()?.reducedMotion;
   const pace = beat?.gameMode === "quick" ? 0.8 : 1;
+  const linger = 1.5;
   const d = (ms) => {
     const v = Number(ms);
     if (!Number.isFinite(v)) return 0;
-    return Math.max(0, Math.floor(v * pace));
+    return Math.max(0, Math.floor(v * pace * linger));
   };
   const wait = (ms) => sleep(reducedMotion ? Math.min(140, d(ms)) : d(ms));
 
@@ -2920,7 +2922,15 @@ function render(room, prevRoom) {
   }
 
   if (elPlayerBar && room.players.length >= 5) {
-    elPlayerBar.innerHTML = room.players
+    const turnOrder = room.game?.turnOrder || [];
+    const sortedPlayers = turnOrder.length > 0
+      ? [...room.players].sort((a, b) => {
+          const ai = turnOrder.indexOf(a.playerId);
+          const bi = turnOrder.indexOf(b.playerId);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        })
+      : room.players;
+    elPlayerBar.innerHTML = sortedPlayers
       .map((p) =>
         playerBarCard(p, {
           currentPlayerId,

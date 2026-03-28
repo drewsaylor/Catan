@@ -285,6 +285,7 @@ let rematchInFlight = false;
 let lastResourceCounts = null; // Track previous resource counts for notifications
 let notifyActionCallback = null; // Callback for notification action button
 let notifyTapCallback = null; // Callback for tapping notification body
+let pendingAction = null; // { label, execute } — awaiting confirm tap
 const momentQueue = createMomentQueue({ maxQueue: 18, maxSeen: 512, cooldownMsByKind: { trade_open: 1400 } });
 const HOST_ADVANCED_OPEN_KEY = "catan.phone.hostAdvancedOpen";
 let hostAdvancedOpen = localStorage.getItem(HOST_ADVANCED_OPEN_KEY) === "1";
@@ -1020,6 +1021,30 @@ function showNotify({ title, hint = "", tone = "info", durationMs = 3600, action
   elNotifyBanner.classList.add("show");
 
   notifyTimer = setTimeout(() => clearNotify(), Math.max(800, parseNonNegativeInt(durationMs)));
+}
+
+function requestPlacementConfirm(label, executeFn) {
+  pendingAction = { label, execute: executeFn };
+  playSfx("ui_bonk", { gain: 0.4 });
+  showNotify({
+    title: `${label} here?`,
+    hint: "Tap Confirm or pick a different spot.",
+    tone: "info",
+    durationMs: 12000,
+    action: {
+      label: "Confirm",
+      callback: () => {
+        const action = pendingAction;
+        pendingAction = null;
+        clearNotify();
+        if (action) action.execute();
+      }
+    }
+  });
+}
+
+function clearPendingAction() {
+  pendingAction = null;
 }
 
 function setActionHintOverrideText(text, { durationMs = 3800 } = {}) {
@@ -1873,6 +1898,7 @@ function connectStream() {
     const prev = lastRoomState;
     lastRoomState = payload.room;
     lastYouState = payload.you;
+    clearPendingAction();
     if (debugPerfEnabled && markPayloadSize && measureUtf8Bytes) markPayloadSize("phone.state", measureUtf8Bytes(raw));
     if (prev && payload.room?.roomCode !== prev.roomCode) {
       lastRenderedRoomState = null;
@@ -2696,84 +2722,100 @@ function renderBoardUi(room, prevRoom, me) {
       playSfx("ui_bonk", { gain: 0.75 });
       showNotify({ tone: "bad", title: "Not legal there.", hint, durationMs: 1500 });
     },
-    onVertexClick: async (vertexId) => {
+    onVertexClick: (vertexId) => {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
-      try {
-        if (expected === "PLACE_SETTLEMENT") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "PLACE_SETTLEMENT", vertexId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          return;
-        }
-        if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_settlement") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          mode = null;
-          return;
-        }
-        if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_city") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_CITY", vertexId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          mode = null;
-        }
-      } catch (e) {
-        showErrorToast(e);
+      if (expected === "PLACE_SETTLEMENT") {
+        requestPlacementConfirm("Place settlement", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "PLACE_SETTLEMENT", vertexId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+          } catch (e) { showErrorToast(e); }
+        });
+        return;
+      }
+      if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_settlement") {
+        requestPlacementConfirm("Build settlement", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            mode = null;
+          } catch (e) { showErrorToast(e); }
+        });
+        return;
+      }
+      if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_city") {
+        requestPlacementConfirm("Upgrade to city", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_CITY", vertexId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            mode = null;
+          } catch (e) { showErrorToast(e); }
+        });
       }
     },
-    onEdgeClick: async (edgeId) => {
+    onEdgeClick: (edgeId) => {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
-      try {
-        if (expected === "PLACE_ROAD") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "PLACE_ROAD", edgeId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          return;
-        }
-        if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          return;
-        }
-        if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_road") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_ROAD", edgeId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          mode = null;
-        }
-      } catch (e) {
-        showErrorToast(e);
+      if (expected === "PLACE_ROAD") {
+        requestPlacementConfirm("Place road", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "PLACE_ROAD", edgeId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+          } catch (e) { showErrorToast(e); }
+        });
+        return;
+      }
+      if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD") {
+        requestPlacementConfirm("Place road", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+          } catch (e) { showErrorToast(e); }
+        });
+        return;
+      }
+      if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_road") {
+        requestPlacementConfirm("Build road", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_ROAD", edgeId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            mode = null;
+          } catch (e) { showErrorToast(e); }
+        });
       }
     },
-    onHexClick: async (hexId) => {
+    onHexClick: (hexId) => {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
-      try {
-        if (expected === "MOVE_ROBBER") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "MOVE_ROBBER", hexId }
-          });
-          feedbackGood("ui_confirm", { gain: 0.8 });
-        }
-      } catch (e) {
-        showErrorToast(e);
+      if (expected === "MOVE_ROBBER") {
+        requestPlacementConfirm("Move robber", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "MOVE_ROBBER", hexId }
+            });
+            feedbackGood("ui_confirm", { gain: 0.8 });
+          } catch (e) { showErrorToast(e); }
+        });
       }
     }
   });
@@ -3413,54 +3455,62 @@ function renderBuildFlowBoard() {
     selectableVertexIds,
     captureAllEdges: selectableEdgeIds.length > 0,
     captureAllVertices: selectableVertexIds.length > 0,
-    onEdgeClick: async (edgeId) => {
+    onEdgeClick: (edgeId) => {
       if (!myTurn) return;
-      try {
-        if (buildFlowMode === "road") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_ROAD", edgeId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          closeBuildFlowOverlay({ success: true });
-        } else if (buildFlowMode === "road_building") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          // Check if road building is complete (placed 2 roads)
-          const expected = lastRoomState?.game?.hints?.expected;
-          if (expected !== "DEV_ROAD_BUILDING_PLACE_ROAD") {
+      if (buildFlowMode === "road") {
+        requestPlacementConfirm("Build road", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_ROAD", edgeId }
+            });
+            feedbackGood("build", { gain: 0.85 });
             closeBuildFlowOverlay({ success: true });
-          } else {
-            renderBuildFlowBoard();
-          }
-        }
-      } catch (e) {
-        showErrorToast(e);
+          } catch (e) { showErrorToast(e); }
+        });
+      } else if (buildFlowMode === "road_building") {
+        requestPlacementConfirm("Place road", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            const expected = lastRoomState?.game?.hints?.expected;
+            if (expected !== "DEV_ROAD_BUILDING_PLACE_ROAD") {
+              closeBuildFlowOverlay({ success: true });
+            } else {
+              renderBuildFlowBoard();
+            }
+          } catch (e) { showErrorToast(e); }
+        });
       }
     },
-    onVertexClick: async (vertexId) => {
+    onVertexClick: (vertexId) => {
       if (!myTurn) return;
-      try {
-        if (buildFlowMode === "settlement") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          closeBuildFlowOverlay({ success: true });
-        } else if (buildFlowMode === "city") {
-          await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-            method: "POST",
-            body: { playerId, type: "BUILD_CITY", vertexId }
-          });
-          feedbackGood("build", { gain: 0.85 });
-          closeBuildFlowOverlay({ success: true });
-        }
-      } catch (e) {
-        showErrorToast(e);
+      if (buildFlowMode === "settlement") {
+        requestPlacementConfirm("Build settlement", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            closeBuildFlowOverlay({ success: true });
+          } catch (e) { showErrorToast(e); }
+        });
+      } else if (buildFlowMode === "city") {
+        requestPlacementConfirm("Upgrade to city", async () => {
+          try {
+            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
+              method: "POST",
+              body: { playerId, type: "BUILD_CITY", vertexId }
+            });
+            feedbackGood("build", { gain: 0.85 });
+            closeBuildFlowOverlay({ success: true });
+          } catch (e) { showErrorToast(e); }
+        });
+      }
       }
     },
     onIllegalClick: ({ kind }) => {
@@ -3552,7 +3602,7 @@ async function submitDiscard() {
   try {
     await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
       method: "POST",
-      body: { playerId, type: "DISCARD_CARDS", cards: selected }
+      body: { playerId, type: "DISCARD_CARDS", counts: selected }
     });
     feedbackGood("ui_confirm", { gain: 0.8 });
     closeDiscardModal();
