@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { describe } from "node:test";
 import test from "node:test";
 
 import { createNewGame } from "./index.js";
-import { getPresetDefinition } from "./presets.js";
+import { buildRadiusData, getPresetDefinition } from "./presets.js";
 
 const STANDARD_COORDS_RADIUS_2 = [
   { q: 0, r: -2 },
@@ -117,4 +118,30 @@ test("createNewGame: stores boardSeed for random-balanced", () => {
   assert.equal(game.presetId, "random-balanced");
   assert.equal(game.boardSeed, "abc");
   assert.equal(game.board.hexes.length, 19);
+});
+
+describe("buildRadiusData", () => {
+  test("radius 2 produces 19 coords", () => {
+    const data = buildRadiusData(2);
+    assert.equal(data.coords.length, 19);
+  });
+
+  test("radius 3 produces 37 coords", () => {
+    const data = buildRadiusData(3);
+    assert.equal(data.coords.length, 37);
+  });
+
+  test("radius 3 has neighbor indices for all 37 hexes", () => {
+    const data = buildRadiusData(3);
+    assert.equal(data.neighborIndices.length, 37);
+    for (const neighbors of data.neighborIndices) {
+      assert.ok(neighbors.length >= 2 && neighbors.length <= 6);
+    }
+  });
+
+  test("radius 3 center hex is at correct index", () => {
+    const data = buildRadiusData(3);
+    const centerIdx = data.coords.findIndex(c => c.q === 0 && c.r === 0);
+    assert.ok(centerIdx >= 0);
+  });
 });

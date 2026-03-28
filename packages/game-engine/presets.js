@@ -7,6 +7,56 @@ export const PRESET_META = [
   { id: "random-balanced", name: "Random (Balanced-ish)" }
 ];
 
+export function buildRadiusData(radius) {
+  const coords = [];
+  for (let x = -radius; x <= radius; x += 1) {
+    for (let y = -radius; y <= radius; y += 1) {
+      const z = -x - y;
+      if (Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) <= radius) {
+        coords.push({ q: x, r: z });
+      }
+    }
+  }
+  coords.sort((a, b) => a.r - b.r || a.q - b.q);
+
+  const HEX_NEIGHBOR_DELTAS = [
+    { dq: 1, dr: 0 }, { dq: -1, dr: 0 },
+    { dq: 0, dr: 1 }, { dq: 0, dr: -1 },
+    { dq: 1, dr: -1 }, { dq: -1, dr: 1 }
+  ];
+
+  const indexByCoord = new Map(coords.map((c, idx) => [`${c.q},${c.r}`, idx]));
+
+  const neighborIndices = coords.map((c) => {
+    const list = [];
+    for (const d of HEX_NEIGHBOR_DELTAS) {
+      const n = indexByCoord.get(`${c.q + d.dq},${c.r + d.dr}`);
+      if (n != null) list.push(n);
+    }
+    list.sort((a, b) => a - b);
+    return list;
+  });
+
+  function cubeDistFromCenter({ q, r }) {
+    const x = q, z = r, y = -x - z;
+    return Math.max(Math.abs(x), Math.abs(y), Math.abs(z));
+  }
+
+  function isCornerHex(idx) {
+    const c = coords[idx];
+    if (!c) return false;
+    if (cubeDistFromCenter(c) !== radius) return false;
+    return c.q === 0 || c.r === 0 || c.q + c.r === 0;
+  }
+
+  return { coords, indexByCoord, neighborIndices, isCornerHex, cubeDistFromCenter, hexCount: coords.length };
+}
+
+const RADIUS_2_DATA = buildRadiusData(2);
+const STANDARD_COORDS_RADIUS_2 = RADIUS_2_DATA.coords;
+const INDEX_BY_COORD = RADIUS_2_DATA.indexByCoord;
+const HEX_NEIGHBOR_INDICES = RADIUS_2_DATA.neighborIndices;
+
 function withDesertAtCenter(resources, tokens) {
   // The board generator sorts hex coords such that the center hex is index 9 (radius 2).
   const desertIndex = 9;
@@ -18,49 +68,6 @@ function withDesertAtCenter(resources, tokens) {
   if (t[desertIndex] !== null) throw new Error("center token must be null");
   return { resources: r, tokens: t, desertIndex };
 }
-
-const STANDARD_COORDS_RADIUS_2 = [
-  { q: 0, r: -2 },
-  { q: 1, r: -2 },
-  { q: 2, r: -2 },
-  { q: -1, r: -1 },
-  { q: 0, r: -1 },
-  { q: 1, r: -1 },
-  { q: 2, r: -1 },
-  { q: -2, r: 0 },
-  { q: -1, r: 0 },
-  { q: 0, r: 0 },
-  { q: 1, r: 0 },
-  { q: 2, r: 0 },
-  { q: -2, r: 1 },
-  { q: -1, r: 1 },
-  { q: 0, r: 1 },
-  { q: 1, r: 1 },
-  { q: -2, r: 2 },
-  { q: -1, r: 2 },
-  { q: 0, r: 2 }
-];
-
-const HEX_NEIGHBOR_DELTAS = [
-  { dq: 1, dr: 0 },
-  { dq: -1, dr: 0 },
-  { dq: 0, dr: 1 },
-  { dq: 0, dr: -1 },
-  { dq: 1, dr: -1 },
-  { dq: -1, dr: 1 }
-];
-
-const INDEX_BY_COORD = new Map(STANDARD_COORDS_RADIUS_2.map((c, idx) => [`${c.q},${c.r}`, idx]));
-
-const HEX_NEIGHBOR_INDICES = STANDARD_COORDS_RADIUS_2.map((c) => {
-  const list = [];
-  for (const d of HEX_NEIGHBOR_DELTAS) {
-    const n = INDEX_BY_COORD.get(`${c.q + d.dq},${c.r + d.dr}`);
-    if (n != null) list.push(n);
-  }
-  list.sort((a, b) => a - b);
-  return list;
-});
 
 function hashSeedToUint32(seed) {
   const str = String(seed ?? "");
@@ -102,19 +109,12 @@ function shuffleWithRng(list, rng) {
   return a;
 }
 
-function cubeDistanceFromCenter({ q, r }) {
-  const x = q;
-  const z = r;
-  const y = -x - z;
-  return Math.max(Math.abs(x), Math.abs(y), Math.abs(z));
+function cubeDistanceFromCenter(coord) {
+  return RADIUS_2_DATA.cubeDistFromCenter(coord);
 }
 
 function isCornerHexIndex(idx) {
-  const c = STANDARD_COORDS_RADIUS_2[idx] ?? null;
-  if (!c) return false;
-  const dist = cubeDistanceFromCenter(c);
-  if (dist !== 2) return false;
-  return c.q === 0 || c.r === 0 || c.q + c.r === 0;
+  return RADIUS_2_DATA.isCornerHex(idx);
 }
 
 function chooseDesertIndex(rng) {
