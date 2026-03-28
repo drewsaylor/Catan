@@ -143,7 +143,8 @@ export function generateStandardBoard(presetDef, { radius = 2 } = {}) {
   for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
 
   // --- Ports ---
-  // Base-game style: 9 ports (4 generic 3:1 + 5 specific 2:1).
+  // Standard: 9 ports (4 generic 3:1 + 5 specific 2:1).
+  // Expanded (radius >= 3): 11 ports (6 generic 3:1 + 5 specific 2:1).
   // We place them on evenly spaced coastal edges, clockwise by angle.
   const edgeAdjHexIds = new Map();
   for (const hex of hexes) {
