@@ -543,16 +543,31 @@ export function createNewGame({
   boardSeed = null,
   variants = null
 }) {
+  const isExpanded = playerIds.length >= 5;
+  const radius = isExpanded ? 3 : 2;
+
   let normalizedBoardSeed = boardSeed == null ? null : String(boardSeed).trim();
-  if (presetId === "random-balanced") {
+
+  let resolvedPresetId = presetId;
+  if (isExpanded && presetId !== "random-balanced") {
+    const expandedId = `${presetId}-expanded`;
+    const expandedMeta = PRESET_META.find((p) => p.id === expandedId);
+    if (expandedMeta) {
+      resolvedPresetId = expandedId;
+    } else {
+      resolvedPresetId = "random-balanced";
+    }
+  }
+
+  if (resolvedPresetId === "random-balanced") {
     if (!normalizedBoardSeed) normalizedBoardSeed = crypto.randomBytes(8).toString("hex");
   } else {
     normalizedBoardSeed = null;
   }
 
-  const preset = getPresetDefinition(presetId, { seed: normalizedBoardSeed });
+  const preset = getPresetDefinition(resolvedPresetId, { seed: normalizedBoardSeed, radius });
   const settings = resolveGameSettings({ gameMode, houseRules });
-  const board = generateStandardBoard(preset);
+  const board = generateStandardBoard(preset, { radius });
   const robberHex = board.hexes.find((h) => h.resource === "desert")?.id ?? board.hexes[0]?.id ?? null;
   const turnOrder = [...playerIds];
   const placementOrder = [...turnOrder, ...[...turnOrder].reverse()];
