@@ -35,14 +35,26 @@ Each existing preset gets an expanded variant with a `-expanded` suffix:
 | `high-brick-wood` | `high-brick-wood` | `high-brick-wood-expanded` |
 | `random-balanced` | `random-balanced` | `random-balanced` (auto-detects radius) |
 
-**Expanded resource distribution (37 tiles):**
-- 6 wood, 5 brick, 6 sheep, 6 wheat, 5 ore, 2 desert
+**Expanded resource distribution (37 tiles, must sum to 37):**
+- 8 wood, 7 brick, 8 sheep, 8 wheat, 4 ore, 2 desert
 
-**Expanded number tokens (35 tokens, 2 deserts excluded):**
-- Standard 18 tokens + 17 additional: 2, 3, 3, 4, 4, 5, 5, 6, 8, 9, 9, 10, 10, 11, 11, 12 (plus one extra from the standard set distribution)
+**Expanded number tokens (35 tokens, 2 deserts get none):**
+- Full explicit list: 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 3, 4, 5, 9, 10, 11, 12
+- (Standard 18 tokens: 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12)
+- (Additional 17 tokens: 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 3, 4, 5, 9, 10, 11, 12)
 
 **Expanded ports (11 total):**
 - 6 generic 3:1 + 5 specific 2:1 (one per resource)
+
+### `presets.js` refactoring for radius 3
+
+The existing random-balanced logic is hardcoded for radius 2 (19 tiles). The following must be generalized to support both radii:
+- `STANDARD_COORDS_RADIUS_2` / `INDEX_BY_COORD` / `HEX_NEIGHBOR_INDICES` — create equivalent radius-3 versions or parameterize by radius
+- `withDesertAtCenter` — remove the `r.length !== 19` assertion; validate against the expected count for the given radius
+- `chooseDesertIndex` / `isCornerHexIndex` — parameterize to work with radius-3 coordinate lists
+- `tryAssignTokens` — generalize the 19-slot arrays and neighbor lookups to work with 37 slots
+
+Approach: create a `buildRadiusData(radius)` helper that generates coords, neighbor indices, and corner hex detection for any radius. The existing radius-2 data becomes `buildRadiusData(2)` and expanded uses `buildRadiusData(3)`. This avoids duplicating logic.
 
 ### `index.js`
 
@@ -73,7 +85,7 @@ When `data-player-count-bucket="5-6"`, the TV layout switches from 3-column to a
 - Trade offers and event cards overlay on the board area when active
 
 ### CSS structure
-- New rules under `body.tv[data-player-count-bucket="5-6"]` override the grid layout
+- New rules under `body.tv[data-player-count-bucket="5-6"]` replace the existing 5-6 player CSS (lines 452-531 of `tv.css` which style the sidebar player grid — these are superseded by the bottom bar approach)
 - `grid-template-columns` changes from `auto 1fr 1fr` to `1fr auto` (board + sidebar)
 - New `.playerBar` element added below the grid
 - The existing `#players` list is hidden; a new `#playerBar` container renders the horizontal cards
@@ -105,7 +117,7 @@ No phone layout changes needed:
 ## Section 5: Testing
 
 ### Unit tests
-- `board.test.js`: Verify radius 3 produces 37 hexes, correct vertex count (~96), correct edge count (~144), and 11 properly placed ports
+- `board.test.js`: Verify radius 3 produces 37 hexes, correct vertex count (~96), correct edge count (~132), and 11 properly placed ports
 - Preset tests: Each expanded preset has exactly 37 resources and 37 tokens with correct distribution
 - `random-balanced`: Expanded pools work with the adjacency constraint (no adjacent 6/8) at radius 3
 - `longest-road.js`: Verify longest road calculation works on the expanded graph
