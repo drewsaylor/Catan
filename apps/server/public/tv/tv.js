@@ -187,6 +187,7 @@ let lastLobbyScenarioOptionsKey = null;
 let lastLobbyThemeOptionsKey = null;
 let lastLobbyQrUrl = null;
 let lobbyPreviewBoard = null;
+let lobbyPreviewBoardRadius = null;
 
 /**
  * Hide .wrap when attract or lobby overlay is active.
@@ -944,6 +945,7 @@ async function createNewRoom() {
     lastLobbyThemeOptionsKey = null;
     lastLobbyQrUrl = null;
     lobbyPreviewBoard = null;
+    lobbyPreviewBoardRadius = null;
 
     history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
     connectStream();
@@ -2248,14 +2250,15 @@ initAttractMode();
 // =============================================================================
 
 /**
- * Create a sample board for the lobby preview based on scenario.
+ * Create a sample board for the lobby preview based on scenario and player count.
  * Uses the same pattern as createAttractSampleBoard but can be extended
  * for different scenarios in the future.
+ * @param {string} scenarioId - Current scenario identifier
+ * @param {number} [playerCount=0] - Number of players in the room
  */
-function createLobbyPreviewBoard(scenarioId) {
-  // For now, use the same board as attract mode
-  // This can be extended to show different layouts per scenario
-  return createAttractSampleBoard();
+function createLobbyPreviewBoard(scenarioId, playerCount = 0) {
+  const radius = playerCount >= 5 ? 3 : 2;
+  return createAttractSampleBoardModule(radius);
 }
 
 function showLobbyOverlay() {
@@ -2264,11 +2267,6 @@ function showLobbyOverlay() {
   updateWrapVisibility();
   elLobbyOverlay.style.display = "";
   elLobbyOverlay.classList.remove("hiding");
-
-  // Initialize preview board
-  if (!lobbyPreviewBoard) {
-    lobbyPreviewBoard = createLobbyPreviewBoard(null);
-  }
 }
 
 async function hideLobbyOverlay() {
@@ -2448,13 +2446,25 @@ function renderLobbyThemes(room) {
   elLobbyThemeSelect.disabled = !canChange;
 }
 
-function renderLobbyBoardPreview(scenarioId) {
+function renderLobbyBoardPreview(scenarioId, playerCount = 0) {
   if (!elLobbyBoardPreview) return;
+
+  // Determine required radius based on player count
+  const neededRadius = playerCount >= 5 ? 3 : 2;
+
+  // Invalidate cache if radius changed
+  if (lobbyPreviewBoardRadius !== neededRadius) {
+    lobbyPreviewBoard = null;
+    lobbyPreviewBoardRadius = neededRadius;
+  }
 
   // Create or reuse preview board
   if (!lobbyPreviewBoard) {
-    lobbyPreviewBoard = createLobbyPreviewBoard(scenarioId);
+    lobbyPreviewBoard = createLobbyPreviewBoard(scenarioId, playerCount);
   }
+
+  // Place robber on a desert hex: H18 for expanded, H9 for standard
+  const robberHexId = neededRadius >= 3 ? "H18" : "H9";
 
   try {
     renderBoard(elLobbyBoardPreview, lobbyPreviewBoard, {
@@ -2463,7 +2473,7 @@ function renderLobbyBoardPreview(scenarioId) {
       selectableVertexIds: [],
       selectableEdgeIds: [],
       selectableHexIds: [],
-      robberHexId: "H9"
+      robberHexId
     });
   } catch (err) {
     console.warn("[catan] Failed to render lobby board preview:", err);
@@ -2533,7 +2543,7 @@ function renderLobbyOverlay(room) {
 
   // Render board preview
   const { scenarioId } = scenarioMeta(room);
-  renderLobbyBoardPreview(scenarioId);
+  renderLobbyBoardPreview(scenarioId, room.players?.length || 0);
 
   // Update start status
   updateLobbyStartStatus(room);

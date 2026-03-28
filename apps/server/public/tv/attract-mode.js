@@ -14,10 +14,11 @@ const ATTRACT_TIP_INTERVAL_MS = 5500;
 
 /**
  * Create a sample board for attract mode preview.
+ * @param {number} [radius=2] - Board radius (2 = standard 19 hexes, 3 = expanded 37 hexes)
  * @returns {object} - Board data structure
  */
-export function createAttractSampleBoard() {
-  const resources = [
+export function createAttractSampleBoard(radius = 2) {
+  const standardResources = [
     "ore",
     "sheep",
     "wheat",
@@ -38,15 +39,39 @@ export function createAttractSampleBoard() {
     "wheat",
     "wood"
   ];
-  const tokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
+  const standardTokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
+
+  const expandedResources = [
+    "wheat", "wood", "ore", "brick",
+    "sheep", "wood", "wheat", "brick", "sheep",
+    "ore", "wheat", "sheep", "wood", "brick", "wood",
+    "sheep", "wheat", "wood", "desert", "sheep", "ore", "wheat",
+    "brick", "wood", "wheat", "sheep", "brick", "wood",
+    "sheep", "wheat", "desert", "brick", "ore",
+    "wood", "sheep", "wheat", "brick"
+  ];
+  const expandedTokens = [
+    6, 10, 6, 12,
+    9, 3, 4, 5, 6,
+    8, 10, 8, 3, 12, 9,
+    5, 11, 2, 0, 10, 4, 3,
+    8, 9, 11, 2, 10, 5,
+    3, 4, 0, 9, 11,
+    5, 11, 4, 12
+  ];
+
+  const useExpanded = radius >= 3;
+  const resources = useExpanded ? expandedResources : standardResources;
+  const tokens = useExpanded ? expandedTokens : standardTokens;
+  const effectiveRadius = useExpanded ? 3 : 2;
 
   const SQRT3 = Math.sqrt(3);
   const HEX_SIZE = 100;
   const coords = [];
-  for (let x = -2; x <= 2; x++) {
-    for (let y = -2; y <= 2; y++) {
+  for (let x = -effectiveRadius; x <= effectiveRadius; x++) {
+    for (let y = -effectiveRadius; y <= effectiveRadius; y++) {
       const z = -x - y;
-      if (Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) <= 2) {
+      if (Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) <= effectiveRadius) {
         coords.push({ q: x, r: z });
       }
     }
@@ -151,7 +176,7 @@ export function createAttractSampleBoard() {
   for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
 
   return {
-    layout: "standard-radius-2",
+    layout: useExpanded ? "expanded-radius-3" : "standard-radius-2",
     hexSize: HEX_SIZE,
     hexes,
     vertices,

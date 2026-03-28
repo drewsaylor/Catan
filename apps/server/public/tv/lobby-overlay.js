@@ -70,6 +70,7 @@ export function createLobbyOverlayController({
   let lastScenarioOptionsKey = null;
   let lastThemeOptionsKey = null;
   let previewBoard = null;
+  let previewBoardRadius = null;
   let resizeObserver = null;
 
   /**
@@ -261,13 +262,25 @@ export function createLobbyOverlayController({
     }
   }
 
-  function renderBoardPreview(scenarioId) {
+  function renderBoardPreview(scenarioId, playerCount = 0) {
     if (!elLobbyBoardPreview) return;
+
+    // Determine required radius based on player count
+    const neededRadius = playerCount >= 5 ? 3 : 2;
+
+    // Invalidate cache if radius changed
+    if (previewBoardRadius !== neededRadius) {
+      previewBoard = null;
+      previewBoardRadius = neededRadius;
+    }
 
     // Create a sample board for preview
     if (!previewBoard) {
-      previewBoard = createAttractSampleBoard();
+      previewBoard = createAttractSampleBoard(neededRadius);
     }
+
+    // Place robber on a desert hex: H18 for expanded, H9 for standard
+    const robberHexId = neededRadius >= 3 ? "H18" : "H9";
 
     try {
       renderBoard(elLobbyBoardPreview, previewBoard, {
@@ -276,7 +289,7 @@ export function createLobbyOverlayController({
         selectableVertexIds: [],
         selectableEdgeIds: [],
         selectableHexIds: [],
-        robberHexId: "H9"
+        robberHexId
       });
     } catch (err) {
       console.warn("[catan] Failed to render lobby board preview:", err);
@@ -328,7 +341,7 @@ export function createLobbyOverlayController({
     renderPlayers(room.players);
     renderScenarios(room);
     renderThemes(room);
-    renderBoardPreview(room.settings?.scenarioId);
+    renderBoardPreview(room.settings?.scenarioId, room.players?.length || 0);
     updateStartStatus(room);
   }
 
