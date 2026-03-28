@@ -53,16 +53,38 @@ export function buildRadiusData(radius) {
 }
 
 const RADIUS_2_DATA = buildRadiusData(2);
-const STANDARD_COORDS_RADIUS_2 = RADIUS_2_DATA.coords;
-const HEX_NEIGHBOR_INDICES = RADIUS_2_DATA.neighborIndices;
 
-function withDesertAtCenter(resources, tokens) {
+const STANDARD_RESOURCE_BAG = [
+  ...Array(4).fill("wood"),
+  ...Array(3).fill("brick"),
+  ...Array(4).fill("sheep"),
+  ...Array(4).fill("wheat"),
+  ...Array(3).fill("ore")
+]; // 18 land tiles + 1 desert = 19 total
+
+const STANDARD_TOKEN_BAG = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
+
+const EXPANDED_RESOURCE_BAG = [
+  ...Array(8).fill("wood"),
+  ...Array(7).fill("brick"),
+  ...Array(8).fill("sheep"),
+  ...Array(8).fill("wheat"),
+  ...Array(4).fill("ore")
+]; // 35 land tiles + 2 deserts = 37 total
+
+const EXPANDED_TOKEN_BAG = [
+  2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8,
+  9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12,
+  3, 4, 5, 9, 10, 11, 12
+];
+
+function withDesertAtCenter(resources, tokens, expectedCount = 19) {
   // The board generator sorts hex coords such that the center hex is index 9 (radius 2).
   const desertIndex = 9;
   const r = [...resources];
   const t = [...tokens];
-  if (r.length !== 19) throw new Error("resources must be length 19");
-  if (t.length !== 19) throw new Error("tokens must be length 19");
+  if (r.length !== expectedCount) throw new Error(`resources must be length ${expectedCount}`);
+  if (t.length !== expectedCount) throw new Error(`tokens must be length ${expectedCount}`);
   if (r[desertIndex] !== "desert") throw new Error("center hex must be desert");
   if (t[desertIndex] !== null) throw new Error("center token must be null");
   return { resources: r, tokens: t, desertIndex };
@@ -108,47 +130,55 @@ function shuffleWithRng(list, rng) {
   return a;
 }
 
-function cubeDistanceFromCenter(coord) {
-  return RADIUS_2_DATA.cubeDistFromCenter(coord);
-}
+function chooseDesertIndices(rng, radiusData, count) {
+  const { coords, isCornerHex, cubeDistFromCenter } = radiusData;
+  const chosen = [];
 
-function isCornerHexIndex(idx) {
-  return RADIUS_2_DATA.isCornerHex(idx);
-}
-
-function chooseDesertIndex(rng) {
-  const candidates = STANDARD_COORDS_RADIUS_2.map((c, idx) => ({ c, idx })).filter(({ idx }) => !isCornerHexIndex(idx));
-  const weights = candidates.map(({ c }) => {
-    const dist = cubeDistanceFromCenter(c);
-    if (dist === 0) return 3;
-    if (dist === 1) return 2;
-    return 1;
-  });
-  const total = weights.reduce((sum, w) => sum + w, 0);
-  if (total <= 0) return 9;
-  let roll = rng() * total;
-  for (let i = 0; i < candidates.length; i += 1) {
-    roll -= weights[i];
-    if (roll <= 0) return candidates[i].idx;
+  for (let d = 0; d < count; d += 1) {
+    const candidates = coords
+      .map((c, idx) => ({ c, idx }))
+      .filter(({ idx }) => !isCornerHex(idx) && !chosen.includes(idx));
+    const weights = candidates.map(({ c }) => {
+      const dist = cubeDistFromCenter(c);
+      if (dist === 0) return 3;
+      if (dist === 1) return 2;
+      return 1;
+    });
+    const total = weights.reduce((sum, w) => sum + w, 0);
+    if (total <= 0) {
+      chosen.push(coords.findIndex(c => c.q === 0 && c.r === 0));
+      continue;
+    }
+    let roll = rng() * total;
+    for (let i = 0; i < candidates.length; i += 1) {
+      roll -= weights[i];
+      if (roll <= 0) {
+        chosen.push(candidates[i].idx);
+        break;
+      }
+    }
+    if (chosen.length <= d) {
+      chosen.push(candidates[candidates.length - 1].idx);
+    }
   }
-  return candidates[candidates.length - 1].idx;
+
+  return chosen;
 }
 
 function tokenHasHotNumber(token) {
   return token === 6 || token === 8;
 }
 
-function tryAssignTokens({ rng, desertIndex }) {
-  const tokens = Array(19).fill(null);
-  tokens[desertIndex] = null;
+function tryAssignTokens({ rng, desertIndices, hexCount, neighborIndices, tokenBag }) {
+  const tokens = Array(hexCount).fill(null);
+  const desertSet = new Set(desertIndices);
 
   const indices = [];
-  for (let i = 0; i < 19; i += 1) {
-    if (i === desertIndex) continue;
+  for (let i = 0; i < hexCount; i += 1) {
+    if (desertSet.has(i)) continue;
     indices.push(i);
   }
 
-  const tokenBag = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
   const hot = shuffleWithRng(
     tokenBag.filter((t) => tokenHasHotNumber(t)),
     rng
@@ -161,7 +191,7 @@ function tryAssignTokens({ rng, desertIndex }) {
 
   function canPlaceTokenAtIndex(token, idx) {
     if (!tokenHasHotNumber(token)) return true;
-    const neighbors = HEX_NEIGHBOR_INDICES[idx] || [];
+    const neighbors = neighborIndices[idx] || [];
     for (const n of neighbors) {
       const placed = tokens[n];
       if (tokenHasHotNumber(placed)) return false;
@@ -194,41 +224,43 @@ function tryAssignTokens({ rng, desertIndex }) {
   return ok ? tokens : null;
 }
 
-function generateRandomBalancedPreset({ seed }) {
+function generateRandomBalancedPreset({ seed, radius = 2 }) {
   const normalizedSeed = String(seed ?? "").trim();
   if (!normalizedSeed) throw new Error("seed is required for random-balanced preset");
   const rng = makeSeededRng(normalizedSeed);
 
-  const desertIndex = chooseDesertIndex(rng);
+  const radiusData = radius >= 3 ? buildRadiusData(radius) : RADIUS_2_DATA;
+  const { hexCount, neighborIndices } = radiusData;
+  const desertCount = radius >= 3 ? 2 : 1;
+  const resourceBag = radius >= 3 ? EXPANDED_RESOURCE_BAG : STANDARD_RESOURCE_BAG;
+  const tokenBag = radius >= 3 ? EXPANDED_TOKEN_BAG : STANDARD_TOKEN_BAG;
 
-  const resources = Array(19).fill(null);
-  resources[desertIndex] = "desert";
-  const resourceBag = [
-    ...Array(4).fill("wood"),
-    ...Array(3).fill("brick"),
-    ...Array(4).fill("sheep"),
-    ...Array(4).fill("wheat"),
-    ...Array(3).fill("ore")
-  ];
+  const desertIndices = chooseDesertIndices(rng, radiusData, desertCount);
+  const desertSet = new Set(desertIndices);
+
+  const resources = Array(hexCount).fill(null);
+  for (const di of desertIndices) {
+    resources[di] = "desert";
+  }
   const shuffledResources = shuffleWithRng(resourceBag, rng);
   let ri = 0;
-  for (let i = 0; i < 19; i += 1) {
-    if (i === desertIndex) continue;
+  for (let i = 0; i < hexCount; i += 1) {
+    if (desertSet.has(i)) continue;
     resources[i] = shuffledResources[ri];
     ri += 1;
   }
 
   let tokens = null;
   for (let attempt = 0; attempt < 220; attempt += 1) {
-    tokens = tryAssignTokens({ rng, desertIndex });
+    tokens = tryAssignTokens({ rng, desertIndices, hexCount, neighborIndices, tokenBag });
     if (tokens) break;
   }
   if (!tokens) throw new Error("failed to generate random-balanced tokens");
 
-  return { resources, tokens, desertIndex, seed: normalizedSeed };
+  return { resources, tokens, desertIndices, seed: normalizedSeed };
 }
 
-export function getPresetDefinition(presetId, { seed = null } = {}) {
+export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) {
   const meta = PRESET_META.find((p) => p.id === presetId) ?? PRESET_META[0];
 
   // Index order corresponds to sorted cube-radius-2 coords (see board generator).
@@ -363,7 +395,7 @@ export function getPresetDefinition(presetId, { seed = null } = {}) {
   }
 
   if (meta.id === "random-balanced") {
-    return { ...meta, ...generateRandomBalancedPreset({ seed }) };
+    return { ...meta, ...generateRandomBalancedPreset({ seed, radius }) };
   }
 
   // Fallback to classic.
