@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { describe } from "node:test";
 import test from "node:test";
 
 import { createNewGame } from "./index.js";
-import { getPresetDefinition } from "./presets.js";
+import { buildRadiusData, getPresetDefinition } from "./presets.js";
 
 const STANDARD_COORDS_RADIUS_2 = [
   { q: 0, r: -2 },
@@ -117,4 +118,64 @@ test("createNewGame: stores boardSeed for random-balanced", () => {
   assert.equal(game.presetId, "random-balanced");
   assert.equal(game.boardSeed, "abc");
   assert.equal(game.board.hexes.length, 19);
+});
+
+describe("random-balanced expanded", () => {
+  test("generates 37 resources for radius 3", () => {
+    const preset = getPresetDefinition("random-balanced", { seed: "test-expanded", radius: 3 });
+    assert.equal(preset.resources.length, 37);
+  });
+
+  test("generates 37 tokens for radius 3", () => {
+    const preset = getPresetDefinition("random-balanced", { seed: "test-expanded", radius: 3 });
+    assert.equal(preset.tokens.length, 37);
+  });
+
+  test("has 2 deserts for radius 3", () => {
+    const preset = getPresetDefinition("random-balanced", { seed: "test-expanded", radius: 3 });
+    const desertCount = preset.resources.filter((r) => r === "desert").length;
+    assert.equal(desertCount, 2);
+  });
+
+  test("no adjacent 6/8 tokens for radius 3", () => {
+    const preset = getPresetDefinition("random-balanced", { seed: "test-expanded", radius: 3 });
+    const data = buildRadiusData(3);
+    for (let i = 0; i < 37; i++) {
+      const token = preset.tokens[i];
+      if (token !== 6 && token !== 8) continue;
+      for (const n of data.neighborIndices[i]) {
+        const neighborToken = preset.tokens[n];
+        assert.ok(
+          neighborToken !== 6 && neighborToken !== 8,
+          `Hot tokens adjacent: index ${i} (${token}) and ${n} (${neighborToken})`
+        );
+      }
+    }
+  });
+});
+
+describe("buildRadiusData", () => {
+  test("radius 2 produces 19 coords", () => {
+    const data = buildRadiusData(2);
+    assert.equal(data.coords.length, 19);
+  });
+
+  test("radius 3 produces 37 coords", () => {
+    const data = buildRadiusData(3);
+    assert.equal(data.coords.length, 37);
+  });
+
+  test("radius 3 has neighbor indices for all 37 hexes", () => {
+    const data = buildRadiusData(3);
+    assert.equal(data.neighborIndices.length, 37);
+    for (const neighbors of data.neighborIndices) {
+      assert.ok(neighbors.length >= 2 && neighbors.length <= 6);
+    }
+  });
+
+  test("radius 3 center hex is at correct index", () => {
+    const data = buildRadiusData(3);
+    const centerIdx = data.coords.findIndex((c) => c.q === 0 && c.r === 0);
+    assert.ok(centerIdx >= 0);
+  });
 });

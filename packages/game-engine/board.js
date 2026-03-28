@@ -50,8 +50,8 @@ function hexCornerOffsets(size = HEX_SIZE) {
   ];
 }
 
-export function generateStandardBoard(presetDef) {
-  const coords = generateHexCoords(2);
+export function generateStandardBoard(presetDef, { radius = 2 } = {}) {
+  const coords = generateHexCoords(radius);
   if (presetDef.resources.length !== coords.length) throw new Error("Preset resource count mismatch");
   if (presetDef.tokens.length !== coords.length) throw new Error("Preset token count mismatch");
 
@@ -143,7 +143,8 @@ export function generateStandardBoard(presetDef) {
   for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
 
   // --- Ports ---
-  // Base-game style: 9 ports (4 generic 3:1 + 5 specific 2:1).
+  // Standard: 9 ports (4 generic 3:1 + 5 specific 2:1).
+  // Expanded (radius >= 3): 11 ports (6 generic 3:1 + 5 specific 2:1).
   // We place them on evenly spaced coastal edges, clockwise by angle.
   const edgeAdjHexIds = new Map();
   for (const hex of hexes) {
@@ -179,7 +180,10 @@ export function generateStandardBoard(presetDef) {
   }
   coastalEdges.sort((a, b) => a.angle - b.angle || a.edgeId.localeCompare(b.edgeId));
 
-  const PORT_KINDS = ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore"];
+  const PORT_KINDS =
+    radius >= 3
+      ? ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore", "generic", "generic"]
+      : ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore"];
   const portCount = Math.min(PORT_KINDS.length, coastalEdges.length);
   const step = coastalEdges.length / portCount;
   const ports = [];
@@ -197,8 +201,9 @@ export function generateStandardBoard(presetDef) {
     });
   }
 
+  const layoutTag = radius <= 2 ? "standard-radius-2" : `expanded-radius-${radius}`;
   return {
-    layout: "standard-radius-2",
+    layout: layoutTag,
     hexSize: HEX_SIZE,
     hexes,
     vertices,

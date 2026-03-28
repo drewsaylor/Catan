@@ -459,6 +459,119 @@ describe("edgeByVertexPair lookup", () => {
   });
 });
 
+// Mock preset definition for expanded (radius-3) board testing
+const mockExpandedPresetDef = {
+  resources: [
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "desert",
+    "ore",
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "sheep",
+    "wheat",
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "brick",
+    "sheep",
+    "wheat",
+    "ore",
+    "wood",
+    "sheep",
+    "desert"
+  ],
+  tokens: [
+    5,
+    2,
+    6,
+    3,
+    8,
+    10,
+    9,
+    12,
+    11,
+    null,
+    4,
+    8,
+    10,
+    9,
+    4,
+    5,
+    6,
+    3,
+    11,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    9,
+    10,
+    11,
+    12,
+    3,
+    4,
+    5,
+    9,
+    10,
+    11,
+    12,
+    null
+  ]
+};
+
+describe("generateStandardBoard with radius 3", () => {
+  test("generates 37 hexes", () => {
+    const board = generateStandardBoard(mockExpandedPresetDef, { radius: 3 });
+    assert.equal(board.hexes.length, 37);
+  });
+
+  test("has layout expanded-radius-3", () => {
+    const board = generateStandardBoard(mockExpandedPresetDef, { radius: 3 });
+    assert.equal(board.layout, "expanded-radius-3");
+  });
+
+  test("generates 11 ports", () => {
+    const board = generateStandardBoard(mockExpandedPresetDef, { radius: 3 });
+    assert.equal(board.ports.length, 11);
+  });
+
+  test("each hex has 6 corner vertices", () => {
+    const board = generateStandardBoard(mockExpandedPresetDef, { radius: 3 });
+    for (const hex of board.hexes) {
+      assert.equal(hex.cornerVertexIds.length, 6);
+    }
+  });
+
+  test("vertices have 2-3 neighbors", () => {
+    const board = generateStandardBoard(mockExpandedPresetDef, { radius: 3 });
+    for (const v of board.vertices) {
+      assert.ok(v.neighborVertexIds.length >= 2 && v.neighborVertexIds.length <= 3);
+    }
+  });
+});
+
 describe("Board layout metadata", () => {
   test("has correct layout identifier", () => {
     const board = generateStandardBoard(mockPresetDef);
