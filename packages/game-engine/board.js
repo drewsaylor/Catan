@@ -180,9 +180,10 @@ export function generateStandardBoard(presetDef, { radius = 2 } = {}) {
   }
   coastalEdges.sort((a, b) => a.angle - b.angle || a.edgeId.localeCompare(b.edgeId));
 
-  const PORT_KINDS = radius >= 3
-    ? ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore", "generic", "generic"]
-    : ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore"];
+  const PORT_KINDS =
+    radius >= 3
+      ? ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore", "generic", "generic"]
+      : ["generic", "wood", "generic", "brick", "generic", "sheep", "generic", "wheat", "ore"];
   const portCount = Math.min(PORT_KINDS.length, coastalEdges.length);
   const step = coastalEdges.length / portCount;
   const ports = [];

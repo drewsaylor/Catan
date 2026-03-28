@@ -103,10 +103,7 @@ describe("5-player expanded board integration", () => {
     assert.equal(game.phase, "setup_round_1");
     assert.equal(game.subphase, "setup_settlement");
     assert.equal(game.setup.placementOrder.length, 10);
-    assert.deepEqual(
-      game.setup.placementOrder,
-      ["p1", "p2", "p3", "p4", "p5", "p5", "p4", "p3", "p2", "p1"]
-    );
+    assert.deepEqual(game.setup.placementOrder, ["p1", "p2", "p3", "p4", "p5", "p5", "p4", "p3", "p2", "p1"]);
 
     const g = completeSetup(game);
 
@@ -117,17 +114,13 @@ describe("5-player expanded board integration", () => {
 
     // Each player should have exactly 2 settlements
     for (const pid of ["p1", "p2", "p3", "p4", "p5"]) {
-      const count = Object.values(g.structures.settlements).filter(
-        (s) => s.playerId === pid
-      ).length;
+      const count = Object.values(g.structures.settlements).filter((s) => s.playerId === pid).length;
       assert.equal(count, 2, `${pid} should have 2 settlements, got ${count}`);
     }
 
     // Each player should have exactly 2 roads
     for (const pid of ["p1", "p2", "p3", "p4", "p5"]) {
-      const count = Object.values(g.structures.roads).filter(
-        (r) => r.playerId === pid
-      ).length;
+      const count = Object.values(g.structures.roads).filter((r) => r.playerId === pid).length;
       assert.equal(count, 2, `${pid} should have 2 roads, got ${count}`);
     }
   });
@@ -167,11 +160,7 @@ describe("5-player expanded board integration", () => {
 
     // Other players should still have length 1
     for (const pid of ["p2", "p3", "p4", "p5"]) {
-      assert.equal(
-        updatedLengths[pid],
-        1,
-        `${pid} should still have longest road 1, got ${updatedLengths[pid]}`
-      );
+      assert.equal(updatedLengths[pid], 1, `${pid} should still have longest road 1, got ${updatedLengths[pid]}`);
     }
   });
 });

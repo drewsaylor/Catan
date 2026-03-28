@@ -133,7 +133,7 @@ describe("random-balanced expanded", () => {
 
   test("has 2 deserts for radius 3", () => {
     const preset = getPresetDefinition("random-balanced", { seed: "test-expanded", radius: 3 });
-    const desertCount = preset.resources.filter(r => r === "desert").length;
+    const desertCount = preset.resources.filter((r) => r === "desert").length;
     assert.equal(desertCount, 2);
   });
 
@@ -175,7 +175,7 @@ describe("buildRadiusData", () => {
 
   test("radius 3 center hex is at correct index", () => {
     const data = buildRadiusData(3);
-    const centerIdx = data.coords.findIndex(c => c.q === 0 && c.r === 0);
+    const centerIdx = data.coords.findIndex((c) => c.q === 0 && c.r === 0);
     assert.ok(centerIdx >= 0);
   });
 });

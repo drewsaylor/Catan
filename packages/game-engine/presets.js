@@ -9,7 +9,7 @@ export const PRESET_META = [
   { id: "trade-heavy-expanded", name: "Trade Heavy (Expanded)" },
   { id: "sheep-wheat-boom-expanded", name: "Sheep/Wheat Boom (Expanded)" },
   { id: "high-ore-expanded", name: "High Ore (Expanded)" },
-  { id: "high-brick-wood-expanded", name: "Brick/Wood Rush (Expanded)" },
+  { id: "high-brick-wood-expanded", name: "Brick/Wood Rush (Expanded)" }
 ];
 
 export function buildRadiusData(radius) {
@@ -25,9 +25,12 @@ export function buildRadiusData(radius) {
   coords.sort((a, b) => a.r - b.r || a.q - b.q);
 
   const HEX_NEIGHBOR_DELTAS = [
-    { dq: 1, dr: 0 }, { dq: -1, dr: 0 },
-    { dq: 0, dr: 1 }, { dq: 0, dr: -1 },
-    { dq: 1, dr: -1 }, { dq: -1, dr: 1 }
+    { dq: 1, dr: 0 },
+    { dq: -1, dr: 0 },
+    { dq: 0, dr: 1 },
+    { dq: 0, dr: -1 },
+    { dq: 1, dr: -1 },
+    { dq: -1, dr: 1 }
   ];
 
   const indexByCoord = new Map(coords.map((c, idx) => [`${c.q},${c.r}`, idx]));
@@ -43,7 +46,9 @@ export function buildRadiusData(radius) {
   });
 
   function cubeDistFromCenter({ q, r }) {
-    const x = q, z = r, y = -x - z;
+    const x = q,
+      z = r,
+      y = -x - z;
     return Math.max(Math.abs(x), Math.abs(y), Math.abs(z));
   }
 
@@ -78,9 +83,7 @@ const EXPANDED_RESOURCE_BAG = [
 ]; // 35 land tiles + 2 deserts = 37 total
 
 const EXPANDED_TOKEN_BAG = [
-  2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8,
-  9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12,
-  3, 4, 5, 9, 10, 11, 12
+  2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 3, 4, 5, 9, 10, 11, 12
 ];
 
 function withDesertAtCenter(resources, tokens, expectedCount = 19) {
@@ -104,7 +107,7 @@ function withExpandedDeserts(resources, tokens, desertIndices) {
     if (r[di] !== "desert") throw new Error(`index ${di} must be desert`);
     if (t[di] !== null) throw new Error(`token at desert index ${di} must be null`);
   }
-  const desertCount = r.filter(v => v === "desert").length;
+  const desertCount = r.filter((v) => v === "desert").length;
   if (desertCount !== desertIndices.length) {
     throw new Error(`expected ${desertIndices.length} deserts, found ${desertCount}`);
   }
@@ -167,7 +170,7 @@ function chooseDesertIndices(rng, radiusData, count) {
     });
     const total = weights.reduce((sum, w) => sum + w, 0);
     if (total <= 0) {
-      chosen.push(coords.findIndex(c => c.q === 0 && c.r === 0));
+      chosen.push(coords.findIndex((c) => c.q === 0 && c.r === 0));
       continue;
     }
     let roll = rng() * total;
@@ -421,22 +424,82 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
     // Even spread of resources across the board.
     // Deserts at center (18) and inner ring (30).
     const resources = [
-      "wheat", "wood", "ore", "brick",
-      "sheep", "wood", "wheat", "brick", "sheep",
-      "ore", "wheat", "sheep", "wood", "brick", "wood",
-      "sheep", "wheat", "wood", "desert", "sheep", "ore", "wheat",
-      "brick", "wood", "wheat", "sheep", "brick", "wood",
-      "sheep", "wheat", "desert", "brick", "ore",
-      "wood", "sheep", "wheat", "brick"
+      "wheat",
+      "wood",
+      "ore",
+      "brick",
+      "sheep",
+      "wood",
+      "wheat",
+      "brick",
+      "sheep",
+      "ore",
+      "wheat",
+      "sheep",
+      "wood",
+      "brick",
+      "wood",
+      "sheep",
+      "wheat",
+      "wood",
+      "desert",
+      "sheep",
+      "ore",
+      "wheat",
+      "brick",
+      "wood",
+      "wheat",
+      "sheep",
+      "brick",
+      "wood",
+      "sheep",
+      "wheat",
+      "desert",
+      "brick",
+      "ore",
+      "wood",
+      "sheep",
+      "wheat",
+      "brick"
     ];
     const tokens = [
-      6, 10, 6, 12,
-      9, 3, 4, 5, 6,
-      8, 10, 8, 3, 12, 9,
-      5, 11, 2, null, 10, 4, 3,
-      8, 9, 11, 2, 10, 5,
-      3, 4, null, 9, 11,
-      5, 11, 4, 12
+      6,
+      10,
+      6,
+      12,
+      9,
+      3,
+      4,
+      5,
+      6,
+      8,
+      10,
+      8,
+      3,
+      12,
+      9,
+      5,
+      11,
+      2,
+      null,
+      10,
+      4,
+      3,
+      8,
+      9,
+      11,
+      2,
+      10,
+      5,
+      3,
+      4,
+      null,
+      9,
+      11,
+      5,
+      11,
+      4,
+      12
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [18, 30]) };
   }
@@ -445,22 +508,82 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
     // Resource variety spread across the board for diverse trading.
     // Deserts at inner ring (10, 26).
     const resources = [
-      "wood", "ore", "wheat", "sheep",
-      "brick", "wheat", "ore", "wood", "brick",
-      "sheep", "desert", "wheat", "sheep", "wood", "wheat",
-      "ore", "wood", "brick", "sheep", "wheat", "wood", "ore",
-      "sheep", "brick", "wood", "wheat", "desert", "sheep",
-      "brick", "wheat", "brick", "sheep", "wheat",
-      "wood", "brick", "sheep", "wood"
+      "wood",
+      "ore",
+      "wheat",
+      "sheep",
+      "brick",
+      "wheat",
+      "ore",
+      "wood",
+      "brick",
+      "sheep",
+      "desert",
+      "wheat",
+      "sheep",
+      "wood",
+      "wheat",
+      "ore",
+      "wood",
+      "brick",
+      "sheep",
+      "wheat",
+      "wood",
+      "ore",
+      "sheep",
+      "brick",
+      "wood",
+      "wheat",
+      "desert",
+      "sheep",
+      "brick",
+      "wheat",
+      "brick",
+      "sheep",
+      "wheat",
+      "wood",
+      "brick",
+      "sheep",
+      "wood"
     ];
     const tokens = [
-      6, 9, 6, 11,
-      4, 5, 10, 3, 6,
-      8, null, 9, 4, 11, 8,
-      5, 10, 3, 12, 2, 8, 9,
-      4, 11, 5, 10, null, 3,
-      12, 2, 9, 10, 5,
-      12, 3, 11, 4
+      6,
+      9,
+      6,
+      11,
+      4,
+      5,
+      10,
+      3,
+      6,
+      8,
+      null,
+      9,
+      4,
+      11,
+      8,
+      5,
+      10,
+      3,
+      12,
+      2,
+      8,
+      9,
+      4,
+      11,
+      5,
+      10,
+      null,
+      3,
+      12,
+      2,
+      9,
+      10,
+      5,
+      12,
+      3,
+      11,
+      4
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [10, 26]) };
   }
@@ -469,22 +592,82 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
     // Sheep and wheat clustered in prime positions.
     // Deserts at ring-2 positions (5, 31).
     const resources = [
-      "sheep", "wheat", "sheep", "wheat",
-      "wood", "desert", "wheat", "sheep", "brick",
-      "ore", "wheat", "sheep", "wood", "brick", "sheep",
-      "wheat", "wood", "brick", "wheat", "sheep", "ore", "wood",
-      "wheat", "sheep", "brick", "wood", "sheep", "ore",
-      "brick", "wood", "wood", "desert", "brick",
-      "ore", "wood", "wheat", "brick"
+      "sheep",
+      "wheat",
+      "sheep",
+      "wheat",
+      "wood",
+      "desert",
+      "wheat",
+      "sheep",
+      "brick",
+      "ore",
+      "wheat",
+      "sheep",
+      "wood",
+      "brick",
+      "sheep",
+      "wheat",
+      "wood",
+      "brick",
+      "wheat",
+      "sheep",
+      "ore",
+      "wood",
+      "wheat",
+      "sheep",
+      "brick",
+      "wood",
+      "sheep",
+      "ore",
+      "brick",
+      "wood",
+      "wood",
+      "desert",
+      "brick",
+      "ore",
+      "wood",
+      "wheat",
+      "brick"
     ];
     const tokens = [
-      6, 12, 6, 10,
-      11, null, 5, 4, 6,
-      8, 12, 8, 5, 10, 3,
-      4, 11, 3, 9, 2, 12, 5,
-      10, 4, 11, 3, 9, 10,
-      11, 4, 3, null, 5,
-      8, 2, 9, 9
+      6,
+      12,
+      6,
+      10,
+      11,
+      null,
+      5,
+      4,
+      6,
+      8,
+      12,
+      8,
+      5,
+      10,
+      3,
+      4,
+      11,
+      3,
+      9,
+      2,
+      12,
+      5,
+      10,
+      4,
+      11,
+      3,
+      9,
+      10,
+      11,
+      4,
+      3,
+      null,
+      5,
+      8,
+      2,
+      9,
+      9
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [5, 31]) };
   }
@@ -493,22 +676,82 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
     // Ore tiles clustered near center with strong number tokens.
     // Deserts at ring-1 positions flanking center (16, 20).
     const resources = [
-      "ore", "wheat", "wood", "sheep",
-      "brick", "wood", "wheat", "ore", "sheep",
-      "wood", "sheep", "ore", "wheat", "brick", "wood",
-      "sheep", "desert", "wheat", "ore", "brick", "desert", "wheat",
-      "wheat", "sheep", "brick", "wheat", "sheep", "brick",
-      "wood", "wood", "sheep", "brick", "wood",
-      "sheep", "wheat", "wood", "brick"
+      "ore",
+      "wheat",
+      "wood",
+      "sheep",
+      "brick",
+      "wood",
+      "wheat",
+      "ore",
+      "sheep",
+      "wood",
+      "sheep",
+      "ore",
+      "wheat",
+      "brick",
+      "wood",
+      "sheep",
+      "desert",
+      "wheat",
+      "ore",
+      "brick",
+      "desert",
+      "wheat",
+      "wheat",
+      "sheep",
+      "brick",
+      "wheat",
+      "sheep",
+      "brick",
+      "wood",
+      "wood",
+      "sheep",
+      "brick",
+      "wood",
+      "sheep",
+      "wheat",
+      "wood",
+      "brick"
     ];
     const tokens = [
-      8, 3, 6, 5,
-      9, 4, 10, 6, 12,
-      8, 3, 8, 5, 9, 4,
-      10, null, 12, 6, 11, null, 2,
-      3, 5, 9, 4, 10, 11,
-      11, 2, 3, 5, 9,
-      4, 10, 12, 11,
+      8,
+      3,
+      6,
+      5,
+      9,
+      4,
+      10,
+      6,
+      12,
+      8,
+      3,
+      8,
+      5,
+      9,
+      4,
+      10,
+      null,
+      12,
+      6,
+      11,
+      null,
+      2,
+      3,
+      5,
+      9,
+      4,
+      10,
+      11,
+      11,
+      2,
+      3,
+      5,
+      9,
+      4,
+      10,
+      12,
+      11
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [16, 20]) };
   }
@@ -517,22 +760,82 @@ export function getPresetDefinition(presetId, { seed = null, radius = 2 } = {}) 
     // Brick and wood concentrated in the top half of the board.
     // Deserts at (12, 24) splitting the board.
     const resources = [
-      "brick", "wood", "brick", "wood",
-      "wood", "brick", "wood", "brick", "wood",
-      "sheep", "wheat", "ore", "desert", "wheat", "brick",
-      "sheep", "wood", "wheat", "ore", "brick", "sheep", "wheat",
-      "ore", "sheep", "desert", "wood", "wheat", "sheep",
-      "wheat", "sheep", "ore", "wheat", "sheep",
-      "wheat", "brick", "wood", "sheep"
+      "brick",
+      "wood",
+      "brick",
+      "wood",
+      "wood",
+      "brick",
+      "wood",
+      "brick",
+      "wood",
+      "sheep",
+      "wheat",
+      "ore",
+      "desert",
+      "wheat",
+      "brick",
+      "sheep",
+      "wood",
+      "wheat",
+      "ore",
+      "brick",
+      "sheep",
+      "wheat",
+      "ore",
+      "sheep",
+      "desert",
+      "wood",
+      "wheat",
+      "sheep",
+      "wheat",
+      "sheep",
+      "ore",
+      "wheat",
+      "sheep",
+      "wheat",
+      "brick",
+      "wood",
+      "sheep"
     ];
     const tokens = [
-      6, 11, 6, 10,
-      4, 3, 9, 5, 6,
-      8, 11, 8, null, 4, 10,
-      3, 9, 5, 8, 12, 2, 10,
-      3, 12, null, 9, 5, 11,
-      4, 10, 3, 9, 5,
-      12, 2, 11, 4
+      6,
+      11,
+      6,
+      10,
+      4,
+      3,
+      9,
+      5,
+      6,
+      8,
+      11,
+      8,
+      null,
+      4,
+      10,
+      3,
+      9,
+      5,
+      8,
+      12,
+      2,
+      10,
+      3,
+      12,
+      null,
+      9,
+      5,
+      11,
+      4,
+      10,
+      3,
+      9,
+      5,
+      12,
+      2,
+      11,
+      4
     ];
     return { ...meta, ...withExpandedDeserts(resources, tokens, [12, 24]) };
   }

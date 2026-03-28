@@ -10,7 +10,9 @@ const EXPANDED_PRESETS = [
   "high-brick-wood-expanded"
 ];
 
-const EXPECTED_SORTED_TOKENS = [2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12];
+const EXPECTED_SORTED_TOKENS = [
+  2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12
+];
 
 describe("expanded presets", () => {
   for (const presetId of EXPANDED_PRESETS) {
@@ -27,7 +29,7 @@ describe("expanded presets", () => {
 
       test("has exactly 2 deserts", () => {
         const preset = getPresetDefinition(presetId);
-        const deserts = preset.resources.filter(r => r === "desert");
+        const deserts = preset.resources.filter((r) => r === "desert");
         assert.equal(deserts.length, 2);
       });
 
@@ -42,7 +44,7 @@ describe("expanded presets", () => {
 
       test("has correct token distribution", () => {
         const preset = getPresetDefinition(presetId);
-        const sorted = preset.tokens.filter(t => t !== null).sort((a, b) => a - b);
+        const sorted = preset.tokens.filter((t) => t !== null).sort((a, b) => a - b);
         assert.deepEqual(sorted, EXPECTED_SORTED_TOKENS);
       });
 
@@ -51,8 +53,8 @@ describe("expanded presets", () => {
         const counts = {};
         for (const r of preset.resources) counts[r] = (counts[r] || 0) + 1;
         assert.equal(counts.desert, 2);
-        const totalLand = (counts.wood || 0) + (counts.brick || 0) +
-          (counts.sheep || 0) + (counts.wheat || 0) + (counts.ore || 0);
+        const totalLand =
+          (counts.wood || 0) + (counts.brick || 0) + (counts.sheep || 0) + (counts.wheat || 0) + (counts.ore || 0);
         assert.equal(totalLand, 35);
       });
     });

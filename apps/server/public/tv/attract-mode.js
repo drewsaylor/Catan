@@ -42,22 +42,47 @@ export function createAttractSampleBoard(radius = 2) {
   const standardTokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
 
   const expandedResources = [
-    "wheat", "wood", "ore", "brick",
-    "sheep", "wood", "wheat", "brick", "sheep",
-    "ore", "wheat", "sheep", "wood", "brick", "wood",
-    "sheep", "wheat", "wood", "desert", "sheep", "ore", "wheat",
-    "brick", "wood", "wheat", "sheep", "brick", "wood",
-    "sheep", "wheat", "desert", "brick", "ore",
-    "wood", "sheep", "wheat", "brick"
+    "wheat",
+    "wood",
+    "ore",
+    "brick",
+    "sheep",
+    "wood",
+    "wheat",
+    "brick",
+    "sheep",
+    "ore",
+    "wheat",
+    "sheep",
+    "wood",
+    "brick",
+    "wood",
+    "sheep",
+    "wheat",
+    "wood",
+    "desert",
+    "sheep",
+    "ore",
+    "wheat",
+    "brick",
+    "wood",
+    "wheat",
+    "sheep",
+    "brick",
+    "wood",
+    "sheep",
+    "wheat",
+    "desert",
+    "brick",
+    "ore",
+    "wood",
+    "sheep",
+    "wheat",
+    "brick"
   ];
   const expandedTokens = [
-    6, 10, 6, 12,
-    9, 3, 4, 5, 6,
-    8, 10, 8, 3, 12, 9,
-    5, 11, 2, 0, 10, 4, 3,
-    8, 9, 11, 2, 10, 5,
-    3, 4, 0, 9, 11,
-    5, 11, 4, 12
+    6, 10, 6, 12, 9, 3, 4, 5, 6, 8, 10, 8, 3, 12, 9, 5, 11, 2, 0, 10, 4, 3, 8, 9, 11, 2, 10, 5, 3, 4, 0, 9, 11, 5, 11,
+    4, 12
   ];
 
   const useExpanded = radius >= 3;

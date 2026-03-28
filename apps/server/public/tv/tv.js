@@ -195,7 +195,7 @@ let lobbyPreviewBoardRadius = null;
  */
 function updateWrapVisibility() {
   if (!elWrap) return;
-  elWrap.style.display = (attractModeActive || lobbyOverlayActive) ? "none" : "";
+  elWrap.style.display = attractModeActive || lobbyOverlayActive ? "none" : "";
 }
 
 const RESOURCE_TYPES = ["wood", "brick", "sheep", "wheat", "ore"];
@@ -538,16 +538,19 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, Math.floor(ms || 0))));
 }
 
-function playerRow(p, {
-  mode,
-  currentPlayerId,
-  pointsByPlayerId,
-  victoryPointsToWin,
-  winnerPlayerId,
-  knightsByPlayerId,
-  largestArmyPlayerId,
-  longestRoadPlayerId
-}) {
+function playerRow(
+  p,
+  {
+    mode,
+    currentPlayerId,
+    pointsByPlayerId,
+    victoryPointsToWin,
+    winnerPlayerId,
+    knightsByPlayerId,
+    largestArmyPlayerId,
+    longestRoadPlayerId
+  }
+) {
   const inGame = mode === "in_game";
   const isGameOver = inGame && !!winnerPlayerId;
   const isTurn = inGame && !isGameOver && currentPlayerId && p.playerId === currentPlayerId;
@@ -579,17 +582,23 @@ function playerRow(p, {
     // Knight count (show if > 0)
     if (knights > 0) {
       const knightClass = hasLargestArmy ? "playerBadge award" : "playerBadge muted";
-      badges.push(`<span class="${knightClass}"><img src="/shared/icons/dev-knight.png" class="badgeIcon" alt="Knights">${knights}</span>`);
+      badges.push(
+        `<span class="${knightClass}"><img src="/shared/icons/dev-knight.png" class="badgeIcon" alt="Knights">${knights}</span>`
+      );
     }
 
     // Largest Army award
     if (hasLargestArmy) {
-      badges.push(`<img src="/shared/icons/award-largest-army.png" class="awardIcon" alt="Largest Army" title="Largest Army">`);
+      badges.push(
+        `<img src="/shared/icons/award-largest-army.png" class="awardIcon" alt="Largest Army" title="Largest Army">`
+      );
     }
 
     // Longest Road award
     if (hasLongestRoad) {
-      badges.push(`<img src="/shared/icons/award-longest-road.png" class="awardIcon" alt="Longest Road" title="Longest Road">`);
+      badges.push(
+        `<img src="/shared/icons/award-longest-road.png" class="awardIcon" alt="Longest Road" title="Longest Road">`
+      );
     }
 
     if (badges.length > 0) {
@@ -614,21 +623,28 @@ function playerRow(p, {
 
 function cssColorToRgb(color) {
   const map = {
-    red: "192,57,43", blue: "41,128,185", white: "236,240,241",
-    orange: "230,126,34", green: "39,174,96", brown: "142,109,71"
+    red: "192,57,43",
+    blue: "41,128,185",
+    white: "236,240,241",
+    orange: "230,126,34",
+    green: "39,174,96",
+    brown: "142,109,71"
   };
   return map[color] || "255,255,255";
 }
 
-function playerBarCard(p, {
-  currentPlayerId,
-  pointsByPlayerId,
-  victoryPointsToWin,
-  winnerPlayerId,
-  knightsByPlayerId,
-  largestArmyPlayerId,
-  longestRoadPlayerId
-}) {
+function playerBarCard(
+  p,
+  {
+    currentPlayerId,
+    pointsByPlayerId,
+    victoryPointsToWin,
+    winnerPlayerId,
+    knightsByPlayerId,
+    largestArmyPlayerId,
+    longestRoadPlayerId
+  }
+) {
   const isTurn = currentPlayerId && p.playerId === currentPlayerId && !winnerPlayerId;
   const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
   const cls = ["playerBarCard"];
@@ -650,9 +666,7 @@ function playerBarCard(p, {
   if (hasLongestRoad) parts.push("\uD83D\uDEE4\uFE0F");
   if (isWinner) parts.push("\uD83C\uDFC6");
 
-  const bgStyle = isTurn
-    ? `background:rgba(${cssColorToRgb(p.color)},0.15);`
-    : "";
+  const bgStyle = isTurn ? `background:rgba(${cssColorToRgb(p.color)},0.15);` : "";
 
   return `<div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="${bgStyle}">
     <span class="barDot" style="background:${dotColor};"></span>
@@ -673,7 +687,9 @@ function escapeHtml(s) {
 
 function roomUrlForPhones() {
   // Use LAN IP if available, otherwise fall back to current host
-  const host = serverLanIp ? `${serverLanIp}:${location.port || (location.protocol === "https:" ? 443 : 80)}` : location.host;
+  const host = serverLanIp
+    ? `${serverLanIp}:${location.port || (location.protocol === "https:" ? 443 : 80)}`
+    : location.host;
   const base = `${location.protocol}//${host}`;
   return `${base}/phone?room=${encodeURIComponent(roomCode)}`;
 }
@@ -1221,9 +1237,10 @@ async function runBeat(beat) {
     if (beat?.expected === "ROLL_DICE") {
       show.spotlightElement(elDiceBox, { tone: "warn", pad: 14, durationMs: d(900), pulse: true, shade: 0.36 });
     } else {
-      const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
-        || elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
-        || null;
+      const rowEl =
+        elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
+        elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
+        null;
       show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(900), pulse: false, shade: 0.32 });
     }
 
@@ -1246,9 +1263,10 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: d(1150)
     });
-    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
-      || elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`)
-      || null;
+    const rowEl =
+      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
+      elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
+      null;
     show.spotlightElement(rowEl, { tone: "info", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
     return wait(640);
   }
@@ -1314,7 +1332,7 @@ async function runBeat(beat) {
         tone: "warn",
         durationMs: d(1500)
       });
-      const spotlightTarget = (lastRoomState?.players?.length >= 5 && elPlayerBar) ? elPlayerBar : elPlayers;
+      const spotlightTarget = lastRoomState?.players?.length >= 5 && elPlayerBar ? elPlayerBar : elPlayers;
       show.spotlightElement(spotlightTarget, { tone: "warn", pad: 12, durationMs: d(850), pulse: false, shade: 0.34 });
       return wait(720);
     }
@@ -1388,9 +1406,10 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: didSteal ? d(1400) : d(1300)
     });
-    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`)
-      || elPlayers?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`)
-      || null;
+    const rowEl =
+      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`) ||
+      elPlayers?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`) ||
+      null;
     show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
     return wait(700);
   }
@@ -1512,9 +1531,10 @@ async function runBeat(beat) {
       tone: hostCopy.tone,
       durationMs: d(2000)
     });
-    const rowEl = elPlayerBar?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`)
-      || elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`)
-      || null;
+    const rowEl =
+      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) ||
+      elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) ||
+      null;
     show.spotlightElement(rowEl, { tone: "good", pad: 10, durationMs: d(1400), pulse: false, shade: 0.32 });
     return wait(1100);
   }
