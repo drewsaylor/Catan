@@ -54,7 +54,6 @@ export function buildRadiusData(radius) {
 
 const RADIUS_2_DATA = buildRadiusData(2);
 const STANDARD_COORDS_RADIUS_2 = RADIUS_2_DATA.coords;
-const INDEX_BY_COORD = RADIUS_2_DATA.indexByCoord;
 const HEX_NEIGHBOR_INDICES = RADIUS_2_DATA.neighborIndices;
 
 function withDesertAtCenter(resources, tokens) {
