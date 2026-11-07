@@ -84,10 +84,6 @@ body[data-screen="over"] .stage {
   border-top: 1px solid var(--panel-line);
 }
 
-.joinBarLogo {
-  height: 7rem;
-}
-
 .joinBarText {
   flex: 1;
   min-width: 0;
@@ -153,10 +149,6 @@ body[data-screen="over"] .stage {
   background: var(--panel);
   border: 1px solid var(--panel-line);
   text-align: center;
-}
-
-.lobbyLogo {
-  height: 6rem;
 }
 
 .lobbyJoin .qrTile {
@@ -328,11 +320,6 @@ body[data-screen="over"] .stage {
   min-height: 0;
   padding: 1.1rem;
   background: rgba(8, 14, 26, 0.62);
-}
-
-.railLogo {
-  height: 3.6rem;
-  align-self: flex-start;
 }
 
 .boardStage {
