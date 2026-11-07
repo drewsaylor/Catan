@@ -1097,6 +1097,10 @@ function contentTypeFor(filePath) {
       return "image/jpeg";
     case ".ico":
       return "image/x-icon";
+    case ".mp4":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
     case ".map":
       return "application/json; charset=utf-8";
     default:

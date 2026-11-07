@@ -15,6 +15,7 @@ import { loadTheme, preloadThemes, fetchThemeIndex } from "/shared/theme-loader.
 import { createShowLayer } from "/tv/show-layer.js";
 import { computeShowBeats, computePlacedStructures } from "/tv/show-beats.js";
 import { createAttractSampleBoard } from "/tv/attract-mode.js";
+import { installKeepAwake } from "/tv/keep-awake.js";
 import {
   createPlayerCards,
   diceHudHtml,
@@ -103,6 +104,7 @@ const show = createShowLayer(qs("#showLayer"), { toastRail: qs("#toastRail") });
 
 initSettings();
 installAudioUnlock();
+installKeepAwake();
 setMusicMode("lobby");
 preloadMusic();
 showQueue.setHandler(runBeat);
@@ -125,15 +127,23 @@ function stablePart(v) {
 function flashClass(el, cls, durationMs = 650) {
   if (!el) return;
   const prev = flashTimers.get(el);
-  if (prev) clearTimeout(prev);
+  if (prev) {
+    clearTimeout(prev.timer);
+    cancelAnimationFrame(prev.raf);
+  }
   el.classList.remove(cls);
-  // Force reflow so repeated flashes still animate.
-  void el.offsetHeight;
-  el.classList.add(cls);
-  flashTimers.set(
-    el,
-    setTimeout(() => el.classList.remove(cls), Math.max(0, Math.floor(durationMs)))
-  );
+  // Re-add two frames later instead of forcing a synchronous reflow, which
+  // stalls the cast browser on a full-board layout. Two frames guarantee the
+  // removal is styled first, so repeated flashes still restart the animation.
+  const ms = Math.max(0, Math.floor(durationMs));
+  const entry = { timer: 0, raf: 0 };
+  entry.raf = requestAnimationFrame(() => {
+    entry.raf = requestAnimationFrame(() => {
+      el.classList.add(cls);
+      entry.timer = setTimeout(() => el.classList.remove(cls), ms);
+    });
+  });
+  flashTimers.set(el, entry);
 }
 
 function playerById(id) {

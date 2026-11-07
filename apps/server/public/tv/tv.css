@@ -1050,3 +1050,46 @@ html[data-high-contrast="true"] .momentSubtitle,
 html[data-high-contrast="true"] .toastSubtitle {
   color: #fff;
 }
+
+/* =============================================================================
+   Cast performance: the TV runs in a weak cast browser (webOS DashCast), where
+   SVG drop-shadow filters, backdrop blurs and looping filter/box-shadow
+   animations force the whole board to re-rasterize every frame. On the TV,
+   panels use solid tints instead of blur, board pieces drop their filters, and
+   looping highlights animate opacity only.
+   ============================================================================= */
+body.tv *,
+body.tv *::before,
+body.tv *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.tv svg * {
+  filter: none !important;
+}
+
+body.tv .token .token-bg {
+  stroke-width: 3;
+}
+
+body.tv .player.turn::after {
+  box-shadow: none;
+  animation-name: tvPulse;
+}
+
+body.tv .hex-hint,
+body.tv .edge-hint,
+body.tv .vertex.selectable .vertex-hint {
+  animation-name: tvPulse;
+}
+
+@keyframes tvPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
