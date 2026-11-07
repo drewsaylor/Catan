@@ -173,7 +173,7 @@ export function formatTs(ms) {
   }
 }
 
-function escapeHtml(s) {
+export function escapeHtml(s) {
   return String(s).replace(
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
@@ -277,9 +277,7 @@ function renderEntry(entry, playerById) {
 
 export function renderLog(logEl, entries, { players = [], reversed = false } = {}) {
   const playerById = new Map((players || []).map((p) => [p.playerId, p]));
-  let list = (entries || [])
-    .slice(-60)
-    .map((e) => renderEntry(e, playerById));
+  let list = (entries || []).slice(-60).map((e) => renderEntry(e, playerById));
 
   // Reverse if requested (newest at top for TV display)
   if (reversed) {

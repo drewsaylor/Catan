@@ -20,9 +20,9 @@ Pure state machine - receives actions, returns new game state.
 
 ## Client Apps (`apps/server/public/`)
 
-- `tv/`: TV display - board rendering, game log, turn indicators
-- `phone/`: Phone controller - action buttons, hand display, trade UI
-- `shared/`: Shared utilities - board renderer, themes, audio, action validation
+- `tv/`: Cast-only TV display with no input. A full-bleed board, a HUD (`hud.js`) of player cards along the edges, and moment cards (`show-layer.js`). The lobby screen shows the join QR, room code and player tiles.
+- `phone/`: Phone controller - action buttons, hand display, trade UI. `phone.css` holds the phone layout. `host-menu.js` is the host's menu (♛) for kick, make host, pause timer and end game.
+- `shared/`: Shared utilities - board renderer, themes, audio, action validation. `stepper.js` turns the resource selects into −/+ steppers. `player-colors.js` gives every player a distinct display colour.
 
 ## Shared (`packages/shared/`)
 
@@ -33,5 +33,7 @@ Pure state machine - receives actions, returns new game state.
 **Action Flow**: Phone sends action -> Server validates via `applyAction()` -> Server broadcasts state via SSE -> All clients update
 
 **State Privacy**: The server maintains full game state but sends players only their own hand via `privateUpdates`. The `getPublicGameSnapshot()` function strips private data.
+
+**Host Controls**: The `/admin/{kick,timer,host,reset}` endpoints accept either the TV's `adminSecret` or the host player's `playerId`, and both also need the host PIN if one is set (`hostControlError()` in `server.js`). Player ids appear in public state, so the PIN is what protects these endpoints from other phones, the same as for `/start`.
 
 **Build Validation**: `action-gates.js` checks if a player has resources/pieces for actions before sending to server. Server re-validates.

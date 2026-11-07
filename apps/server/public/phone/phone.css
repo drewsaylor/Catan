@@ -1,0 +1,407 @@
+/* Phone layer on top of shared/styles.css: the controller for a cast TV game. */
+
+body.phone .topbar {
+  gap: 8px;
+  padding-top: max(6px, env(safe-area-inset-top));
+}
+
+body.phone .phoneLogo {
+  height: 28px;
+  width: auto;
+}
+
+body.phone[data-view="game"] .phoneLogo,
+body.phone[data-view="lobby"] .phoneLogo {
+  display: none;
+}
+
+body.phone .topPills {
+  flex: 1;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.meChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-right: auto;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.meName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.meChip .dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+/* Only speaks up when something is wrong. */
+.statusPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.statusPill[data-live="true"] {
+  color: var(--good);
+}
+
+.statusPill[data-live="true"] #status {
+  display: none;
+}
+
+/* One surface: cards inside cards read as clutter on a small screen. */
+body.phone .grid > .card {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+body.phone[data-view="game"] #tipsCard,
+body.phone[data-view="lobby"] #tipsCard,
+body.phone[data-view="game"] #panelTitle,
+body.phone[data-view="lobby"] #panelTitle {
+  display: none;
+}
+
+/* Join */
+body.phone[data-view="join"] #roomInput {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+body.phone[data-view="join"] #joinBtn,
+.lobbyActions .btn {
+  min-height: 56px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* Lobby */
+.lobbyHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lobbyRoom {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+.lobbyRoom .k {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lobbyRoom .v {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.lobbyScenario {
+  min-width: 0;
+  font-size: 14px;
+}
+
+.lobbyScenario .v {
+  font-weight: 800;
+}
+
+#hostTag {
+  display: none !important;
+}
+
+.hostSettings summary {
+  padding: 12px 0;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Sticky, not fixed: the card's backdrop-filter makes it the containing block. */
+.lobbyActions {
+  position: sticky;
+  z-index: 40;
+  bottom: 0;
+  margin: 0 -16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgb(var(--bg0-rgb)) 22%);
+}
+
+.lobbyHint {
+  min-height: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+#readyBtn.isReady {
+  color: #06281a;
+  background: var(--good);
+  border-color: var(--good);
+}
+
+/* Game */
+.btn.primary:disabled {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.gameTopRow .logBtn {
+  position: static;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  margin-left: auto;
+}
+
+.gameTopRow .logBtn + #helpBtn {
+  margin-left: 0;
+}
+
+body.phone .resChipTotal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+}
+
+body.phone .resChipTotal .resChipLabel {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Steppers replace the hidden selects and number inputs. */
+.stepperField > label,
+.stepperField > select,
+.stepperField > input {
+  display: none;
+}
+
+.tradeGrid:has(.stepper) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 28px 40px 1fr 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+}
+
+.stepper.active {
+  border-color: rgba(var(--accent-rgb), 0.7);
+}
+
+.stepper.disabled {
+  opacity: 0.4;
+}
+
+.stepperIcon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.stepperValue {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.stepperBtn {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  touch-action: manipulation;
+}
+
+.stepperBtn:disabled {
+  opacity: 0.35;
+}
+
+/* Host menu */
+.hostMenuPlayer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hostMenuPlayer .dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.hostMenuName {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+html[data-high-contrast="true"] .stepper {
+  border-color: #fff;
+}
+
+body.phone[data-view="game"] .resChipTotal {
+  margin-left: auto;
+}
+
+body.phone[data-view="game"] .resChipTotal .resChipLabel {
+  display: block;
+}
+
+/* Board first, then the one thing to do now, at thumb height. */
+body.phone[data-view="game"] #gamePanel > .gameTopRow {
+  order: 0;
+}
+
+body.phone[data-view="game"] #gamePanel > #eventBanner,
+body.phone[data-view="game"] #gamePanel > #postGameCard,
+body.phone[data-view="game"] #gamePanel > .resourcesBarCard {
+  order: 1;
+}
+
+body.phone[data-view="game"] #gamePanel > .phoneTabs {
+  order: 2;
+}
+
+body.phone[data-view="game"] #gamePanel > .tabPanel {
+  order: 3;
+}
+
+body.phone[data-view="game"] #gamePanel > #robberCard,
+body.phone[data-view="game"] #gamePanel > .primaryActionCard {
+  order: 4;
+}
+
+body.phone[data-view="game"] .gameTopRow {
+  gap: 8px;
+}
+
+body.phone[data-view="game"] .gameTopRow .btn.icon,
+body.phone[data-view="game"] .gameTopRow .logBtn {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+}
+
+body.phone[data-view="game"] .primaryActionCard {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+body.phone[data-view="game"] .primaryActionCard #primaryBtn {
+  min-height: 56px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+body.phone[data-view="game"] .primaryActionCard #actionHint {
+  text-align: center;
+}
+
+.lobbyActions {
+  background: rgba(var(--bg0-rgb), 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+body.phone[data-view="lobby"] .player {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+body.phone[data-view="game"] .primaryActionCard #primaryBtn:not(:disabled) {
+  color: #04202e;
+  background: rgb(var(--accent-rgb));
+  border-color: rgb(var(--accent-rgb));
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.35);
+}
+
+/* The post-game card already names the winner. */
+body.phone[data-view="game"] #postGameCard:not([style*="none"]) ~ * #winnerTag,
+body.phone[data-view="game"] .gameTopRow:has(~ #postGameCard:not([style*="none"])) #winnerTag {
+  display: none !important;
+}
+
+#postGameStats .player .name {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.postGameParts {
+  margin-left: 18px;
+  font-size: 14px;
+}
+
+#postGameStats .tag {
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+/* Trade actions: one even row, Send offer widest */
+.tradeActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr 0.8fr;
+  gap: 8px;
+}
+.tradeActions .btn {
+  min-width: 0;
+  padding-left: 6px;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+#tradeRepeatBtn {
+  font-size: 0.9em;
+}

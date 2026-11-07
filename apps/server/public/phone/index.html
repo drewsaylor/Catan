@@ -6,6 +6,7 @@
     <title>Catan (Phone)</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="stylesheet" href="/shared/styles.css" />
+    <link rel="stylesheet" href="/phone/phone.css" />
     <style>
       /* Press feedback animation for interactive elements */
       @keyframes pressFeedback {
@@ -42,10 +43,15 @@
       <div class="topbar">
         <img class="phoneLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
         <div class="topPills">
-          <div class="pill">
-            <span class="k">Phone</span>
-            <span id="status" class="v">Disconnected</span>
+          <div id="meChip" class="meChip" style="display: none">
+            <span id="meDot" class="dot"></span>
+            <span id="meName" class="meName"></span>
           </div>
+          <div id="statusPill" class="statusPill" data-live="false">
+            <span class="statusDot"></span>
+            <span id="status">Disconnected</span>
+          </div>
+          <button class="btn icon" id="hostMenuBtn" aria-label="Host controls" style="display: none">♛</button>
           <button class="btn icon" id="settingsBtn" aria-label="Settings">⚙</button>
         </div>
       </div>
@@ -79,110 +85,112 @@
           </div>
 
           <div id="lobbyPanel" class="stack" style="display: none">
-            <div class="pill">
-              <span class="k">Room</span>
-              <span id="roomLabel" class="v">—</span>
-            </div>
-
-            <div class="pill">
-              <span class="k">Scenario</span>
-              <span id="scenarioName" class="v">—</span>
-            </div>
-            <div id="scenarioSummary" class="muted"></div>
-
-            <div class="row">
-              <button class="btn" id="readyBtn" aria-pressed="false">Not ready</button>
-              <span id="hostTag" class="tag" style="display: none">Host</span>
-            </div>
-
-            <div id="hostControls" class="stack" style="display: none">
-              <div class="field">
-                <label for="scenarioSelect">Scenario</label>
-                <select id="scenarioSelect"></select>
+            <div class="lobbyHead">
+              <div class="lobbyRoom">
+                <span class="k">Room</span>
+                <span id="roomLabel" class="v">—</span>
               </div>
-              <div id="scenarioDescription" class="scenarioDescPanel">
-                <div id="scenarioDescText" class="muted"></div>
-                <div id="scenarioConfigPills" class="scenarioConfigPills"></div>
+              <div class="lobbyScenario">
+                <span id="scenarioName" class="v">—</span>
+                <div id="scenarioSummary" class="muted"></div>
               </div>
+            </div>
 
-              <div class="field">
-                <label for="maxPlayersSelect">Max players</label>
-                <select id="maxPlayersSelect">
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
+            <div class="list" id="players"></div>
+            <span id="hostTag" class="tag" style="display: none">Host</span>
+
+            <details id="hostControls" class="hostSettings" style="display: none">
+              <summary>Game settings</summary>
+              <div class="stack">
+                <div class="field">
+                  <label for="scenarioSelect">Scenario</label>
+                  <select id="scenarioSelect"></select>
+                </div>
+                <div id="scenarioDescription" class="scenarioDescPanel">
+                  <div id="scenarioDescText" class="muted"></div>
+                  <div id="scenarioConfigPills" class="scenarioConfigPills"></div>
+                </div>
+
+                <div class="field">
+                  <label for="maxPlayersSelect">Max players</label>
+                  <select id="maxPlayersSelect">
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                  </select>
+                </div>
+
+                <button class="btn" id="advancedBtn" aria-expanded="false" aria-controls="advancedPanel">
+                  Advanced Settings
+                </button>
+                <div id="advancedPanel" class="stack" style="display: none">
+                  <div class="field">
+                    <label for="vpTargetSelect">VP to win</label>
+                    <select id="vpTargetSelect">
+                      <option value="">Default</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                      <option value="13">13</option>
+                      <option value="14">14</option>
+                      <option value="15">15</option>
+                    </select>
+                    <div id="vpTargetHint" class="muted"></div>
+                  </div>
+
+                  <div class="field">
+                    <label for="presetSelect">Board Layout</label>
+                    <select id="presetSelect"></select>
+                  </div>
+
+                  <div class="field" id="boardSeedField" style="display: none">
+                    <label for="boardSeedInput">Board seed (optional)</label>
+                    <input id="boardSeedInput" autocomplete="off" placeholder="Blank = random" />
+                    <div class="muted">Random board only</div>
+                  </div>
+
+                  <div class="row" style="justify-content: space-between; align-items: center">
+                    <div>
+                      <div style="font-weight: 700">Event Deck</div>
+                      <div class="muted">Random events every few turns.</div>
+                    </div>
+                    <button class="btn" id="eventDeckToggleBtn" aria-pressed="false">Off</button>
+                  </div>
+
+                  <div class="field">
+                    <label for="themeSelect">Theme</label>
+                    <select id="themeSelect"></select>
+                  </div>
+
+                  <div class="field">
+                    <label for="hostPinInput">Host PIN (optional)</label>
+                    <input id="hostPinInput" inputmode="numeric" autocomplete="off" placeholder="4–8 digits" />
+                    <div id="hostPinState" class="muted">PIN: Off</div>
+                  </div>
+                  <div class="row">
+                    <button class="btn" id="hostPinSetBtn">Set PIN</button>
+                    <button class="btn danger" id="hostPinClearBtn">Clear</button>
+                  </div>
+                  <div id="hostPinErr" class="muted"></div>
+                </div>
+                <!-- Hidden selects for legacy game mode - controlled by scenario -->
+                <select id="gameModeSelect" style="display: none">
+                  <option value="classic">Classic</option>
+                  <option value="quick">Quick Game</option>
                 </select>
               </div>
+            </details>
 
-              <button class="btn" id="advancedBtn" aria-expanded="false" aria-controls="advancedPanel">
-                Advanced Settings
-              </button>
-              <div id="advancedPanel" class="stack" style="display: none">
-                <div class="field">
-                  <label for="vpTargetSelect">VP to win</label>
-                  <select id="vpTargetSelect">
-                    <option value="">Default</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="13">13</option>
-                    <option value="14">14</option>
-                    <option value="15">15</option>
-                  </select>
-                  <div id="vpTargetHint" class="muted"></div>
-                </div>
-
-                <div class="field">
-                  <label for="presetSelect">Board Layout</label>
-                  <select id="presetSelect"></select>
-                </div>
-
-                <div class="field" id="boardSeedField" style="display: none">
-                  <label for="boardSeedInput">Board seed (optional)</label>
-                  <input id="boardSeedInput" autocomplete="off" placeholder="Blank = random" />
-                  <div class="muted">Random board only</div>
-                </div>
-
-                <div class="row" style="justify-content: space-between; align-items: center">
-                  <div>
-                    <div style="font-weight: 700">Event Deck</div>
-                    <div class="muted">Random events every few turns.</div>
-                  </div>
-                  <button class="btn" id="eventDeckToggleBtn" aria-pressed="false">Off</button>
-                </div>
-
-                <div class="field">
-                  <label for="themeSelect">Theme</label>
-                  <select id="themeSelect"></select>
-                </div>
-
-                <div class="field">
-                  <label for="hostPinInput">Host PIN (optional)</label>
-                  <input id="hostPinInput" inputmode="numeric" autocomplete="off" placeholder="4–8 digits" />
-                  <div id="hostPinState" class="muted">PIN: Off</div>
-                </div>
-                <div class="row">
-                  <button class="btn" id="hostPinSetBtn">Set PIN</button>
-                  <button class="btn danger" id="hostPinClearBtn">Clear</button>
-                </div>
-                <div id="hostPinErr" class="muted"></div>
-              </div>
-              <button class="btn primary" id="startBtn" disabled>Start game</button>
-
-              <!-- Hidden selects for legacy game mode - controlled by scenario -->
-              <select id="gameModeSelect" style="display: none">
-                <option value="classic">Classic</option>
-                <option value="quick">Quick Game</option>
-              </select>
+            <div class="lobbyActions">
+              <div id="lobbyHint" class="lobbyHint" aria-live="polite"></div>
+              <button class="btn" id="readyBtn" aria-pressed="false">I'm ready</button>
+              <button class="btn primary" id="startBtn" style="display: none" disabled>Start game</button>
             </div>
-
-            <div class="spacer"></div>
-            <div class="list" id="players"></div>
           </div>
 
           <div id="gamePanel" class="stack" style="display: none">
@@ -192,6 +200,15 @@
                 <span id="vpLabel" class="v">0/10</span>
               </div>
               <span id="winnerTag" class="tag good" style="display: none">Winner</span>
+              <button class="logBtn" id="logBtn" aria-label="Game log" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <line x1="10" y1="9" x2="8" y2="9" />
+                </svg>
+              </button>
               <button class="btn icon" id="helpBtn" aria-label="Help">?</button>
             </div>
 
@@ -211,6 +228,7 @@
                 <div id="postGameErr" class="muted"></div>
               </div>
               <div id="postGameWaiting" class="muted" style="display: none">Waiting for host…</div>
+              <button class="btn" id="postGameFeedbackBtn" style="display: none">Rate this game</button>
             </div>
 
             <div class="card resourcesBarCard" id="resourcesBarCard" aria-label="Resources">
@@ -236,8 +254,8 @@
                   <div class="resChipCount" id="resCountOre">0</div>
                 </div>
                 <div class="resChip resChipTotal" title="Total resources">
-                  <div class="resChipLabel">Total</div>
                   <div class="resChipCount" id="resTotalValue">0</div>
+                  <div class="resChipLabel">cards</div>
                 </div>
               </div>
             </div>
@@ -314,7 +332,9 @@
                     </button>
                     <button class="btn icon boardOverlayBtn" id="boardFullscreenBtn" aria-label="Fullscreen">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                        <path
+                          d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -338,23 +358,33 @@
                     <div class="tradeGrid">
                       <div class="field tradeGiveField" data-resource="wood">
                         <label for="tradeGiveWood">Wood</label>
-                        <select id="tradeGiveWood"><option value="0">0</option></select>
+                        <select id="tradeGiveWood">
+                          <option value="0">0</option>
+                        </select>
                       </div>
                       <div class="field tradeGiveField" data-resource="brick">
                         <label for="tradeGiveBrick">Brick</label>
-                        <select id="tradeGiveBrick"><option value="0">0</option></select>
+                        <select id="tradeGiveBrick">
+                          <option value="0">0</option>
+                        </select>
                       </div>
                       <div class="field tradeGiveField" data-resource="sheep">
                         <label for="tradeGiveSheep">Sheep</label>
-                        <select id="tradeGiveSheep"><option value="0">0</option></select>
+                        <select id="tradeGiveSheep">
+                          <option value="0">0</option>
+                        </select>
                       </div>
                       <div class="field tradeGiveField" data-resource="wheat">
                         <label for="tradeGiveWheat">Wheat</label>
-                        <select id="tradeGiveWheat"><option value="0">0</option></select>
+                        <select id="tradeGiveWheat">
+                          <option value="0">0</option>
+                        </select>
                       </div>
                       <div class="field tradeGiveField" data-resource="ore">
                         <label for="tradeGiveOre">Ore</label>
-                        <select id="tradeGiveOre"><option value="0">0</option></select>
+                        <select id="tradeGiveOre">
+                          <option value="0">0</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -364,28 +394,58 @@
                     <div class="tradeGrid">
                       <div class="field">
                         <label for="tradeWantWood">Wood</label>
-                        <select id="tradeWantWood"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                        <select id="tradeWantWood">
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
                       </div>
                       <div class="field">
                         <label for="tradeWantBrick">Brick</label>
-                        <select id="tradeWantBrick"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                        <select id="tradeWantBrick">
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
                       </div>
                       <div class="field">
                         <label for="tradeWantSheep">Sheep</label>
-                        <select id="tradeWantSheep"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                        <select id="tradeWantSheep">
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
                       </div>
                       <div class="field">
                         <label for="tradeWantWheat">Wheat</label>
-                        <select id="tradeWantWheat"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                        <select id="tradeWantWheat">
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
                       </div>
                       <div class="field">
                         <label for="tradeWantOre">Ore</label>
-                        <select id="tradeWantOre"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                        <select id="tradeWantOre">
+                          <option value="0">0</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
                       </div>
                     </div>
                   </div>
 
-                  <div class="row" style="justify-content: flex-start; flex-wrap: wrap">
+                  <div class="tradeActions">
                     <button class="btn" id="tradeSuggestBtn">Suggest</button>
                     <button class="btn" id="tradeRepeatBtn" disabled>Repeat last</button>
                     <button class="btn primary" id="tradeSendBtn" disabled>Send offer</button>
@@ -438,7 +498,9 @@
             <div class="tabPanel" data-tab-panel="build" role="tabpanel" hidden>
               <div class="card" style="padding: 12px" id="buildCard">
                 <h2 style="margin: 0 0 10px 0">Build</h2>
-                <div id="buildHint" class="muted" style="margin-bottom: 10px">Spend resources to expand your empire.</div>
+                <div id="buildHint" class="muted" style="margin-bottom: 10px">
+                  Spend resources to expand your empire.
+                </div>
 
                 <div class="buildGrid" id="buildGrid">
                   <button class="btn buildBtn" id="buildTabRoadBtn" disabled>
@@ -545,11 +607,11 @@
         </div>
 
         <div class="card" id="tipsCard">
-          <h2>Tips</h2>
+          <h2>How to join</h2>
           <div class="muted">
-            <div>1) Open the TV page on the big screen.</div>
-            <div>2) Join from phones with the room code.</div>
-            <div>3) Everyone taps Ready. Host taps Start.</div>
+            <div>1) Find the room code on the TV.</div>
+            <div>2) Enter it here with your name.</div>
+            <div>3) Everyone taps ready. The host starts the game.</div>
           </div>
         </div>
       </div>
@@ -627,6 +689,24 @@
           <button class="btn primary" id="discardModalSubmitBtn" disabled>Submit Discard</button>
         </div>
         <div id="discardModalErr" class="muted" style="color: var(--bad); margin-top: 8px"></div>
+      </div>
+    </div>
+
+    <div id="hostMenuBackdrop" class="modalBackdrop" style="display: none">
+      <div class="card modalPanel" role="dialog" aria-modal="true" aria-label="Host controls">
+        <div class="row" style="justify-content: space-between; align-items: center">
+          <h2 style="margin: 0">Host controls</h2>
+          <button class="btn" id="hostMenuCloseBtn">Close</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="stack">
+          <div id="hostMenuPlayers" class="stack"></div>
+          <div id="hostMenuGame" class="stack">
+            <button class="btn" id="hostPauseBtn">Pause turn timer</button>
+            <button class="btn danger" id="hostResetBtn">End game, back to lobby</button>
+          </div>
+          <div id="hostMenuErr" class="muted"></div>
+        </div>
       </div>
     </div>
 
@@ -985,16 +1065,6 @@
     </div>
 
     <div id="hintContainer" class="hintContainer" aria-live="polite" aria-atomic="true"></div>
-
-    <button class="logBtn" id="logBtn" aria-label="Game log" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <line x1="10" y1="9" x2="8" y2="9" />
-      </svg>
-    </button>
 
     <div id="logBackdrop" class="modalBackdrop" style="display: none">
       <div class="card modalPanel logModal" role="dialog" aria-modal="true" aria-label="Game Log">

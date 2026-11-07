@@ -1,3 +1,7 @@
+// Global, not per render: url(#id) resolves document-wide, and the TV keeps a hidden lobby board
+// in the page. A shared id would point the game board at a pattern that never paints.
+let nextPatternId = 0;
+
 function resourceFill(resource) {
   switch (resource) {
     case "wood":
@@ -46,19 +50,22 @@ function svgUnitsPerCssPixel(svg) {
   return pxPerUnit > 0 ? 1 / pxPerUnit : 1;
 }
 
+function polygonPath(pts) {
+  return `M ${pts.map(([px, py]) => `${fmt2(px)} ${fmt2(py)}`).join(" L ")} Z`;
+}
+
 function settlementPath(x, y, s) {
-  const pts = [
+  return polygonPath([
     [x - s, y + s * 0.85],
     [x - s, y - s * 0.15],
     [x, y - s * 1.05],
     [x + s, y - s * 0.15],
     [x + s, y + s * 0.85]
-  ];
-  return `M ${pts.map(([px, py]) => `${fmt2(px)} ${fmt2(py)}`).join(" L ")} Z`;
+  ]);
 }
 
 function cityPath(x, y, s) {
-  const pts = [
+  return polygonPath([
     [x - s * 1.3, y + s * 0.9],
     [x - s * 1.3, y - s * 0.35],
     [x - s * 0.6, y - s * 1.05],
@@ -66,8 +73,61 @@ function cityPath(x, y, s) {
     [x + s * 0.1, y - s * 0.05],
     [x + s * 1.3, y - s * 0.05],
     [x + s * 1.3, y + s * 0.9]
-  ];
-  return `M ${pts.map(([px, py]) => `${fmt2(px)} ${fmt2(py)}`).join(" L ")} Z`;
+  ]);
+}
+
+// The shaded side of a piece: the roof plane on the right, drawn over the base colour.
+function settlementShadePath(x, y, s) {
+  return polygonPath([
+    [x, y - s * 1.05],
+    [x + s, y - s * 0.15],
+    [x + s, y + s * 0.85],
+    [x, y + s * 0.85]
+  ]);
+}
+
+function cityShadePath(x, y, s) {
+  return polygonPath([
+    [x + s * 0.1, y - s * 0.05],
+    [x + s * 1.3, y - s * 0.05],
+    [x + s * 1.3, y + s * 0.9],
+    [x + s * 0.1, y + s * 0.9]
+  ]);
+}
+
+// A door on a settlement, or the windows of a city.
+function settlementDetailPath(x, y, s) {
+  return polygonPath([
+    [x - s * 0.24, y + s * 0.85],
+    [x - s * 0.24, y + s * 0.22],
+    [x + s * 0.24, y + s * 0.22],
+    [x + s * 0.24, y + s * 0.85]
+  ]);
+}
+
+function cityDetailPath(x, y, s) {
+  const windowAt = (wx, wy) =>
+    polygonPath([
+      [wx, wy],
+      [wx + s * 0.32, wy],
+      [wx + s * 0.32, wy + s * 0.36],
+      [wx, wy + s * 0.36]
+    ]);
+  return [
+    windowAt(x - s * 0.76, y - s * 0.1),
+    windowAt(x - s * 0.76, y + s * 0.42),
+    windowAt(x + s * 0.5, y + s * 0.26)
+  ].join(" ");
+}
+
+// Stable per-hex hash, so a tile keeps its art across reloads and on every screen.
+function hashString(value) {
+  let hash = 2166136261;
+  for (const ch of String(value)) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 function pointToSegmentDistanceSquared(px, py, ax, ay, bx, by) {
@@ -132,12 +192,36 @@ export function createBoardView(container, board) {
   const verticesById = new Map(vertices.map((v) => [v.id, v]));
 
   const hexSize = Number(board.hexSize) || 0;
-  const pad = hexSize * 1.1;
   const bounds = board.bounds || { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-  const vbX = Number(bounds.minX) - pad;
-  const vbY = Number(bounds.minY) - pad;
-  const vbW = Number(bounds.maxX) - Number(bounds.minX) + pad * 2;
-  const vbH = Number(bounds.maxY) - Number(bounds.minY) + pad * 2;
+  const boardCx = (Number(bounds.minX) + Number(bounds.maxX)) / 2;
+  const boardCy = (Number(bounds.minY) + Number(bounds.maxY)) / 2;
+  const portOffset = hexSize * 0.62;
+  const boatSize = hexSize * 0.66;
+
+  // Where a port's boat sits: straight out from the vertex farthest from the centre.
+  function portPlacement(port) {
+    const vertexIds = Array.isArray(port?.vertexIds) ? port.vertexIds : [];
+    const vA = verticesById.get(vertexIds[0]);
+    const vB = verticesById.get(vertexIds[1]);
+    if (!vA || !vB) return null;
+    const distA = Math.hypot(vA.x - boardCx, vA.y - boardCy);
+    const distB = Math.hypot(vB.x - boardCx, vB.y - boardCy);
+    const anchor = distA >= distB ? vA : vB;
+    const len = Math.hypot(anchor.x - boardCx, anchor.y - boardCy) || 1;
+    const px = anchor.x + ((anchor.x - boardCx) / len) * portOffset;
+    const py = anchor.y + ((anchor.y - boardCy) / len) * portOffset;
+    return { vA, vB, px, py };
+  }
+
+  const portPlacements = (Array.isArray(board.ports) ? board.ports : []).map(portPlacement).filter(Boolean);
+  const portReach = boatSize * 0.62;
+  const coastPad = hexSize * 0.3;
+  const vbX = Math.min(Number(bounds.minX) - coastPad, ...portPlacements.map((p) => p.px - portReach));
+  const vbY = Math.min(Number(bounds.minY) - coastPad, ...portPlacements.map((p) => p.py - portReach));
+  const vbMaxX = Math.max(Number(bounds.maxX) + coastPad, ...portPlacements.map((p) => p.px + portReach));
+  const vbMaxY = Math.max(Number(bounds.maxY) + coastPad, ...portPlacements.map((p) => p.py + portReach));
+  const vbW = vbMaxX - vbX;
+  const vbH = vbMaxY - vbY;
 
   const root = document.createElement("div");
   root.className = "board";
@@ -153,43 +237,13 @@ export function createBoardView(container, board) {
   const defs = svgEl("defs");
   svg.appendChild(defs);
 
-  // Track created patterns and used variants per resource
   const createdPatterns = new Set();
-  const usedVariants = {};
   const VARIANT_COUNT = 5;
 
-  // Get a random variant for a resource, avoiding repeats when possible
-  function getVariant(resource) {
-    if (!usedVariants[resource]) {
-      usedVariants[resource] = [];
-    }
-    const used = usedVariants[resource];
-
-    // Find available variants (not yet used)
-    const available = [];
-    for (let i = 1; i <= VARIANT_COUNT; i++) {
-      if (!used.includes(i)) available.push(i);
-    }
-
-    // Pick from available, or reset and pick any if all used
-    let variant;
-    if (available.length > 0) {
-      variant = available[Math.floor(Math.random() * available.length)];
-    } else {
-      // All variants used, reset and pick randomly
-      usedVariants[resource] = [];
-      variant = Math.floor(Math.random() * VARIANT_COUNT) + 1;
-    }
-
-    usedVariants[resource].push(variant);
-    return variant;
-  }
-
   // Create a hex tile pattern for a specific hex (each hex gets unique pattern)
-  let patternCounter = 0;
-  function createHexPattern(resource) {
-    const variant = resource === "desert" ? 5 : getVariant(resource);
-    const patternId = `hex-pattern-${resource}-${patternCounter++}`;
+  function createHexPattern(resource, hexId) {
+    const variant = resource === "desert" ? 5 : (hashString(hexId) % VARIANT_COUNT) + 1;
+    const patternId = `hex-pattern-${resource}-${nextPatternId++}`;
 
     const pattern = svgEl("pattern");
     setSvgAttrs(pattern, {
@@ -217,6 +271,34 @@ export function createBoardView(container, board) {
     return { fill: `url(#${patternId})`, imageEl: image };
   }
 
+  // Shallows and a sand shore under the tiles, so the board reads as one island.
+  const coastLayer = svgEl("g");
+  coastLayer.setAttribute("class", "coast-layer");
+  coastLayer.setAttribute("aria-hidden", "true");
+  const hexCorners = (h, scale) =>
+    (h.cornerVertexIds || [])
+      .map((id) => verticesById.get(id))
+      .filter(Boolean)
+      .map((v) => {
+        const cx = Number(h.center?.x);
+        const cy = Number(h.center?.y);
+        return `${fmt2(cx + (v.x - cx) * scale)},${fmt2(cy + (v.y - cy) * scale)}`;
+      })
+      .join(" ");
+  for (const [className, scale] of [
+    ["coast-shallows", 1.26],
+    ["coast-sand", 1.1]
+  ]) {
+    const ring = svgEl("g");
+    ring.setAttribute("class", className);
+    for (const h of hexes) {
+      const poly = svgEl("polygon");
+      poly.setAttribute("points", hexCorners(h, scale));
+      ring.appendChild(poly);
+    }
+    coastLayer.appendChild(ring);
+  }
+
   const hexLayer = svgEl("g");
   hexLayer.setAttribute("class", "hex-layer");
   const portLayer = svgEl("g");
@@ -229,8 +311,9 @@ export function createBoardView(container, board) {
   const vertexLayer = svgEl("g");
   vertexLayer.setAttribute("class", "vertex-layer");
 
-  svg.appendChild(hexLayer);
+  svg.appendChild(coastLayer);
   svg.appendChild(portLayer);
+  svg.appendChild(hexLayer);
   svg.appendChild(edgeLayer);
   svg.appendChild(settlementLayer);
   svg.appendChild(vertexLayer);
@@ -283,7 +366,7 @@ export function createBoardView(container, board) {
     const poly = svgEl("polygon");
     // Use pattern fill for textured hexes, with solid color as fallback stored in data attribute
     const resource = h.resource || "desert";
-    const { fill: patternFill, imageEl } = createHexPattern(resource);
+    const { fill: patternFill, imageEl } = createHexPattern(resource, h.id);
     const fallbackFill = resourceFill(h.resource);
     setSvgAttrs(poly, {
       points: pts,
@@ -303,6 +386,11 @@ export function createBoardView(container, board) {
     hintPoly.setAttribute("points", pts);
     hintPoly.style.display = "none";
     group.appendChild(hintPoly);
+
+    const rolledPoly = svgEl("polygon");
+    rolledPoly.setAttribute("class", "hex-rolled");
+    rolledPoly.setAttribute("points", pts);
+    group.appendChild(rolledPoly);
 
     if (h.token != null) {
       const tokenNumber = Number(h.token);
@@ -392,34 +480,13 @@ export function createBoardView(container, board) {
 
   const ports = Array.isArray(board.ports) ? board.ports : [];
   for (const p of ports) {
-    const vertexIds = Array.isArray(p?.vertexIds) ? p.vertexIds : [];
-    const vA = verticesById.get(vertexIds[0]);
-    const vB = verticesById.get(vertexIds[1]);
-    if (!vA || !vB) continue;
-
-    // Board center for determining which vertex is "outer"
-    const cx = (Number(bounds.minX) + Number(bounds.maxX)) / 2;
-    const cy = (Number(bounds.minY) + Number(bounds.maxY)) / 2;
-
-    // Pick the vertex further from center (the "outer" vertex)
-    const distA = Math.hypot(vA.x - cx, vA.y - cy);
-    const distB = Math.hypot(vB.x - cx, vB.y - cy);
-    const anchorVertex = distA >= distB ? vA : vB;
-
-    // Position boat outward from the anchor vertex
-    let dx = anchorVertex.x - cx;
-    let dy = anchorVertex.y - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len;
-    dy /= len;
-    const offset = hexSize * 0.55;
-    const px = anchorVertex.x + dx * offset;
-    const py = anchorVertex.y + dy * offset;
+    const placement = portPlacement(p);
+    if (!placement) continue;
+    const { vA, vB, px, py } = placement;
 
     const kind = p.kind === "generic" ? "generic" : String(p.kind || "");
     const ratioText = kind === "generic" ? "3:1" : "2:1";
     const title = kind === "generic" ? "3:1 port" : `2:1 ${kind} port`;
-    const boatSize = hexSize * 0.6;
 
     const group = svgEl("g");
     group.setAttribute("class", "port");
@@ -429,11 +496,13 @@ export function createBoardView(container, board) {
     titleEl.textContent = title;
     group.appendChild(titleEl);
 
-    // Draw stem from anchor vertex to boat position
-    const stem = svgEl("line");
-    stem.setAttribute("class", "port-stem");
-    setSvgAttrs(stem, { x1: fmt2(anchorVertex.x), y1: fmt2(anchorVertex.y), x2: fmt2(px), y2: fmt2(py) });
-    group.appendChild(stem);
+    // A pier from each of the port's two vertices shows exactly where it can be used.
+    for (const vertex of [vA, vB]) {
+      const stem = svgEl("line");
+      stem.setAttribute("class", "port-stem");
+      setSvgAttrs(stem, { x1: fmt2(vertex.x), y1: fmt2(vertex.y), x2: fmt2(px), y2: fmt2(py) });
+      group.appendChild(stem);
+    }
 
     // Add boat icon image
     const boatImg = svgEl("image");
@@ -448,11 +517,30 @@ export function createBoardView(container, board) {
     });
     group.appendChild(boatImg);
 
-    // Add ratio text below boat
+    // Ratio plaque, sized to the hex so it stays readable from the couch.
+    const plaqueW = hexSize * 0.46;
+    const plaqueH = hexSize * 0.24;
+    const plaqueY = py + boatSize * 0.3;
+    const plaque = svgEl("rect");
+    plaque.setAttribute("class", "port-plaque");
+    setSvgAttrs(plaque, {
+      x: fmt2(px - plaqueW / 2),
+      y: fmt2(plaqueY),
+      width: fmt2(plaqueW),
+      height: fmt2(plaqueH),
+      rx: fmt2(plaqueH / 2)
+    });
+    group.appendChild(plaque);
+
     const text = svgEl("text");
     text.setAttribute("class", "port-ratio");
-    text.setAttribute("text-anchor", "middle");
-    setSvgAttrs(text, { x: fmt2(px), y: fmt2(py + boatSize * 0.7) });
+    setSvgAttrs(text, {
+      x: fmt2(px),
+      y: fmt2(plaqueY + plaqueH / 2),
+      "text-anchor": "middle",
+      "dominant-baseline": "central",
+      "font-size": fmt2(hexSize * 0.17)
+    });
     text.textContent = ratioText;
     group.appendChild(text);
 
@@ -487,14 +575,30 @@ export function createBoardView(container, board) {
     hint.style.display = "none";
     group.appendChild(hint);
 
-    const road = svgEl("line");
+    // Inset from the corners so roads meet settlements cleanly, with a dark casing for contrast on any tile.
+    const roadCoords = {
+      x1: fmt2(vA.x + (vB.x - vA.x) * 0.07),
+      y1: fmt2(vA.y + (vB.y - vA.y) * 0.07),
+      x2: fmt2(vB.x - (vB.x - vA.x) * 0.07),
+      y2: fmt2(vB.y - (vB.y - vA.y) * 0.07)
+    };
+    const road = svgEl("g");
     road.setAttribute("class", "road");
-    setSvgAttrs(road, { x1: fmt2(vA.x), y1: fmt2(vA.y), x2: fmt2(vB.x), y2: fmt2(vB.y) });
+    const casing = svgEl("line");
+    casing.setAttribute("class", "road-casing");
+    setSvgAttrs(casing, roadCoords);
+    const roadFill = svgEl("line");
+    roadFill.setAttribute("class", "road-fill");
+    setSvgAttrs(roadFill, roadCoords);
+    const roadShine = svgEl("line");
+    roadShine.setAttribute("class", "road-shine");
+    setSvgAttrs(roadShine, roadCoords);
+    road.append(casing, roadFill, roadShine);
     road.style.display = "none";
     group.appendChild(road);
 
     edgeLayer.appendChild(group);
-    edgeEls.set(e.id, { group, hint, road });
+    edgeEls.set(e.id, { group, hint, road, roadFill });
   }
 
   const vertexEls = new Map();
@@ -538,18 +642,20 @@ export function createBoardView(container, board) {
     setSvgAttrs(fillPath, { fill: "white" });
     group.appendChild(fillPath);
 
+    const shadePath = svgEl("path");
+    shadePath.setAttribute("class", "piece-shade");
+    group.appendChild(shadePath);
+
+    const detailPath = svgEl("path");
+    detailPath.setAttribute("class", "piece-detail");
+    group.appendChild(detailPath);
+
     const outlinePath = svgEl("path");
-    setSvgAttrs(outlinePath, {
-      fill: "none",
-      stroke: "rgba(0,0,0,0.55)",
-      "stroke-width": "2",
-      "stroke-linejoin": "round",
-      "vector-effect": "non-scaling-stroke"
-    });
+    outlinePath.setAttribute("class", "piece-outline");
     group.appendChild(outlinePath);
 
     settlementLayer.appendChild(group);
-    settlementEls.set(v.id, { group, fillPath, outlinePath });
+    settlementEls.set(v.id, { group, fillPath, shadePath, detailPath, outlinePath });
   }
 
   const state = {
@@ -672,7 +778,7 @@ export function createBoardView(container, board) {
 
       const piece = svgEl("path");
       piece.setAttribute("class", "selection-piece");
-      const shape = kind === "city" ? cityPath(v.x, v.y, hexSize * 0.2) : settlementPath(v.x, v.y, hexSize * 0.17);
+      const shape = kind === "city" ? cityPath(v.x, v.y, hexSize * 0.23) : settlementPath(v.x, v.y, hexSize * 0.2);
       setSvgAttrs(piece, { d: shape, fill: color });
       selectionLayer.appendChild(piece);
       return;
@@ -780,7 +886,7 @@ export function createBoardView(container, board) {
       const builtColor = built ? playerColorById.get(built.playerId) || "white" : null;
       if (builtColor) {
         el.road.style.display = "";
-        el.road.setAttribute("stroke", String(builtColor));
+        el.roadFill.setAttribute("stroke", String(builtColor));
         el.road.classList.toggle("placed", placedEdgeSet.has(e.id));
       } else {
         el.road.style.display = "none";
@@ -788,8 +894,8 @@ export function createBoardView(container, board) {
       }
     }
 
-    const settlementSize = hexSize * 0.17;
-    const citySize = hexSize * 0.2;
+    const settlementSize = hexSize * 0.2;
+    const citySize = hexSize * 0.23;
 
     for (const v of vertices) {
       const vEl = vertexEls.get(v.id);
@@ -819,6 +925,14 @@ export function createBoardView(container, board) {
       sEl.fillPath.setAttribute("fill", String(color));
       sEl.fillPath.setAttribute("d", shape);
       sEl.outlinePath.setAttribute("d", shape);
+      sEl.shadePath.setAttribute(
+        "d",
+        isCity ? cityShadePath(v.x, v.y, citySize) : settlementShadePath(v.x, v.y, settlementSize)
+      );
+      sEl.detailPath.setAttribute(
+        "d",
+        isCity ? cityDetailPath(v.x, v.y, citySize) : settlementDetailPath(v.x, v.y, settlementSize)
+      );
       sEl.group.classList.toggle("placed", placedVertexSet.has(v.id));
     }
   }
@@ -828,7 +942,20 @@ export function createBoardView(container, board) {
     if (root.parentNode === container) container.removeChild(root);
   }
 
-  return { update, destroy, renderSelection };
+  // Light up every tile carrying the rolled number, except the one the robber is on.
+  function flashRolledHexes(token, { robberHexId = null, durationMs = 2600 } = {}) {
+    for (const h of hexes) {
+      if (Number(h.token) !== Number(token) || h.id === robberHexId) continue;
+      const group = hexEls.get(h.id)?.group;
+      if (!group) continue;
+      group.classList.remove("rolled");
+      void group.getBoundingClientRect();
+      group.classList.add("rolled");
+      setTimeout(() => group.classList.remove("rolled"), durationMs);
+    }
+  }
+
+  return { update, destroy, renderSelection, flashRolledHexes };
 }
 
 const viewByContainer = new WeakMap();
@@ -895,6 +1022,11 @@ export function renderBoard(container, board, options) {
 // Updates only the "you picked this spot" marker, so a tap gets instant feedback without a full redraw.
 export function setBoardSelection(container, selected) {
   viewByContainer.get(container)?.view?.renderSelection(selected);
+}
+
+// Pulses the tiles carrying a just-rolled number.
+export function flashRolledHexes(container, token, options) {
+  viewByContainer.get(container)?.view?.flashRolledHexes(token, options);
 }
 
 export function edgeIdBetween(board, vA, vB) {

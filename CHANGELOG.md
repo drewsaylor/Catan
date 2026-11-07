@@ -8,10 +8,20 @@ The format is based on **Keep a Changelog**, and this project aims to follow **S
 
 ### Added
 
+- The host's phone has a ♛ menu to remove players, make someone else host, pause the turn timer and end the game. The TV has no controls.
+- Trade, bank, discard and Year of Plenty amounts use −/+ steppers with resource icons in place of dropdowns.
+- An identity chip on phones shows your name and colour, and a status dot shows the connection.
+- Each player has a distinct display colour on the TV and phones.
+
 - TV player rows show each player's card count, highlighted above 7.
 - A confirm bar on phones for every board placement, plus a selection marker on the board.
 
 ### Changed
+
+- The TV is redesigned for casting: the board fills the screen, players sit in HUD cards along the edges, and the useless buttons are gone. Lobby and end screens are rebuilt Jackbox-style with a big room code, QR code and player tiles.
+- Phone lobby: big room code, collapsible game settings, and a sticky "I'm ready"/Start bar with a hint of who you are waiting for.
+- Phone game: the main action button sits in the thumb zone, and the trade and turn hints are shorter.
+- The post-game feedback form opens from a "Rate this game" button and no longer pops up on its own.
 
 - All phone building now happens on the main board. The separate build overlay and duplicate buttons are gone.
 - Board taps snap to the nearest legal spot.

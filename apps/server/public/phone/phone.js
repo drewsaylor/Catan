@@ -13,6 +13,9 @@ import { getWhatsNextCopy } from "/shared/host-copy.js";
 import { loadTheme, preloadThemes, fetchThemeIndex, getAvailableThemes } from "/shared/theme-loader.js";
 import { getTipsForContext } from "/shared/tips-catalog.js";
 import { triggerHaptic, animatePressEffect, triggerPressFeedback } from "/shared/haptics.js";
+import { applyDisplayColors } from "/shared/player-colors.js";
+import { installSteppers } from "/shared/stepper.js";
+import { createHostMenu } from "/phone/host-menu.js";
 
 const debugPerfEnabled = new URL(location.href).searchParams.get("debug") === "1";
 const alwaysRenderEnabled = new URL(location.href).searchParams.get("alwaysRender") === "1";
@@ -37,6 +40,11 @@ async function ensurePerf() {
 }
 
 const elStatus = qs("#status");
+const elMeChip = qs("#meChip");
+const elMeDot = qs("#meDot");
+const elMeName = qs("#meName");
+const elHostMenuBtn = qs("#hostMenuBtn");
+const elLobbyHint = qs("#lobbyHint");
 const elConnectionOverlay = qs("#connectionOverlay");
 const elConnectionTitle = qs("#connectionTitle");
 const elConnectionHint = qs("#connectionHint");
@@ -224,6 +232,7 @@ const elRuleBookBtn = qs("#ruleBookBtn");
 const elRuleBookBackdrop = qs("#ruleBookBackdrop");
 const elRuleBookCloseBtn = qs("#ruleBookCloseBtn");
 const elFeedbackModal = qs("#feedbackModal");
+const elPostGameFeedbackBtn = qs("#postGameFeedbackBtn");
 const elFeedbackStars = qs("#feedbackStars");
 const elFeedbackComment = qs("#feedbackComment");
 const elFeedbackCharCount = qs("#feedbackCharCount");
@@ -244,6 +253,12 @@ let isHost = false;
 let hostPinCache = null;
 let es = null;
 let lastRoomState = null;
+const hostMenu = createHostMenu({
+  getRoom: () => lastRoomState,
+  getPlayerId: () => playerId,
+  post: (path, body) => hostPost(path, body)
+});
+installSteppers();
 let lastYouState = null;
 let lastRenderedRoomState = null;
 let lastRevisionSeen = null;
@@ -1363,10 +1378,15 @@ function resourceCountsKey(counts) {
   return RESOURCE_TYPES.map((r) => parseNonNegativeInt(obj[r] ?? 0)).join(",");
 }
 
+function setStatus(text) {
+  elStatus.textContent = text;
+  elStatus.parentElement.dataset.live = String(text === "Live");
+}
+
 function playerRow(p) {
-  const readyTag = p.ready ? `<span class="tag good">Ready</span>` : `<span class="tag warn">Not ready</span>`;
+  const readyTag = p.ready ? `<span class="tag good">Ready</span>` : `<span class="tag">Waiting</span>`;
   const hostTag = p.isHost ? `<span class="tag">Host</span>` : "";
-  const connTag = p.connected ? `<span class="tag good">Online</span>` : `<span class="tag">Offline</span>`;
+  const connTag = p.connected ? "" : `<span class="tag warn">Offline</span>`;
   return `
     <div class="player">
       <div class="name">
@@ -1682,9 +1702,7 @@ function bannerForRoom(room, { context = "connected" } = {}) {
 
   if (status === "in_game") {
     if (phase === "game_over") {
-      return joinCtx
-        ? { tone: "info", title: "Game over", hint: "Ask the host for a new room." }
-        : { tone: "good", title: "Game over", hint: "Winner on TV." };
+      return joinCtx ? { tone: "info", title: "Game over", hint: "Ask the host for a new room." } : null;
     }
     return joinCtx
       ? { tone: "warn", title: "Game in progress", hint: "New players can’t join mid-game." }
@@ -1703,7 +1721,9 @@ function renderRoomStateBanner(room, { context = "connected" } = {}) {
     info.tone === "info" &&
     !info.hint &&
     String(info.title || "").toLowerCase() === "in game";
-  setRoomStateBanner({ ...info, show: !hide });
+  // The lobby screen already says where you are; only warnings earn the space.
+  const lobbyNoise = context === "connected" && room?.status === "lobby" && info.tone === "info";
+  setRoomStateBanner({ ...info, show: !hide && !lobbyNoise });
 }
 
 /**
@@ -1714,7 +1734,7 @@ function handleRoomNotFound() {
   clearSession({ keepName: true });
   elRoomInput.value = "";
   elJoinErr.textContent = "";
-  elStatus.textContent = "Disconnected";
+  setStatus("Disconnected");
   setConnectionOverlay(false);
   elPanelTitle.textContent = "Join";
   setView("join");
@@ -1804,7 +1824,7 @@ async function join({ name, code }) {
   await ensurePerf();
   const prevRoomCode = roomCode;
   const rejoin = !!playerId;
-  elStatus.textContent = rejoin ? "Rejoining…" : "Joining…";
+  setStatus(rejoin ? "Rejoining…" : "Joining…");
   setConnectionOverlay(true, {
     title: rejoin ? "Rejoining…" : "Joining…",
     hint: rejoin ? "Hold tight — your seat is saved." : ""
@@ -1818,7 +1838,7 @@ async function join({ name, code }) {
     });
   } catch (e) {
     setConnectionOverlay(false);
-    elStatus.textContent = "Disconnected";
+    setStatus("Disconnected");
     throw e;
   }
   roomCode = payload.room.roomCode;
@@ -1894,7 +1914,7 @@ function clearSession({ keepName = true } = {}) {
 
 function connectStream() {
   if (es) es.close();
-  elStatus.textContent = "Connecting…";
+  setStatus("Connecting…");
   setConnectionOverlay(false);
   es = new EventSource(
     `/api/rooms/${encodeURIComponent(roomCode)}/stream?role=phone&playerId=${encodeURIComponent(playerId)}`
@@ -1926,14 +1946,14 @@ function connectStream() {
       momentQueue.clear();
       clearNotify();
     }
-    elStatus.textContent = "Live";
+    setStatus("Live");
     setConnectionOverlay(false);
     reconnectDelay = 1200; // Reset backoff on successful connection
     renderScheduler.schedule();
   });
 
   es.onerror = () => {
-    elStatus.textContent = "Rejoining…";
+    setStatus("Rejoining…");
     setConnectionOverlay(true, { title: "Rejoining…", hint: "Hold tight — your seat is saved." });
     scheduleReconnectRoomCheck();
   };
@@ -1982,7 +2002,16 @@ async function applyThemeFromRoom(room) {
   }
 }
 
+function lobbyHint(room) {
+  const count = room.players.length;
+  if (count < 3) return `Need ${3 - count} more to start`;
+  const waiting = room.players.filter((p) => !p.ready).length;
+  if (waiting > 0) return `Waiting for ${waiting} to ready up`;
+  return isHost ? "Everyone's ready" : "Everyone's ready. Waiting for the host.";
+}
+
 function render(room, you) {
+  applyDisplayColors(room);
   const prevRoom = lastRenderedRoomState;
   lastRenderedRoomState = room;
   lastRoomState = room;
@@ -2002,6 +2031,14 @@ function render(room, you) {
   }
 
   isHost = !!me?.isHost;
+  elMeChip.style.display = me ? "" : "none";
+  if (me) {
+    elMeDot.style.background = me.color;
+    setText(elMeName, me.name);
+  }
+  elHostMenuBtn.style.display = isHost ? "" : "none";
+  if (!isHost) hostMenu.close();
+  hostMenu.render();
 
   if (prevRoom) maybeNotify(prevRoom, room);
 
@@ -2014,7 +2051,7 @@ function render(room, you) {
   const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "—" });
   if (elScenarioName) setText(elScenarioName, display.name);
   if (elScenarioSummary) {
-    setText(elScenarioSummary, display.rulesSummary);
+    setText(elScenarioSummary, display.rulesSummary?.replace(/\b\d+ VP\b/, `${getEffectiveVp(room)} VP`));
     elScenarioSummary.style.display = display.rulesSummary ? "" : "none";
   }
   document.body.dataset.playerCountBucket = room.players.length >= 5 ? "5-6" : "3-4";
@@ -2030,12 +2067,15 @@ function render(room, you) {
     setView("lobby");
 
     const ready = !!me?.ready;
-    elReadyBtn.textContent = ready ? "Ready" : "Not ready";
-    elReadyBtn.classList.toggle("primary", ready);
+    elReadyBtn.textContent = ready ? "Ready! Tap to undo" : "I'm ready";
+    setText(elLobbyHint, lobbyHint(room));
+    elReadyBtn.classList.toggle("primary", !ready);
+    elReadyBtn.classList.toggle("isReady", ready);
     elReadyBtn.setAttribute("aria-pressed", ready ? "true" : "false");
 
     // Host controls
     elHostControls.style.display = isHost ? "" : "none";
+    elStartBtn.style.display = isHost ? "" : "none";
     if (isHost) {
       renderScenarioSelect(room);
       renderPresetSelect(room);
@@ -2059,10 +2099,8 @@ function render(room, you) {
     if (isGameOver) {
       setPostGameUiVisible(true);
       renderPostGame(room, me);
-      // Show feedback modal after a brief delay to let the user see game results
-      if (!hasFeedbackBeenSubmitted() && !feedbackModalShown) {
-        setTimeout(() => showFeedbackModal(), 2500);
-      }
+      // Feedback is opt-in: a pop-up here would cover "Play again".
+      if (elPostGameFeedbackBtn) elPostGameFeedbackBtn.style.display = hasFeedbackBeenSubmitted() ? "none" : "";
       return;
     }
     setPostGameUiVisible(false);
@@ -2253,12 +2291,7 @@ function renderScenarioSelect(room) {
   const key = scenariosRenderKey(scenarios);
   if (key !== lastScenarioOptionsRenderKey) {
     lastScenarioOptionsRenderKey = key;
-    const html = scenarios
-      .map(
-        (s) =>
-          `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`
-      )
-      .join("");
+    const html = scenarios.map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join("");
     elScenarioSelect.innerHTML = html;
   }
 
@@ -2278,9 +2311,7 @@ function renderScenarioSelect(room) {
   if (elScenarioConfigPills) {
     const scenario = scenarios.find((s) => s?.id === scenarioId);
     const pills = getScenarioConfigSummary(room, scenario);
-    elScenarioConfigPills.innerHTML = pills
-      .map((p) => `<span class="configPill">${escapeHtml(p)}</span>`)
-      .join("");
+    elScenarioConfigPills.innerHTML = pills.map((p) => `<span class="configPill">${escapeHtml(p)}</span>`).join("");
   }
 }
 
@@ -2488,13 +2519,19 @@ function renderPostGame(room, me) {
             hidden: 0,
             total: 0
           };
+          const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+          const settlements = parseNonNegativeInt(b.settlementCount);
+          const cities = parseNonNegativeInt(b.cityCount);
+          const hidden = parseNonNegativeInt(b.hidden);
           const tags = [
-            `S ${parseNonNegativeInt(b.settlementCount)}`,
-            `C ${parseNonNegativeInt(b.cityCount)}`,
-            b.longestRoad ? "LR +2" : "LR +0",
-            b.largestArmy ? "LA +2" : "LA +0",
-            `H +${parseNonNegativeInt(b.hidden)}`
-          ].join(" · ");
+            settlements ? plural(settlements, "settlement", "settlements") : "",
+            cities ? plural(cities, "city", "cities") : "",
+            b.longestRoad ? "longest road" : "",
+            b.largestArmy ? "largest army" : "",
+            hidden ? plural(hidden, "VP card", "VP cards") : ""
+          ]
+            .filter(Boolean)
+            .join(" · ");
           const total = parseNonNegativeInt(b.total);
           const winnerTag = p.playerId === winnerId ? `<span class="tag good">Winner</span>` : "";
           return `
@@ -2505,7 +2542,7 @@ function renderPostGame(room, me) {
                   <div>${escapeHtml(p.name)}</div>
                   ${winnerTag}
                 </div>
-                <div class="muted" style="margin-left:18px;">${escapeHtml(tags)}</div>
+                <div class="muted postGameParts">${escapeHtml(tags)}</div>
               </div>
               <div style="display:flex; gap:8px; align-items:center;">
                 <span class="tag">${escapeHtml(total)} VP</span>
@@ -2746,7 +2783,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "PLACE_SETTLEMENT", vertexId }
             });
             feedbackGood("build", { gain: 0.85 });
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
         return;
       }
@@ -2759,7 +2798,9 @@ function renderBoardUi(room, prevRoom, me) {
             });
             feedbackGood("build", { gain: 0.85 });
             mode = null;
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
         return;
       }
@@ -2772,7 +2813,9 @@ function renderBoardUi(room, prevRoom, me) {
             });
             feedbackGood("build", { gain: 0.85 });
             mode = null;
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
       }
     },
@@ -2787,7 +2830,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "PLACE_ROAD", edgeId }
             });
             feedbackGood("build", { gain: 0.85 });
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
         return;
       }
@@ -2799,7 +2844,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
             });
             feedbackGood("build", { gain: 0.85 });
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
         return;
       }
@@ -2812,7 +2859,9 @@ function renderBoardUi(room, prevRoom, me) {
             });
             feedbackGood("build", { gain: 0.85 });
             mode = null;
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
       }
     },
@@ -2827,7 +2876,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "MOVE_ROBBER", hexId }
             });
             feedbackGood("ui_confirm", { gain: 0.8 });
-          } catch (e) { showErrorToast(e); }
+          } catch (e) {
+            showErrorToast(e);
+          }
         });
       }
     }
@@ -3593,7 +3644,7 @@ function renderTrade(room, me, you) {
   const canCreate = inMain && myTurn;
 
   // Get current player info for hint messages
-  const currentPlayer = room.players?.find(p => p.playerId === game.currentPlayerId);
+  const currentPlayer = room.players?.find((p) => p.playerId === game.currentPlayerId);
   const currentName = currentPlayer?.name || "the current player";
 
   // Render open offers (needed for hint text)
@@ -3601,27 +3652,27 @@ function renderTrade(room, me, you) {
 
   let tradeHintText;
   if (canCreate) {
-    tradeHintText = "Propose a trade. Other players can accept or reject.";
+    tradeHintText = "Pick what you give and want, then send it to the table.";
   } else if (inMain) {
-    const hasOffers = openOffers.some(o => o.to === "all" || o.to === me?.playerId);
+    const hasOffers = openOffers.some((o) => o.to === "all" || o.to === me?.playerId);
     if (hasOffers) {
-      tradeHintText = `${currentName} is trading. Respond to their offers below, or wait for your turn to propose trades.`;
+      tradeHintText = `${currentName} is trading. Accept or pass below.`;
     } else {
-      tradeHintText = `Waiting for ${currentName} to finish their turn. You can offer trades during your main phase (after rolling dice).`;
+      tradeHintText = `${currentName}'s turn. You can trade with them if they make an offer.`;
     }
   } else {
     // Not in main phase - explain what's happening
     const expected = game.hints?.expected || "";
     if (expected === "ROLL_DICE") {
-      tradeHintText = `Waiting for ${currentName} to roll. Trading happens during the main phase (after dice).`;
+      tradeHintText = `Trading opens after ${currentName} rolls.`;
     } else if (expected === "DISCARD_CARDS") {
-      tradeHintText = "Robber activated! Trading resumes after discards and robber placement.";
+      tradeHintText = "Robber! Trading resumes once it moves.";
     } else if (expected === "MOVE_ROBBER" || expected === "STEAL_CARD") {
-      tradeHintText = "Robber in progress. Trading resumes after steal.";
+      tradeHintText = "Robber! Trading resumes after the steal.";
     } else if (game.phase?.startsWith("setup")) {
-      tradeHintText = "Setup phase. Trading begins after setup is complete.";
+      tradeHintText = "Trading opens after setup.";
     } else {
-      tradeHintText = `Waiting for ${currentName}. You can offer trades on your turn (after rolling dice).`;
+      tradeHintText = `Trade on your turn, after you roll.`;
     }
   }
   setText(elTradeHint, tradeHintText);
@@ -3701,7 +3752,7 @@ function renderTrade(room, me, you) {
     const prevScrollTop = elTradeOffers.scrollTop;
     if (!offers.length) {
       if (canCreate) {
-        elTradeOffers.innerHTML = `<div class="muted">No open offers. Create one above!</div>`;
+        elTradeOffers.innerHTML = `<div class="muted">No open offers.</div>`;
       } else if (inMain) {
         elTradeOffers.innerHTML = `<div class="muted tradeWaitingInfo">
           <div>No trade offers right now.</div>
@@ -3774,7 +3825,7 @@ function renderBankTrade(room, me, you) {
   const canTrade = inMain && myTurn;
 
   if (!canTrade) {
-    const currentPlayer = room.players?.find(p => p.playerId === game.currentPlayerId);
+    const currentPlayer = room.players?.find((p) => p.playerId === game.currentPlayerId);
     const currentName = currentPlayer?.name || "the current player";
 
     if (inMain) {
@@ -3901,11 +3952,11 @@ function renderDevCards(room, me, you) {
 
   // Dev card type to icon path mapping
   const DEV_CARD_ICONS = {
-    knight: '/shared/icons/dev-knight.png',
-    road_building: '/shared/icons/dev-road-building.png',
-    year_of_plenty: '/shared/icons/dev-year-of-plenty.png',
-    monopoly: '/shared/icons/dev-monopoly.png',
-    victory_point: '/shared/icons/dev-victory-point.png'
+    knight: "/shared/icons/dev-knight.png",
+    road_building: "/shared/icons/dev-road-building.png",
+    year_of_plenty: "/shared/icons/dev-year-of-plenty.png",
+    monopoly: "/shared/icons/dev-monopoly.png",
+    victory_point: "/shared/icons/dev-victory-point.png"
   };
 
   // In-hand playable cards.
@@ -3917,7 +3968,7 @@ function renderDevCards(room, me, you) {
       const name = titleDevCard(t);
       const label = n === 1 ? name : `${name} ×${n}`;
       const disabled = !canPlay ? "disabled" : "";
-      const iconSrc = DEV_CARD_ICONS[t] || '/shared/icons/dev-card-back.png';
+      const iconSrc = DEV_CARD_ICONS[t] || "/shared/icons/dev-card-back.png";
       return `<div class="devCardRow">
         <img src="${iconSrc}" alt="" class="devCardIcon" />
         <div class="devCardLabel">${escapeHtml(label)}</div>
@@ -3937,7 +3988,7 @@ function renderDevCards(room, me, you) {
       const n = parseNonNegativeInt(newCounts[t] ?? 0);
       const name = titleDevCard(t);
       const label = n === 1 ? name : `${name} ×${n}`;
-      const iconSrc = DEV_CARD_ICONS[t] || '/shared/icons/dev-card-back.png';
+      const iconSrc = DEV_CARD_ICONS[t] || "/shared/icons/dev-card-back.png";
       return `<div class="devCardRow">
         <img src="${iconSrc}" alt="" class="devCardIcon" />
         <div class="devCardLabel">${escapeHtml(label)}</div>
@@ -4051,6 +4102,9 @@ function legalCityVertices(game, pid) {
 // --- UI handlers ---
 elSettingsBtn?.addEventListener("click", () => openSettings());
 elSettingsCloseBtn?.addEventListener("click", () => closeSettings());
+elHostMenuBtn.addEventListener("click", () => hostMenu.open());
+elPostGameFeedbackBtn?.addEventListener("click", () => showFeedbackModal());
+
 elSettingsBackdrop?.addEventListener("click", (ev) => {
   if (ev.target === elSettingsBackdrop) closeSettings();
 });
@@ -4142,7 +4196,10 @@ elReadyBtn.addEventListener("click", async () => {
 elScenarioSelect?.addEventListener("change", async () => {
   if (!roomCode || !playerId) return;
   try {
-    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/scenario`, { playerId, scenarioId: elScenarioSelect.value });
+    await hostPost(`/api/rooms/${encodeURIComponent(roomCode)}/scenario`, {
+      playerId,
+      scenarioId: elScenarioSelect.value
+    });
   } catch (e) {
     showErrorToast(e);
   }
@@ -5083,7 +5140,7 @@ setView("join");
 scheduleRoomPreview(roomCode);
 if (roomCode && playerId && playerName) {
   elJoinErr.textContent = "Rejoining…";
-  elStatus.textContent = "Rejoining…";
+  setStatus("Rejoining…");
   setConnectionOverlay(true, { title: "Rejoining…", hint: "Hold tight — your seat is saved." });
   elJoinBtn.disabled = true;
   join({ name: playerName, code: roomCode })

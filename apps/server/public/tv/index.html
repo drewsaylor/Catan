@@ -8,315 +8,96 @@
     <link rel="stylesheet" href="/tv/tv.css" />
     <link rel="icon" href="/favicon.png" type="image/png" />
   </head>
-  <body class="tv">
-    <div class="wrap">
-      <div class="topbar">
-        <img class="topbarLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
-        <div class="topPills">
-          <div class="pill">
-            <span class="k">TV</span>
-            <span id="status" class="v">Connecting...</span>
-          </div>
-          <div class="pill" id="phasePill">
-            <span class="k">Now playing</span>
-            <span id="phaseText" class="v">Lobby</span>
-            <span id="turnTimer" class="timer" style="display: none">00:00</span>
-          </div>
-          <button class="btn icon" id="hostBtn" aria-label="Host controls">👑</button>
-          <button class="btn icon" id="settingsBtn" aria-label="Settings">⚙</button>
+  <!-- The TV is a cast display with no input: nothing on this page is interactive. -->
+  <body class="tv" data-screen="attract">
+    <!-- Attract: no one has joined yet -->
+    <section id="attractScreen" class="attractScreen">
+      <div class="joinBar">
+        <img class="joinBarLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
+        <div class="joinBarText">
+          <div class="joinBarLead">Grab your phone to play</div>
+          <div class="joinBarUrl" id="attractUrl"></div>
         </div>
+        <div class="joinBarCode">
+          <div class="eyebrow">Room code</div>
+          <div class="roomCode" id="attractCode">-----</div>
+        </div>
+        <div class="qrTile" id="attractQr" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- Lobby: players are joining -->
+    <section id="lobbyScreen" class="lobbyScreen">
+      <div id="lobbyBoardPreview" class="lobbyBoardPreview" aria-hidden="true"></div>
+      <div class="lobbyJoin">
+        <img class="lobbyLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
+        <div class="eyebrow">Room code</div>
+        <div class="roomCode" id="lobbyCode">-----</div>
+        <div class="qrTile" id="lobbyQr" aria-hidden="true"></div>
+        <ol class="joinSteps">
+          <li>Scan the code, or open <b id="lobbyUrl"></b></li>
+          <li>Enter your name</li>
+          <li>Tap <b>Ready</b></li>
+        </ol>
+      </div>
+      <div class="lobbyRoster">
+        <div class="lobbyRosterHead">
+          <h1 id="lobbyScenarioTitle">Classic</h1>
+          <div class="lobbyPills" id="lobbyPills"></div>
+        </div>
+        <div class="lobbySlots" id="lobbySlots"></div>
+        <div class="lobbyStatus" id="lobbyStatus" role="status"></div>
+      </div>
+    </section>
+
+    <!-- Game and end screen: the board fills everything the rails don't need -->
+    <main id="stage" class="stage">
+      <aside class="rail railLeft">
+        <img class="railLogo" src="/shared/icons/logo-wide.png" alt="Catan LAN" />
+        <section class="turnCard" id="turnCard">
+          <div class="turnTop">
+            <span class="eyebrow" id="turnKicker"></span>
+            <span class="turnTimer" id="turnTimer"></span>
+          </div>
+          <div class="turnName" id="turnName"></div>
+          <div class="turnAction" id="turnAction"></div>
+          <div class="turnWaiting" id="turnWaiting"></div>
+        </section>
+        <section class="diceHud" id="diceHud"></section>
+        <section class="railPanel eventPanel" id="eventPanel" hidden>
+          <div class="eyebrow">Event</div>
+          <div class="panelTitle" id="eventTitle"></div>
+          <div class="panelBody" id="eventDescription"></div>
+        </section>
+        <section class="railPanel offersPanel" id="offersPanel" hidden>
+          <div class="eyebrow">Open trades</div>
+          <div id="offers"></div>
+        </section>
+        <div class="toastRail" id="toastRail" aria-hidden="true"></div>
+        <section class="ticker" id="ticker"></section>
+        <div class="rejoinPill" id="rejoinPill"></div>
+      </aside>
+
+      <div class="boardStage" id="boardStage">
+        <div id="board"></div>
       </div>
 
-      <div class="grid">
-        <!-- Column 1: Board -->
-        <div class="card boardCard">
-          <div id="board"></div>
-        </div>
+      <aside class="rail railRight">
+        <div class="vpGoal" id="vpGoal"></div>
+        <div class="playerCards" id="playerCards"></div>
+      </aside>
 
-        <!-- Column 2: Dice + Game Log (newest at top, fades at bottom) -->
-        <div class="stack logColumn">
-          <div class="card">
-            <h2>Dice</h2>
-            <div id="diceBox"></div>
-          </div>
-
-          <div class="card logCard">
-            <h2>Game Log</h2>
-            <div class="log tvLog" id="log"></div>
-          </div>
-        </div>
-
-        <!-- Column 3: Players + Trades + Info -->
-        <div class="stack infoColumn">
-          <div class="card">
-            <h2 id="sideTitle">Lobby</h2>
-            <div id="joinInfo">
-              <div class="joinGrid">
-                <div>
-                  <div id="roomCode" class="bigcode">-----</div>
-                  <div class="muted">Phones open: <span class="v" id="joinUrl">...</span></div>
-                </div>
-                <div id="joinQr" class="joinQrWrap" aria-hidden="true"></div>
-              </div>
-              <div class="spacer"></div>
-              <div class="row">
-                <div class="pill">
-                  <span class="k">Scenario</span>
-                  <span id="scenarioName" class="v">Classic</span>
-                </div>
-                <div class="pill">
-                  <span class="k">Preset</span>
-                  <span id="presetName" class="v">...</span>
-                </div>
-                <div class="pill">
-                  <span class="k">Mode</span>
-                  <span id="modeName" class="v">Classic</span>
-                </div>
-                <div class="pill">
-                  <span class="k">Theme</span>
-                  <span id="themeName" class="v">Aurora</span>
-                </div>
-                <div class="pill">
-                  <span class="k">Players</span>
-                  <span id="playerCount" class="v">0</span>
-                </div>
-              </div>
-              <div class="spacer"></div>
-              <div class="field" style="max-width: 520px">
-                <label for="scenarioSelect">Scenario</label>
-                <select id="scenarioSelect"></select>
-                <div id="scenarioDesc" class="muted"></div>
-              </div>
-              <div class="spacer"></div>
-            </div>
-            <div class="list" id="players"></div>
-          </div>
-
-          <div class="card" id="endScreenCard" style="display: none">
-            <h2>Play again?</h2>
-            <div class="muted" id="endScreenWinner">Winner: —</div>
-            <div class="spacer"></div>
-            <div class="row" style="gap: 10px; flex-wrap: wrap">
-              <button class="btn primary" id="rematchBtn">Play again</button>
-              <button class="btn" id="newRoomBtn">New room</button>
-            </div>
-            <div class="muted" id="endScreenHint" style="margin-top: 10px"></div>
-          </div>
-
-          <div class="card" id="eventCard" style="display: none">
-            <h2 id="eventTitle">Event</h2>
-            <div id="eventDescription" class="muted"></div>
-          </div>
-
-          <div class="card" id="offersCard" style="display: none">
-            <h2>Open Offers</h2>
-            <div id="offersEmpty" class="muted">No open offers.</div>
-            <div id="offers" class="stack offersList" style="display: none"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bottom player bar for 5-6 players -->
-      <div class="playerBar" id="playerBar" style="display: none"></div>
-    </div>
+      <section class="endPanel" id="endPanel"></section>
+    </main>
 
     <div id="connectionOverlay" class="connectionOverlay" style="display: none" aria-live="polite">
       <div class="connectionOverlayCard">
         <div id="connectionTitle" class="connectionOverlayTitle">Reconnecting…</div>
-        <div id="connectionHint" class="connectionOverlayHint">
-          Phones can refresh to rejoin • If this room disappears, a new code will appear
-        </div>
-      </div>
-    </div>
-
-    <!-- ================================================================== -->
-    <!-- Lobby Overlay - Purpose-built lobby screen                        -->
-    <!-- ================================================================== -->
-    <div id="lobbyOverlay" class="lobbyOverlay" style="display: none">
-      <div class="lobbyContent">
-        <header class="lobbyHeader">
-          <img class="lobbyLogo" src="/shared/icons/logo.png" alt="Catan LAN" />
-          <div class="lobbyJoinInfo">
-            <span id="lobbyRoomCode" class="lobbyRoomCode">-----</span>
-            <span id="lobbyJoinUrl" class="lobbyJoinUrlText">yourserver.com/phone</span>
-          </div>
-          <div id="lobbyQr" class="lobbyQr"></div>
-        </header>
-
-        <div class="lobbyGrid">
-          <!-- Players Section -->
-          <section class="lobbySection lobbyPlayersSection">
-            <h2 class="lobbySectionTitle">Players</h2>
-            <div id="lobbyPlayers" class="lobbyPlayersList"></div>
-            <div id="lobbyPlayersEmpty" class="lobbyPlayersEmpty muted">Waiting for players to join...</div>
-          </section>
-
-          <!-- Game Setup Section -->
-          <section class="lobbySection lobbySetupSection">
-            <h2 class="lobbySectionTitle">Game Setup</h2>
-            <div class="lobbySetupContent">
-              <div class="lobbyScenarioDisplay">
-                <div id="lobbyScenarioTitle" class="lobbyScenarioTitle">Classic</div>
-                <div id="lobbyScenarioSubtitle" class="lobbyScenarioSubtitle muted"></div>
-                <div id="lobbyScenarioDescription" class="lobbyScenarioDescription"></div>
-                <div id="lobbyConfigPills" class="lobbyConfigPills"></div>
-              </div>
-              <div id="lobbyBoardPreview" class="lobbyBoardPreview"></div>
-            </div>
-            <!-- Hidden selects for backwards compatibility -->
-            <select id="lobbyScenarioSelect" style="display: none"></select>
-            <select id="lobbyThemeSelect" style="display: none"></select>
-            <div id="lobbyScenarioDesc" style="display: none"></div>
-          </section>
-        </div>
-
-        <footer class="lobbyFooter">
-          <div id="lobbyStartStatus" class="lobbyStartStatus">Waiting for players to join...</div>
-        </footer>
-      </div>
-    </div>
-
-    <!-- ================================================================== -->
-    <!-- Attract Mode - Shown when no room is active or no players joined  -->
-    <!-- ================================================================== -->
-    <div id="attractMode" class="attractMode" style="display: none">
-      <div class="attractContent">
-        <div class="attractActions">
-          <div id="attractQr" class="attractQr"></div>
-          <div class="attractDivider">or</div>
-          <button class="btn primary attractCreateBtn" id="attractCreateBtn">Create Game</button>
-        </div>
+        <div id="connectionHint" class="connectionOverlayHint"></div>
       </div>
     </div>
 
     <div id="showLayer" class="showLayer" role="status" aria-live="polite" aria-atomic="true"></div>
-
-    <div id="settingsBackdrop" class="modalBackdrop" style="display: none">
-      <div class="card modalPanel" role="dialog" aria-modal="true" aria-label="Settings">
-        <div class="row" style="justify-content: space-between; align-items: center">
-          <h2 style="margin: 0">Settings</h2>
-          <button class="btn" id="settingsCloseBtn">Close</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="stack">
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">Mute</div>
-              <div class="muted">Silence all sounds.</div>
-            </div>
-            <button class="btn" id="muteAllBtn" aria-pressed="false" aria-label="Mute all sounds">Off</button>
-          </div>
-
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">Reduced motion</div>
-              <div class="muted">Less movement, more fades.</div>
-            </div>
-            <button class="btn" id="reducedMotionBtn" aria-pressed="false" aria-label="Reduce motion">Off</button>
-          </div>
-
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">High contrast</div>
-              <div class="muted">Bolder UI for readability.</div>
-            </div>
-            <button class="btn" id="highContrastBtn" aria-pressed="false" aria-label="High contrast mode">Off</button>
-          </div>
-
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">Colorblind palette</div>
-              <div class="muted">More distinct resource colors.</div>
-            </div>
-            <button class="btn" id="colorblindBtn" aria-pressed="false" aria-label="Colorblind-friendly palette">
-              Off
-            </button>
-          </div>
-
-          <div class="row" style="justify-content: space-between">
-            <div>
-              <div style="font-weight: 700">Join QR</div>
-              <div class="muted">Show a QR code for phones.</div>
-            </div>
-            <button class="btn" id="showQrBtn" aria-pressed="true" aria-label="Show join QR code">On</button>
-          </div>
-
-          <div class="field">
-            <label for="sfxVolume">SFX volume</label>
-            <input id="sfxVolume" type="range" min="0" max="100" value="90" />
-          </div>
-
-          <div class="field">
-            <label for="musicVolume">Music volume</label>
-            <input id="musicVolume" type="range" min="0" max="100" value="60" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="hostBackdrop" class="modalBackdrop" style="display: none">
-      <div class="card modalPanel" role="dialog" aria-modal="true" aria-label="Host controls">
-        <div class="row" style="justify-content: space-between; align-items: center">
-          <h2 style="margin: 0">Host Controls</h2>
-          <button class="btn" id="hostCloseBtn">Close</button>
-        </div>
-        <div class="spacer"></div>
-        <div class="stack">
-          <div class="row" style="justify-content: space-between; align-items: center">
-            <div>
-              <div style="font-weight: 700">Host console</div>
-              <div class="muted" id="adminState">Ready.</div>
-            </div>
-            <button class="btn" id="claimAdminBtn" style="display: none">Enable</button>
-          </div>
-
-          <div class="row" style="justify-content: space-between; align-items: center">
-            <div>
-              <div style="font-weight: 700">Room snapshot</div>
-              <div class="muted">Debug JSON (includes private hands).</div>
-            </div>
-            <button class="btn" id="downloadSnapshotBtn">Download room snapshot</button>
-          </div>
-
-          <div class="row" style="justify-content: space-between; align-items: center">
-            <div>
-              <div style="font-weight: 700">Turn timer</div>
-              <div class="muted">Pause/resume nudges + timer.</div>
-            </div>
-            <button class="btn" id="timerPauseBtn">Pause</button>
-          </div>
-
-          <div class="field" id="themeSelectField" style="display: none">
-            <label for="themeSelect">Theme</label>
-            <div class="muted" style="margin-bottom: 8px">Change the visual theme for all players.</div>
-            <select id="themeSelect"></select>
-          </div>
-
-          <div class="field">
-            <label for="hostSelect">Reassign host</label>
-            <select id="hostSelect"></select>
-          </div>
-          <button class="btn" id="hostSetBtn">Set host</button>
-
-          <div class="spacer"></div>
-          <div style="font-weight: 700">Kick player</div>
-          <div class="muted">Pre-game recommended. In-game removes their turns.</div>
-          <div id="kickList" class="stack"></div>
-
-          <div class="spacer"></div>
-          <button class="btn danger" id="resetRoomBtn">Reset room…</button>
-          <div id="resetConfirmPanel" class="stack" style="display: none">
-            <div class="muted">Ends the current game and returns to lobby.</div>
-            <div class="row">
-              <button class="btn danger" id="resetConfirmBtn">Yes, reset</button>
-              <button class="btn" id="resetCancelBtn">Cancel</button>
-            </div>
-          </div>
-
-          <div id="hostErr" class="muted"></div>
-        </div>
-      </div>
-    </div>
 
     <script type="module" src="/tv/tv.js"></script>
   </body>

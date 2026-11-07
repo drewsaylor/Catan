@@ -696,3 +696,46 @@ describe("Kick scenarios", () => {
     assert.ok(!room.game.turnOrder.includes(nonCurrentPlayer.id), "Kicked player should not be in turnOrder");
   });
 });
+
+describe("Host controls from a phone", () => {
+  test("the host player can kick, pause, reassign and reset without the admin secret", async (t) => {
+    const { baseUrl } = await startTestServer(t);
+    const { roomCode, players, hostId } = await createRoomWithPlayers(baseUrl, ["Alice", "Bob", "Charlie", "Dana"]);
+    const post = (route, body) =>
+      httpJson(baseUrl, `/api/rooms/${roomCode}/admin/${route}`, {
+        method: "POST",
+        body: { playerId: hostId, ...body }
+      });
+
+    const kicked = await post("kick", { targetPlayerId: players[3].id });
+    assert.equal(kicked.json?.ok, true);
+    assert.equal(kicked.json.room.players.length, 3);
+
+    assert.equal((await post("timer", { paused: true })).json?.ok, true);
+    assert.equal((await post("reset", { confirm: true })).json?.ok, true);
+
+    const moved = await post("host", { hostPlayerId: players[1].id });
+    assert.equal(moved.json?.ok, true);
+    assert.equal(moved.json.room.hostPlayerId, players[1].id);
+  });
+
+  test("other players and bad secrets are refused", async (t) => {
+    const { baseUrl } = await startTestServer(t);
+    const { roomCode, players } = await createRoomWithPlayers(baseUrl, ["Alice", "Bob", "Charlie"]);
+    const url = `/api/rooms/${roomCode}/admin/kick`;
+    const targetPlayerId = players[2].id;
+
+    const notHost = await httpJson(baseUrl, url, { method: "POST", body: { playerId: players[1].id, targetPlayerId } });
+    assert.equal(notHost.res.status, 403);
+    assert.equal(notHost.json?.error?.code ?? notHost.json?.error, "ONLY_HOST");
+
+    const badSecret = await httpJson(baseUrl, url, {
+      method: "POST",
+      body: { adminSecret: "nope", playerId: players[0].id, targetPlayerId }
+    });
+    assert.equal(badSecret.res.status, 403);
+
+    const anonymous = await httpJson(baseUrl, url, { method: "POST", body: { targetPlayerId } });
+    assert.equal(anonymous.res.status, 400);
+  });
+});

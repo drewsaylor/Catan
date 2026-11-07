@@ -1559,55 +1559,76 @@ body.board-fullscreen {
 }
 
 .robber-highlight {
-  fill: rgba(255, 50, 50, 0.08);
-  stroke: rgba(255, 50, 50, 0.95);
-  stroke-width: 8;
+  fill: rgba(12, 8, 16, 0.42);
+  stroke: rgba(255, 92, 122, 0.8);
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 14px rgba(255, 50, 50, 0.9)) drop-shadow(0 0 28px rgba(255, 50, 50, 0.6));
 }
 
 .robber image,
 .robber .robber-icon {
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px rgba(255, 50, 50, 0.8)) drop-shadow(0 0 32px rgba(255, 50, 50, 0.5));
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.65));
+}
+
+/* Island shore: drawn beneath the tiles so the hexes read as one landmass. */
+.coast-shallows polygon {
+  fill: rgba(96, 196, 214, 0.2);
+  stroke: rgba(96, 196, 214, 0.2);
+  stroke-width: 6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.coast-sand polygon {
+  fill: #d9c08c;
+  stroke: #d9c08c;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Tiles carrying the number just rolled. */
+.hex-rolled {
+  fill: rgba(255, 236, 170, 0);
+  stroke: rgba(255, 236, 170, 0);
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.hex.rolled .hex-rolled {
+  animation: hexRolled 1.3s var(--ease-in-out) 2;
+}
+
+@keyframes hexRolled {
+  50% {
+    fill: rgba(255, 236, 170, 0.34);
+    stroke: rgba(255, 236, 170, 0.95);
+  }
 }
 
 .port-stem {
-  stroke: rgba(255, 255, 255, 0.18);
-  stroke-width: 3;
+  stroke: #8a6a44;
+  stroke-width: 4;
+  stroke-dasharray: 2 7;
   vector-effect: non-scaling-stroke;
   stroke-linecap: round;
-  opacity: 0.95;
-}
-
-.port-circle {
-  stroke: rgba(0, 0, 0, 0.32);
-  stroke-width: 3;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.25));
-}
-
-.port-text {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 18px;
-  fill: rgba(255, 255, 255, 0.92);
-}
-
-.port-sub {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 14px;
-  fill: rgba(var(--accent2-rgb), 0.92);
 }
 
 .port-boat {
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.port-plaque {
+  fill: rgba(10, 16, 30, 0.86);
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .port-ratio {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 14px;
-  font-weight: 700;
-  fill: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  font-weight: 800;
+  fill: #fff;
 }
 
 .edge-hit {
@@ -1632,10 +1653,39 @@ body.board-fullscreen {
   animation: edgeGlow calc(var(--dur-slow) * 2) var(--ease-in-out) infinite;
 }
 
-.road {
-  stroke-width: 8;
+.road line {
   vector-effect: non-scaling-stroke;
   stroke-linecap: round;
+}
+
+.road-casing {
+  stroke: rgba(16, 12, 10, 0.82);
+  stroke-width: 11;
+}
+
+.road-fill {
+  stroke-width: 7;
+}
+
+.road-shine {
+  stroke: rgba(255, 255, 255, 0.26);
+  stroke-width: 2;
+}
+
+.piece-shade {
+  fill: rgba(0, 0, 0, 0.24);
+}
+
+.piece-detail {
+  fill: rgba(16, 12, 10, 0.55);
+}
+
+.piece-outline {
+  fill: none;
+  stroke: rgba(16, 12, 10, 0.88);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
 @keyframes placedGlow {
@@ -1979,6 +2029,12 @@ html[data-reduced-motion="true"] .player.turn::after {
 html[data-reduced-motion="true"] .card.cardFlash,
 html[data-reduced-motion="true"] .pill.cardFlash {
   animation: cardGlowRm var(--dur-slow) var(--ease-out);
+}
+
+html[data-reduced-motion="true"] .hex.rolled .hex-rolled {
+  animation: none;
+  fill: rgba(255, 236, 170, 0.28);
+  stroke: rgba(255, 236, 170, 0.95);
 }
 
 html[data-reduced-motion="true"] #board.boardFlash .board {

@@ -1,46 +1,35 @@
-import { formatRollGains, latestRollGains } from "/shared/roll-gains.js";
-import { api, qs, renderLog, setText } from "/shared/common.js";
-import {
-  applyBoardMoment,
-  renderBoard,
-  focusPlayerArea,
-  focusEdge,
-  focusVertex,
-  focusHex,
-  cinematicReset
-} from "/shared/board-renderer.js";
+// The TV is a cast display: it shows the game and takes no input. All controls live on the phones.
+import { latestRollGains } from "/shared/roll-gains.js";
+import { api, qs, setText } from "/shared/common.js";
+import { flashRolledHexes, renderBoard } from "/shared/board-renderer.js";
 import { createRenderScheduler } from "/shared/render-scheduler.js";
-import { errorCode, humanizeErrorMessage } from "/shared/error-copy.js";
+import { errorCode } from "/shared/error-copy.js";
 import { qrSvg } from "/shared/qr.js";
 import { scenarioDisplay } from "/shared/scenarios.js";
-import { getSettings, initSettings, onSettingsChange, setSettings } from "/shared/settings.js";
+import { getSettings, initSettings } from "/shared/settings.js";
 import { installAudioUnlock, playSfx, setMusicMode, preloadMusic } from "/shared/audio.js";
-import { supportsWebGL } from "/shared/render-capabilities.js";
-import { createMomentQueue, detectMoments } from "/shared/moment-detector.js";
+import { createMomentQueue } from "/shared/moment-detector.js";
+import { applyDisplayColors } from "/shared/player-colors.js";
+import { createSegmentTracker, hostCopyForMoment } from "/shared/host-copy.js";
+import { loadTheme, preloadThemes, fetchThemeIndex } from "/shared/theme-loader.js";
 import { createShowLayer } from "/tv/show-layer.js";
-import { createSegmentTracker, getSegment, hostCopyForMoment } from "/shared/host-copy.js";
+import { computeShowBeats, computePlacedStructures } from "/tv/show-beats.js";
+import { createAttractSampleBoard } from "/tv/attract-mode.js";
 import {
-  loadTheme,
-  getLoadedTheme,
-  onThemeChange,
-  preloadThemes,
-  fetchThemeIndex,
-  getAvailableThemes
-} from "/shared/theme-loader.js";
-// 3D rendering removed - using 2D only
-// Extracted modules for TV functionality (Phase 3 modularization)
-import {
-  computeShowBeats as computeShowBeatsModule,
-  computePlacedStructures as computePlacedStructuresModule
-} from "/tv/show-beats.js";
-import {
-  createAttractSampleBoard as createAttractSampleBoardModule,
-  createAttractModeController
-} from "/tv/attract-mode.js";
-import { createLobbyOverlayController } from "/tv/lobby-overlay.js";
+  createPlayerCards,
+  diceHudHtml,
+  dieHtml,
+  endPanelHtml,
+  escapeHtml,
+  offerHtml,
+  pendingDiscards,
+  settlementSprite,
+  tickerHtml,
+  turnActionText,
+  turnKickerText
+} from "/tv/hud.js";
 
 const debugPerfEnabled = new URL(location.href).searchParams.get("debug") === "1";
-const alwaysRenderEnabled = new URL(location.href).searchParams.get("alwaysRender") === "1";
 let markRenderStart = null;
 let markRenderEnd = null;
 let markPayloadSize = null;
@@ -58,1147 +47,79 @@ if (debugPerfEnabled) {
   }
 }
 
-const elStatus = qs("#status");
-const elPhaseText = qs("#phaseText");
-const elPhasePill = qs("#phasePill");
-const elTurnTimer = qs("#turnTimer");
-const elRoomCode = qs("#roomCode");
-const elJoinUrl = qs("#joinUrl");
-const elJoinQr = qs("#joinQr");
-const elScenarioName = qs("#scenarioName");
-const elScenarioSelect = qs("#scenarioSelect");
-const elScenarioDesc = qs("#scenarioDesc");
-const elPresetName = qs("#presetName");
-const elModeName = qs("#modeName");
-const elThemeName = qs("#themeName");
-const elPlayerCount = qs("#playerCount");
-const elPlayers = qs("#players");
-const elPlayerBar = qs("#playerBar");
+const QUICK_TURN_NUDGE_THRESHOLDS_MS = [45000, 75000];
+const MIN_PLAYERS = 3;
+const MAX_RECOVERY_DELAY = 10000;
+
 const elBoard = qs("#board");
-const elSideTitle = qs("#sideTitle");
-const elJoinInfo = qs("#joinInfo");
-const elDiceBox = qs("#diceBox");
-const elEventCard = qs("#eventCard");
+const elBoardStage = qs("#boardStage");
+const elTurnCard = qs("#turnCard");
+const elTurnKicker = qs("#turnKicker");
+const elTurnTimer = qs("#turnTimer");
+const elTurnName = qs("#turnName");
+const elTurnAction = qs("#turnAction");
+const elTurnWaiting = qs("#turnWaiting");
+const elDiceHud = qs("#diceHud");
+const elEventPanel = qs("#eventPanel");
 const elEventTitle = qs("#eventTitle");
 const elEventDescription = qs("#eventDescription");
-const elOffersCard = qs("#offersCard");
+const elOffersPanel = qs("#offersPanel");
 const elOffers = qs("#offers");
-const elOffersEmpty = qs("#offersEmpty");
-const elLog = qs("#log");
-const elEndScreenCard = qs("#endScreenCard");
-const elEndScreenWinner = qs("#endScreenWinner");
-const elEndScreenHint = qs("#endScreenHint");
-const elRematchBtn = qs("#rematchBtn");
-const elNewRoomBtn = qs("#newRoomBtn");
-const elSettingsBtn = qs("#settingsBtn");
-const elSettingsBackdrop = qs("#settingsBackdrop");
-const elSettingsCloseBtn = qs("#settingsCloseBtn");
-const elMuteAllBtn = qs("#muteAllBtn");
-const elReducedMotionBtn = qs("#reducedMotionBtn");
-const elHighContrastBtn = qs("#highContrastBtn");
-const elColorblindBtn = qs("#colorblindBtn");
-const elShowQrBtn = qs("#showQrBtn");
-const elSfxVolume = qs("#sfxVolume");
-const elMusicVolume = qs("#musicVolume");
-const elShowLayer = qs("#showLayer");
+const elTicker = qs("#ticker");
+const elRejoinPill = qs("#rejoinPill");
+const elVpGoal = qs("#vpGoal");
+const elEndPanel = qs("#endPanel");
 const elConnectionOverlay = qs("#connectionOverlay");
 const elConnectionTitle = qs("#connectionTitle");
 const elConnectionHint = qs("#connectionHint");
-const elHostBtn = qs("#hostBtn");
-const elHostBackdrop = qs("#hostBackdrop");
-const elHostCloseBtn = qs("#hostCloseBtn");
-const elAdminState = qs("#adminState");
-const elClaimAdminBtn = qs("#claimAdminBtn");
-const elDownloadSnapshotBtn = qs("#downloadSnapshotBtn");
-const elTimerPauseBtn = qs("#timerPauseBtn");
-const elThemeSelectField = qs("#themeSelectField");
-const elThemeSelect = qs("#themeSelect");
-const elHostSelect = qs("#hostSelect");
-const elHostSetBtn = qs("#hostSetBtn");
-const elKickList = qs("#kickList");
-const elResetRoomBtn = qs("#resetRoomBtn");
-const elResetConfirmPanel = qs("#resetConfirmPanel");
-const elResetConfirmBtn = qs("#resetConfirmBtn");
-const elResetCancelBtn = qs("#resetCancelBtn");
-const elHostErr = qs("#hostErr");
-
-// Attract Mode Elements
-const elAttractMode = qs("#attractMode");
-const elAttractQr = qs("#attractQr");
-const elAttractCreateBtn = qs("#attractCreateBtn");
-
-// Lobby Overlay Elements
-const elLobbyOverlay = qs("#lobbyOverlay");
-const elLobbyRoomCode = qs("#lobbyRoomCode");
-const elLobbyQr = qs("#lobbyQr");
-const elLobbyJoinUrl = qs("#lobbyJoinUrl");
-const elLobbyPlayers = qs("#lobbyPlayers");
-const elLobbyPlayersEmpty = qs("#lobbyPlayersEmpty");
-const elLobbyBoardPreview = qs("#lobbyBoardPreview");
-const elLobbyScenarioSelect = qs("#lobbyScenarioSelect");
-const elLobbyScenarioDesc = qs("#lobbyScenarioDesc");
-const elLobbyScenarioTitle = qs("#lobbyScenarioTitle");
-const elLobbyScenarioSubtitle = qs("#lobbyScenarioSubtitle");
-const elLobbyScenarioDescription = qs("#lobbyScenarioDescription");
-const elLobbyConfigPills = qs("#lobbyConfigPills");
-const elLobbyThemeSelect = qs("#lobbyThemeSelect");
-const elLobbyStartStatus = qs("#lobbyStartStatus");
-
-// Main game UI wrapper - hidden during full-screen overlays
-const elWrap = qs(".wrap");
+const elLobbyPreview = qs("#lobbyBoardPreview");
+const elLobbySlots = qs("#lobbySlots");
+const elLobbyPills = qs("#lobbyPills");
+const elLobbyStatus = qs("#lobbyStatus");
 
 let roomCode = null;
-let adminSecret = null;
-let isSecondaryTv = false; // True if admin secret was rejected (another TV controls)
-let serverLanIp = null; // LAN IP from server for QR codes
-let hostPinCache = null;
+let serverLanIp = null;
 let es = null;
 let lastRoomState = null;
 let lastRenderedRoomState = null;
 let lastRevisionSeen = null;
 let lastThemeId = null;
-let lastScenarioOptionsKey = null;
-let lastTurnPlayerId = null;
-let turnStartMs = null;
+let lastBoardRenderKey = null;
+let lastJoinKey = null;
+let lobbyPreviewRadius = null;
+let serverSkewMs = 0;
 let turnTimerInterval = null;
 let turnNudgeKey = null;
+let lastMusicMode = null;
+let recoveryTimer = null;
+let recoveryDelay = 1200;
+
 const turnNudgeFired = new Set();
 const flashTimers = new WeakMap();
-const offerNewTimers = new Map();
 const showQueue = createMomentQueue({ maxQueue: 24, maxSeen: 512 });
 const segmentTracker = createSegmentTracker();
-let lastJoinQrUrl = null;
-let serverSkewMs = 0;
-let lastPlayersRenderKey = null;
-let lastLogRenderKey = null;
-let lastBoardRenderKey = null;
-
-// =============================================================================
-// Attract Mode State
-// =============================================================================
-let attractModeActive = false;
-let attractIdleTimer = null;
-const ATTRACT_IDLE_TIMEOUT_MS = 30000; // 30 seconds of no room/players triggers attract
-
-// =============================================================================
-// Lobby Overlay State
-// =============================================================================
-let lobbyOverlayActive = false;
-let lastLobbyScenarioOptionsKey = null;
-let lastLobbyThemeOptionsKey = null;
-let lastLobbyQrUrl = null;
-let lobbyPreviewBoard = null;
-let lobbyPreviewBoardRadius = null;
-
-/**
- * Hide .wrap when attract or lobby overlay is active.
- * Only show .wrap during active gameplay.
- */
-function updateWrapVisibility() {
-  if (!elWrap) return;
-  elWrap.style.display = attractModeActive || lobbyOverlayActive ? "none" : "";
-}
-
-const RESOURCE_TYPES = ["wood", "brick", "sheep", "wheat", "ore"];
-const QUICK_TURN_NUDGE_THRESHOLDS_MS = [45000, 75000];
-
-// =============================================================================
-// Resource Distribution Helpers (for dice roll display)
-// =============================================================================
-
-/**
- * Get tone for resource type (for hex pulsing)
- */
-function getResourceTone(resource) {
-  switch (resource) {
-    case "wood":
-      return "good"; // green
-    case "brick":
-      return "warn"; // orange/yellow
-    case "sheep":
-      return "good"; // light green
-    case "wheat":
-      return "warn"; // yellow
-    case "ore":
-      return "info"; // gray/blue
-    default:
-      return "info";
-  }
-}
-
-// 3D rendering removed - using 2D only
-let lastDiceRollAt = null;
+const playerCards = createPlayerCards(qs("#playerCards"));
+const show = createShowLayer(qs("#showLayer"), { toastRail: qs("#toastRail") });
 
 initSettings();
 installAudioUnlock();
-
-// Music state tracking
-let lastMusicMode = null;
-
-function updateMusicMode(room) {
-  let newMode = "lobby";
-  if (room?.status === "in_game" && room?.game?.phase !== "game_over") {
-    newMode = "game";
-  }
-  if (newMode !== lastMusicMode) {
-    lastMusicMode = newMode;
-    setMusicMode(newMode);
-  }
-}
-
-// Start with lobby music
 setMusicMode("lobby");
 preloadMusic();
-const show = elShowLayer
-  ? createShowLayer(elShowLayer)
-  : {
-      showMoment: async () => {},
-      toast: async () => {},
-      spotlightElement: () => {},
-      confetti: () => {}
-    };
 showQueue.setHandler(runBeat);
 
-let focusBeforeSettings = null;
-let focusBeforeHost = null;
-
-function syncSettingsUi(settings) {
-  if (elMuteAllBtn) {
-    elMuteAllBtn.textContent = settings?.muteAll ? "On" : "Off";
-    elMuteAllBtn.setAttribute("aria-pressed", settings?.muteAll ? "true" : "false");
-  }
-  if (elReducedMotionBtn) {
-    elReducedMotionBtn.textContent = settings?.reducedMotion ? "On" : "Off";
-    elReducedMotionBtn.setAttribute("aria-pressed", settings?.reducedMotion ? "true" : "false");
-  }
-  if (elHighContrastBtn) {
-    elHighContrastBtn.textContent = settings?.highContrast ? "On" : "Off";
-    elHighContrastBtn.setAttribute("aria-pressed", settings?.highContrast ? "true" : "false");
-  }
-  if (elColorblindBtn) {
-    elColorblindBtn.textContent = settings?.colorblind ? "On" : "Off";
-    elColorblindBtn.setAttribute("aria-pressed", settings?.colorblind ? "true" : "false");
-  }
-  if (elShowQrBtn) {
-    elShowQrBtn.textContent = settings?.showQr ? "On" : "Off";
-    elShowQrBtn.setAttribute("aria-pressed", settings?.showQr ? "true" : "false");
-  }
-  if (settings?.showQr && roomCode && lastRoomState?.status !== "in_game") {
-    renderJoinQr(roomUrlForPhones(), { force: true });
-  }
-  if (elSfxVolume) elSfxVolume.value = String(Math.round((settings?.sfxVolume ?? 0) * 100));
-  if (elMusicVolume) elMusicVolume.value = String(Math.round((settings?.musicVolume ?? 0) * 100));
+function updateMusicMode(room) {
+  const mode = room?.status === "in_game" && room?.game?.phase !== "game_over" ? "game" : "lobby";
+  if (mode === lastMusicMode) return;
+  lastMusicMode = mode;
+  setMusicMode(mode);
 }
-
-function isSettingsOpen() {
-  if (!elSettingsBackdrop) return false;
-  return elSettingsBackdrop.style.display !== "none";
-}
-
-function openSettings() {
-  if (!elSettingsBackdrop) return;
-  focusBeforeSettings = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  syncSettingsUi(getSettings());
-  elSettingsBackdrop.style.display = "";
-  requestAnimationFrame(() => elSettingsCloseBtn?.focus());
-}
-
-function closeSettings() {
-  if (!elSettingsBackdrop) return;
-  elSettingsBackdrop.style.display = "none";
-  const restore = focusBeforeSettings && document.contains(focusBeforeSettings) ? focusBeforeSettings : elSettingsBtn;
-  focusBeforeSettings = null;
-  requestAnimationFrame(() => restore?.focus());
-}
-
-function isHostControlsOpen() {
-  if (!elHostBackdrop) return false;
-  return elHostBackdrop.style.display !== "none";
-}
-
-function openHostControls() {
-  if (!elHostBackdrop) return;
-  if (isSettingsOpen()) closeSettings();
-  focusBeforeHost = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  if (elHostErr) elHostErr.textContent = "";
-  if (elResetConfirmPanel) elResetConfirmPanel.style.display = "none";
-  syncHostControls(lastRoomState);
-  elHostBackdrop.style.display = "";
-  requestAnimationFrame(() => elHostCloseBtn?.focus());
-}
-
-function closeHostControls() {
-  if (!elHostBackdrop) return;
-  elHostBackdrop.style.display = "none";
-  if (elResetConfirmPanel) elResetConfirmPanel.style.display = "none";
-  if (elHostErr) elHostErr.textContent = "";
-  const restore = focusBeforeHost && document.contains(focusBeforeHost) ? focusBeforeHost : elHostBtn;
-  focusBeforeHost = null;
-  requestAnimationFrame(() => restore?.focus());
-}
-
-syncSettingsUi(getSettings());
-onSettingsChange(syncSettingsUi);
-
-elSettingsBtn?.addEventListener("click", () => openSettings());
-elSettingsCloseBtn?.addEventListener("click", () => closeSettings());
-elSettingsBackdrop?.addEventListener("click", (ev) => {
-  if (ev.target === elSettingsBackdrop) closeSettings();
-});
-
-elHostBtn?.addEventListener("click", () => openHostControls());
-elHostCloseBtn?.addEventListener("click", () => closeHostControls());
-elHostBackdrop?.addEventListener("click", (ev) => {
-  if (ev.target === elHostBackdrop) closeHostControls();
-});
-
-elRematchBtn?.addEventListener("click", async () => {
-  await requestRematch();
-});
-
-elNewRoomBtn?.addEventListener("click", async () => {
-  await createNewRoom();
-});
-
-elScenarioSelect?.addEventListener("change", () => {
-  const room = lastRoomState;
-  if (!room) return;
-  const current = typeof room?.settings?.scenarioId === "string" ? room.settings.scenarioId : "";
-  const next = String(elScenarioSelect.value || "");
-  if (next && next !== current) requestScenarioChange(next);
-});
-
-elClaimAdminBtn?.addEventListener("click", async () => {
-  if (!elClaimAdminBtn) return;
-  setHostError("");
-  try {
-    elClaimAdminBtn.disabled = true;
-    await claimAdminSecret();
-    show.toast({ title: "Host controls enabled", subtitle: "This TV is the console.", tone: "good", durationMs: 1600 });
-  } catch (e) {
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    elClaimAdminBtn.disabled = false;
-    syncHostControls(lastRoomState);
-  }
-});
-
-elDownloadSnapshotBtn?.addEventListener("click", async () => {
-  if (!elDownloadSnapshotBtn) return;
-  setHostError("");
-  try {
-    elDownloadSnapshotBtn.disabled = true;
-    await downloadRoomSnapshot();
-    show.toast({ title: "Snapshot downloaded", subtitle: roomCode || "", tone: "good", durationMs: 1600 });
-  } catch (e) {
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    syncHostControls(lastRoomState);
-  }
-});
-
-elTimerPauseBtn?.addEventListener("click", async () => {
-  setHostError("");
-  try {
-    const paused = !!lastRoomState?.timer?.paused;
-    elTimerPauseBtn.disabled = true;
-    await adminPost("timer", { paused: !paused });
-    show.toast({
-      title: paused ? "Timer resumed" : "Timer paused",
-      subtitle: "Turn nudges follow the timer.",
-      tone: "info",
-      durationMs: 1400
-    });
-  } catch (e) {
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    elTimerPauseBtn.disabled = false;
-    syncHostControls(lastRoomState);
-  }
-});
-
-elHostSelect?.addEventListener("change", () => syncHostControls(lastRoomState));
-
-elThemeSelect?.addEventListener("change", async () => {
-  const room = lastRoomState;
-  if (!room || room.status !== "lobby") return;
-  const currentThemeId = typeof room?.themeId === "string" ? room.themeId : "";
-  const nextThemeId = String(elThemeSelect.value || "");
-  if (nextThemeId && nextThemeId !== currentThemeId) {
-    await requestThemeChange(nextThemeId);
-  }
-});
-
-elHostSetBtn?.addEventListener("click", async () => {
-  setHostError("");
-  try {
-    const desired = elHostSelect?.value || "";
-    if (!desired) return;
-    elHostSetBtn.disabled = true;
-    await adminPost("host", { hostPlayerId: desired });
-    const who = (lastRoomState?.players || []).find((p) => p.playerId === desired)?.name || "Player";
-    show.toast({ title: "Host reassigned", subtitle: who, tone: "info", durationMs: 1500 });
-  } catch (e) {
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    syncHostControls(lastRoomState);
-  }
-});
-
-elKickList?.addEventListener("click", async (ev) => {
-  const btn = ev.target?.closest?.('button[data-action="kick"]');
-  if (!btn) return;
-  const playerId = btn.getAttribute("data-player-id") || "";
-  const who = (lastRoomState?.players || []).find((p) => p.playerId === playerId)?.name || "Player";
-  if (!confirm(`Kick ${who}?`)) return;
-
-  setHostError("");
-  try {
-    btn.disabled = true;
-    await adminPost("kick", { targetPlayerId: playerId });
-    show.toast({ title: "Player kicked", subtitle: who, tone: "warn", durationMs: 1600 });
-  } catch (e) {
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-elResetRoomBtn?.addEventListener("click", () => {
-  if (!elResetConfirmPanel) return;
-  elResetConfirmPanel.style.display = "";
-  requestAnimationFrame(() => elResetConfirmBtn?.focus());
-});
-
-elResetCancelBtn?.addEventListener("click", () => {
-  if (!elResetConfirmPanel) return;
-  elResetConfirmPanel.style.display = "none";
-  requestAnimationFrame(() => elResetRoomBtn?.focus());
-});
-
-elResetConfirmBtn?.addEventListener("click", async () => {
-  setHostError("");
-  try {
-    elResetConfirmBtn.disabled = true;
-    await adminPost("reset", { confirm: true });
-    if (elResetConfirmPanel) elResetConfirmPanel.style.display = "none";
-    show.toast({ title: "Room reset", subtitle: "Back to lobby.", tone: "warn", durationMs: 1600 });
-  } catch (e) {
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    setHostError(humanizeErrorMessage(e, { room: lastRoomState }));
-  } finally {
-    elResetConfirmBtn.disabled = false;
-    syncHostControls(lastRoomState);
-  }
-});
-
-elMuteAllBtn?.addEventListener("click", () => {
-  const s = getSettings();
-  setSettings({ muteAll: !s.muteAll });
-});
-
-elReducedMotionBtn?.addEventListener("click", () => {
-  const s = getSettings();
-  setSettings({ reducedMotion: !s.reducedMotion });
-});
-
-elHighContrastBtn?.addEventListener("click", () => {
-  const s = getSettings();
-  setSettings({ highContrast: !s.highContrast });
-});
-
-elColorblindBtn?.addEventListener("click", () => {
-  const s = getSettings();
-  setSettings({ colorblind: !s.colorblind });
-});
-
-elShowQrBtn?.addEventListener("click", () => {
-  const s = getSettings();
-  setSettings({ showQr: !s.showQr });
-});
-
-elSfxVolume?.addEventListener("input", () => {
-  setSettings({ sfxVolume: Number(elSfxVolume.value) / 100 });
-});
-
-elMusicVolume?.addEventListener("input", () => {
-  setSettings({ musicVolume: Number(elMusicVolume.value) / 100 });
-});
-
-document.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Escape") return;
-  if (isSettingsOpen()) return closeSettings();
-  if (isHostControlsOpen()) return closeHostControls();
-});
 
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Math.floor(ms || 0))));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function playerRow(
-  p,
-  {
-    mode,
-    currentPlayerId,
-    pointsByPlayerId,
-    victoryPointsToWin,
-    winnerPlayerId,
-    knightsByPlayerId,
-    largestArmyPlayerId,
-    longestRoadPlayerId
-  }
-) {
-  const inGame = mode === "in_game";
-  const isGameOver = inGame && !!winnerPlayerId;
-  const isTurn = inGame && !isGameOver && currentPlayerId && p.playerId === currentPlayerId;
-  const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
-
-  const cls = ["player"];
-  if (inGame) cls.push("compact");
-  if (!p.connected) cls.push("disconnected");
-  if (isTurn) cls.push("turn");
-
-  const readyTag = p.ready ? `<span class="tag good">Ready</span>` : `<span class="tag warn">Not ready</span>`;
-  const hostTag = p.isHost ? `<span class="tag">Host</span>` : "";
-  const points = Math.max(0, Math.floor(pointsByPlayerId?.[p.playerId] ?? 0));
-  const target = Math.max(0, Math.floor(victoryPointsToWin ?? 0));
-  const vpTag =
-    target > 0
-      ? `<span class="tag">${escapeHtml(points)}/${escapeHtml(target)} VP</span>`
-      : `<span class="tag">${escapeHtml(points)} VP</span>`;
-  const winnerTag = winnerPlayerId === p.playerId ? `<span class="tag good">Winner</span>` : "";
-  const cardsTag = inGame ? cardCountTag(p) : "";
-
-  // Build badges for knights and awards (in-game only)
-  let badgesHtml = "";
-  if (inGame) {
-    const badges = [];
-    const knights = knightsByPlayerId?.[p.playerId] ?? 0;
-    const hasLargestArmy = p.playerId === largestArmyPlayerId;
-    const hasLongestRoad = p.playerId === longestRoadPlayerId;
-
-    // Knight count (show if > 0)
-    if (knights > 0) {
-      const knightClass = hasLargestArmy ? "playerBadge award" : "playerBadge muted";
-      badges.push(
-        `<span class="${knightClass}"><img src="/shared/icons/dev-knight.png" class="badgeIcon" alt="Knights">${knights}</span>`
-      );
-    }
-
-    // Largest Army award
-    if (hasLargestArmy) {
-      badges.push(
-        `<img src="/shared/icons/award-largest-army.png" class="awardIcon" alt="Largest Army" title="Largest Army">`
-      );
-    }
-
-    // Longest Road award
-    if (hasLongestRoad) {
-      badges.push(
-        `<img src="/shared/icons/award-longest-road.png" class="awardIcon" alt="Longest Road" title="Longest Road">`
-      );
-    }
-
-    if (badges.length > 0) {
-      badgesHtml = `<div class="playerBadges">${badges.join("")}</div>`;
-    }
-  }
-
-  const right =
-    mode === "lobby"
-      ? `<div style="display:flex; gap:8px; align-items:center;">${hostTag}${readyTag}</div>`
-      : `<div style="display:flex; gap:8px; align-items:center;">${badgesHtml}${winnerTag}${cardsTag}${vpTag}</div>`;
-  return `
-    <div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="--pc:${escapeHtml(p.color)};">
-      <div class="name">
-        <span class="dot" style="background:${dotColor};"></span>
-        <div>${escapeHtml(p.name)}</div>
-      </div>
-      ${right}
-    </div>
-  `;
-}
-
-function cardCountTag(p) {
-  const count = Math.max(0, Math.floor(p?.cardCount ?? 0));
-  const cls = count > 7 ? "tag warn cardCount" : "tag cardCount";
-  return `<span class="${cls}" title="Cards in hand">\uD83C\uDCA0 ${escapeHtml(count)}</span>`;
-}
-
-function cssColorToRgb(color) {
-  const map = {
-    red: "192,57,43",
-    blue: "41,128,185",
-    white: "236,240,241",
-    orange: "230,126,34",
-    green: "39,174,96",
-    brown: "142,109,71"
-  };
-  return map[color] || "255,255,255";
-}
-
-function playerBarCard(
-  p,
-  {
-    currentPlayerId,
-    pointsByPlayerId,
-    victoryPointsToWin,
-    winnerPlayerId,
-    knightsByPlayerId,
-    largestArmyPlayerId,
-    longestRoadPlayerId
-  }
-) {
-  const isTurn = currentPlayerId && p.playerId === currentPlayerId && !winnerPlayerId;
-  const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
-  const cls = ["playerBarCard"];
-  if (isTurn) cls.push("turn");
-  if (!p.connected) cls.push("disconnected");
-
-  const points = Math.max(0, Math.floor(pointsByPlayerId?.[p.playerId] ?? 0));
-  const target = Math.max(0, Math.floor(victoryPointsToWin ?? 0));
-  const knights = knightsByPlayerId?.[p.playerId] ?? 0;
-  const hasLargestArmy = p.playerId === largestArmyPlayerId;
-  const hasLongestRoad = p.playerId === longestRoadPlayerId;
-  const isWinner = winnerPlayerId === p.playerId;
-
-  const vpText = target > 0 ? `${points}/${target} VP` : `${points} VP`;
-
-  const badgeHtml = [];
-  if (knights > 0) badgeHtml.push(`<span class="barBadge barKnights">\u2694\uFE0F ${knights}</span>`);
-  if (hasLargestArmy) badgeHtml.push(`<span class="barBadge barAward">\uD83D\uDEE1\uFE0F Army</span>`);
-  if (hasLongestRoad) badgeHtml.push(`<span class="barBadge barAward">\uD83D\uDEE4\uFE0F Road</span>`);
-  if (isWinner) badgeHtml.push(`<span class="barBadge barWinner">\uD83C\uDFC6 Winner</span>`);
-
-  const bgStyle = isTurn ? `background:rgba(${cssColorToRgb(p.color)},0.15);` : "";
-
-  return `<div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="${bgStyle}">
-    <span class="barDot" style="background:${dotColor};"></span>
-    <div class="barInfo">
-      <div class="barName">${escapeHtml(p.name)}</div>
-      <div class="barVP">${escapeHtml(vpText)} \u00B7 ${escapeHtml(Math.max(0, Math.floor(p.cardCount ?? 0)))} cards</div>
-    </div>
-    ${badgeHtml.length > 0 ? `<div class="barBadges">${badgeHtml.join("")}</div>` : ""}
-    <span class="turnBadge">Turn</span>
-  </div>`;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
-  );
-}
-
-function roomUrlForPhones() {
-  // Only a TV opened on loopback needs the LAN IP. Any other host, including a reverse proxy, already works for phones.
-  const isLoopback = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-  const host = isLoopback && serverLanIp ? `${serverLanIp}:${location.port || 80}` : location.host;
-  const base = `${location.protocol}//${host}`;
-  return `${base}/phone?room=${encodeURIComponent(roomCode)}`;
-}
-
-function renderJoinQr(joinUrl, { force = false } = {}) {
-  if (!elJoinQr) return;
-  if (!joinUrl) {
-    elJoinQr.innerHTML = "";
-    lastJoinQrUrl = null;
-    return;
-  }
-
-  const showQr = getSettings()?.showQr !== false;
-  if (!showQr) return;
-  if (!force && joinUrl === lastJoinQrUrl) return;
-  lastJoinQrUrl = joinUrl;
-
-  try {
-    elJoinQr.innerHTML = qrSvg(joinUrl, { margin: 4, label: "Join room" });
-  } catch (err) {
-    console.warn("[catan] failed to render join QR:", err);
-    elJoinQr.innerHTML = "";
-    lastJoinQrUrl = null;
-  }
-}
-
-function setTvStatus(label) {
-  const code = roomCode ? ` @ ${roomCode}` : "";
-  setText(elStatus, `${label}${code}`);
-}
-
-function setConnectionOverlay(isVisible, { title = "Reconnecting…", hint = "" } = {}) {
-  if (!elConnectionOverlay) return;
-  elConnectionOverlay.style.display = isVisible ? "" : "none";
-  if (!isVisible) return;
-  if (elConnectionTitle) elConnectionTitle.textContent = title;
-  if (elConnectionHint) elConnectionHint.textContent = hint;
-}
-
-function adminSecretStorageKey(code) {
-  const safe = String(code || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
-  return `catan.adminSecret.${safe}`;
-}
-
-function loadAdminSecret(code) {
-  try {
-    return localStorage.getItem(adminSecretStorageKey(code)) || null;
-  } catch {
-    return null;
-  }
-}
-
-function storeAdminSecret(code, secret) {
-  try {
-    if (secret) localStorage.setItem(adminSecretStorageKey(code), secret);
-  } catch {
-    // Ignore.
-  }
-}
-
-function hasAdminSecret() {
-  return typeof adminSecret === "string" && !!adminSecret;
-}
-
-function normalizeHostPin(value) {
-  if (value == null) return null;
-  const s = String(value).trim();
-  if (!/^\d{4,8}$/.test(s)) return null;
-  return s;
-}
-
-function isHostPinErrorMessage(message) {
-  const s = String(message || "");
-  return s === "HOST_PIN_REQUIRED" || s === "BAD_HOST_PIN" || s.includes("Host PIN");
-}
-
-function isBadAdminSecretError(err) {
-  const s = String(err?.message || err?.code || err || "");
-  return s === "BAD_ADMIN_SECRET" || s.includes("Another TV controls");
-}
-
-function markAsSecondaryTv() {
-  isSecondaryTv = true;
-  adminSecret = null;
-  syncHostControls(lastRoomState);
-}
-
-async function ensureHostPin({ room = lastRoomState } = {}) {
-  if (!room?.hostPinEnabled) {
-    hostPinCache = null;
-    return null;
-  }
-  const cached = normalizeHostPin(hostPinCache);
-  if (cached) return cached;
-
-  const entered = prompt("Host PIN", "");
-  const pin = normalizeHostPin(entered);
-  if (!pin) throw new Error("Host PIN required");
-  hostPinCache = pin;
-  return pin;
-}
-
-function setHostError(message) {
-  if (!elHostErr) return;
-  elHostErr.textContent = message ? String(message) : "";
-}
-
-function setEndScreenHint(message) {
-  if (!elEndScreenHint) return;
-  elEndScreenHint.textContent = message ? String(message) : "";
-  elEndScreenHint.style.display = message ? "" : "none";
-}
-
-function syncHostControls(room) {
-  const hasAdmin = hasAdminSecret();
-  const players = Array.isArray(room?.players) ? room.players : [];
-  const hostPlayerId = typeof room?.hostPlayerId === "string" ? room.hostPlayerId : "";
-  const canUse = hasAdmin && !!roomCode && !isSecondaryTv;
-
-  // Show appropriate status message
-  let adminStateText = "Enable host controls on this TV.";
-  if (isSecondaryTv) {
-    adminStateText = "Another TV controls this room. View-only.";
-  } else if (hasAdmin) {
-    adminStateText = "Ready.";
-  }
-  if (elAdminState) elAdminState.textContent = adminStateText;
-
-  // Hide claim button if already admin or secondary; show if neither
-  if (elClaimAdminBtn) elClaimAdminBtn.style.display = hasAdmin || isSecondaryTv ? "none" : "";
-  if (elDownloadSnapshotBtn) elDownloadSnapshotBtn.disabled = !canUse;
-
-  const paused = !!room?.timer?.paused;
-  if (elTimerPauseBtn) {
-    elTimerPauseBtn.textContent = paused ? "Resume" : "Pause";
-    elTimerPauseBtn.disabled = !canUse;
-  }
-
-  // Theme selector - only show in lobby
-  const isLobby = room?.status === "lobby";
-  const canChangeTheme = canUse && isLobby && !themeUpdateInFlight;
-  if (elThemeSelectField) {
-    elThemeSelectField.style.display = isLobby && hasAdmin ? "" : "none";
-  }
-  if (elThemeSelect) {
-    const themes = Array.isArray(room?.themes) ? room.themes : [];
-    const currentThemeId = typeof room?.themeId === "string" ? room.themeId : "";
-    const prevSelected = elThemeSelect.value;
-
-    // Only rebuild options if themes list changed
-    const themesKey = themes.map((t) => `${t.id}:${t.name}`).join("|");
-    if (elThemeSelect.dataset.themesKey !== themesKey) {
-      elThemeSelect.innerHTML = themes
-        .map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`)
-        .join("");
-      elThemeSelect.dataset.themesKey = themesKey;
-    }
-
-    // Set selected value
-    const hasOption = themes.some((t) => t.id === currentThemeId);
-    if (hasOption && elThemeSelect.value !== currentThemeId) {
-      elThemeSelect.value = currentThemeId;
-    } else if (!hasOption && prevSelected) {
-      elThemeSelect.value = prevSelected;
-    }
-
-    elThemeSelect.disabled = !canChangeTheme;
-  }
-
-  if (elHostSelect) {
-    const prevSelected = elHostSelect.value;
-    elHostSelect.innerHTML = players
-      .map((p) => {
-        const offline = p.connected ? "" : " (offline)";
-        return `<option value="${escapeHtml(p.playerId)}">${escapeHtml(p.name)}${escapeHtml(offline)}</option>`;
-      })
-      .join("");
-    const prevStillValid = prevSelected && players.some((p) => p.playerId === prevSelected);
-    if (prevStillValid) elHostSelect.value = prevSelected;
-    else if (hostPlayerId) elHostSelect.value = hostPlayerId;
-  }
-
-  if (elHostSetBtn) {
-    const desired = elHostSelect?.value || "";
-    elHostSetBtn.disabled = !canUse || !desired || desired === hostPlayerId;
-  }
-
-  if (elKickList) {
-    elKickList.innerHTML = players
-      .map((p) => {
-        const connTag = p.connected ? `<span class="tag good">Online</span>` : `<span class="tag">Offline</span>`;
-        const hostTag = p.playerId === hostPlayerId ? `<span class="tag">Host</span>` : "";
-        return `
-          <div class="row" style="justify-content:space-between; align-items:center;">
-            <div style="display:flex; gap:8px; align-items:center;">
-              <span class="dot" style="background:${escapeHtml(p.color)};"></span>
-              <div>${escapeHtml(p.name)}</div>
-              ${hostTag}
-              ${connTag}
-            </div>
-            <button class="btn danger" data-action="kick" data-player-id="${escapeHtml(p.playerId)}" ${canUse ? "" : "disabled"}>Kick</button>
-          </div>
-        `;
-      })
-      .join("");
-  }
-
-  if (elResetRoomBtn) elResetRoomBtn.disabled = !canUse;
-}
-
-let rematchInFlight = false;
-let scenarioUpdateInFlight = false;
-async function requestRematch() {
-  if (rematchInFlight) return;
-  rematchInFlight = true;
-  setEndScreenHint("");
-  try {
-    if (!roomCode) throw new Error("No room");
-    const room = lastRoomState;
-    const hostPlayerId = room?.hostPlayerId ?? null;
-    if (!hostPlayerId) throw new Error("No host");
-
-    const hostPin = await ensureHostPin({ room });
-    const body = hostPin ? { playerId: hostPlayerId, hostPin } : { playerId: hostPlayerId };
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/rematch`, { method: "POST", body });
-    show.toast({ title: "Rematch started", subtitle: "", tone: "good", durationMs: 1600 });
-  } catch (e) {
-    setEndScreenHint(humanizeErrorMessage(e, { room: lastRoomState }));
-    show.toast({ title: "Can't rematch", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
-  } finally {
-    rematchInFlight = false;
-    if (lastRoomState) render(lastRoomState, lastRenderedRoomState);
-  }
-}
-
-let newRoomInFlight = false;
-async function createNewRoom() {
-  if (newRoomInFlight) return;
-  newRoomInFlight = true;
-  setEndScreenHint("");
-
-  // Exit attract mode immediately when creating a room
-  if (attractModeActive) exitAttractMode();
-
-  try {
-    if (es) es.close();
-    es = null;
-    stopTurnTimer();
-    hostPinCache = null;
-
-    const created = await api("/api/rooms", { method: "POST" });
-    roomCode = created.roomCode;
-    adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
-    isSecondaryTv = false;
-    storeAdminSecret(roomCode, adminSecret);
-    lastRevisionSeen = null;
-    lastRoomState = null;
-    lastRenderedRoomState = null;
-    lastJoinQrUrl = null;
-    lastPlayersRenderKey = null;
-    lastLogRenderKey = null;
-    lastBoardRenderKey = null;
-    lastDiceRollAt = null;
-
-    // Reset lobby overlay state
-    lastLobbyScenarioOptionsKey = null;
-    lastLobbyThemeOptionsKey = null;
-    lastLobbyQrUrl = null;
-    lobbyPreviewBoard = null;
-    lobbyPreviewBoardRadius = null;
-
-    history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
-    connectStream();
-  } catch (e) {
-    show.toast({ title: "Can't create room", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
-  } finally {
-    newRoomInFlight = false;
-  }
-}
-
-function snapshotFilename(snapshot) {
-  const safeCode = String(snapshot?.roomCode || roomCode || "ROOM")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 8);
-
-  const at = Number(snapshot?.exportedAt);
-  let stamp = "";
-  if (Number.isFinite(at)) {
-    try {
-      stamp = new Date(at).toISOString().replace(/[:.]/g, "-");
-    } catch {
-      stamp = "";
-    }
-  }
-  if (!stamp) stamp = String(Date.now());
-
-  return `catan-room-${safeCode}-${stamp}.json`;
-}
-
-async function downloadRoomSnapshot() {
-  if (!roomCode) throw new Error("No room");
-  if (!hasAdminSecret()) throw new Error("Host controls not enabled");
-
-  const hostPin = await ensureHostPin();
-  /** @type {Record<string, string>} */
-  const headers = { Authorization: `Bearer ${adminSecret}` };
-  if (hostPin) headers["X-Host-Pin"] = hostPin;
-
-  const res = await fetch(`/api/rooms/${encodeURIComponent(roomCode)}/debug/export`, {
-    method: "GET",
-    headers
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json?.ok) {
-    const msg = json?.error || `HTTP ${res.status}`;
-    if (isHostPinErrorMessage(msg)) hostPinCache = null;
-    throw new Error(msg);
-  }
-
-  const snapshot = json.snapshot || null;
-  if (!snapshot) throw new Error("No snapshot returned");
-
-  const raw = `${JSON.stringify(snapshot, null, 2)}\n`;
-  const blob = new Blob([raw], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = snapshotFilename(snapshot);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-async function claimAdminSecret() {
-  if (!roomCode) throw new Error("No room");
-  const payload = await api(`/api/rooms/${encodeURIComponent(roomCode)}/admin/claim`, { method: "POST" });
-  const secret = typeof payload?.adminSecret === "string" ? payload.adminSecret : null;
-  if (!secret) throw new Error("No adminSecret returned");
-  adminSecret = secret;
-  isSecondaryTv = false;
-  storeAdminSecret(roomCode, adminSecret);
-  syncHostControls(lastRoomState);
-}
-
-async function adminPost(path, body) {
-  if (!roomCode) throw new Error("No room");
-  if (!hasAdminSecret()) throw new Error("Host controls not enabled");
-  const hostPin = await ensureHostPin();
-  const requestBody = { adminSecret, ...(body || {}) };
-  if (hostPin) requestBody.hostPin = hostPin;
-
-  try {
-    return await api(`/api/rooms/${encodeURIComponent(roomCode)}/admin/${path}`, { method: "POST", body: requestBody });
-  } catch (e) {
-    if (isHostPinErrorMessage(e?.message)) hostPinCache = null;
-    throw e;
-  }
-}
-
-function scenarioMeta(room) {
-  const scenarioId = typeof room?.settings?.scenarioId === "string" ? room.settings.scenarioId : "";
-  const scenarios = Array.isArray(room?.scenarios) ? room.scenarios : [];
-  const scenario = scenarioId ? scenarios.find((s) => s?.id === scenarioId) || null : null;
-  return { scenarioId, scenario, scenarios };
-}
-
-function scenariosKey(scenarios) {
-  const list = Array.isArray(scenarios) ? scenarios : [];
-  return list.map((s) => `${String(s?.id || "")}:${String(s?.name || "")}`).join("|");
-}
-
-let themeUpdateInFlight = false;
-async function requestThemeChange(nextThemeId) {
-  if (themeUpdateInFlight) return;
-  themeUpdateInFlight = true;
-  try {
-    if (!roomCode) throw new Error("No room");
-    if (!hasAdminSecret()) throw new Error("Host controls not enabled");
-    const room = lastRoomState;
-    const hostPlayerId = room?.hostPlayerId;
-    if (!hostPlayerId) throw new Error("No host");
-    const hostPin = await ensureHostPin({ room });
-    const body = { playerId: hostPlayerId, themeId: nextThemeId };
-    if (hostPin) body.hostPin = hostPin;
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/theme`, { method: "POST", body });
-    show.toast({ title: "Theme updated", subtitle: "", tone: "good", durationMs: 1400 });
-  } catch (e) {
-    if (isHostPinErrorMessage(e?.message)) hostPinCache = null;
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    show.toast({ title: "Can't change theme", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
-  } finally {
-    themeUpdateInFlight = false;
-    if (lastRoomState) render(lastRoomState, lastRenderedRoomState);
-  }
-}
-
-async function requestScenarioChange(nextScenarioId) {
-  if (scenarioUpdateInFlight) return;
-  scenarioUpdateInFlight = true;
-  try {
-    if (!roomCode) throw new Error("No room");
-    if (!hasAdminSecret()) throw new Error("Host controls not enabled");
-    const room = lastRoomState;
-    const hostPin = await ensureHostPin({ room });
-    const body = { adminSecret, scenarioId: nextScenarioId };
-    if (hostPin) body.hostPin = hostPin;
-    await api(`/api/rooms/${encodeURIComponent(roomCode)}/settings`, { method: "POST", body });
-    show.toast({ title: "Scenario updated", subtitle: "", tone: "good", durationMs: 1400 });
-  } catch (e) {
-    if (isHostPinErrorMessage(e?.message)) hostPinCache = null;
-    if (isBadAdminSecretError(e)) markAsSecondaryTv();
-    show.toast({ title: "Can't set scenario", subtitle: errorCode(e), tone: "bad", durationMs: 2400 });
-  } finally {
-    scenarioUpdateInFlight = false;
-    if (lastRoomState) render(lastRoomState, lastRenderedRoomState);
-  }
-}
-
-function syncScenarioUi(room) {
-  const { scenarioId, scenarios } = scenarioMeta(room);
-  const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "—" });
-
-  if (elScenarioName) setText(elScenarioName, display.name);
-
-  if (elScenarioSelect) {
-    const nextOptionsKey = scenariosKey(scenarios);
-    if (nextOptionsKey !== lastScenarioOptionsKey) {
-      elScenarioSelect.innerHTML = scenarios
-        .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`)
-        .join("");
-      lastScenarioOptionsKey = nextOptionsKey;
-    }
-
-    const hasOption = scenarios.some((s) => s?.id === scenarioId);
-    if (hasOption && elScenarioSelect.value !== scenarioId) elScenarioSelect.value = scenarioId;
-
-    const canChange = room?.status === "lobby" && hasAdminSecret() && !scenarioUpdateInFlight;
-    elScenarioSelect.disabled = !canChange;
-  }
-
-  if (elScenarioDesc) setText(elScenarioDesc, display.description);
-}
-
-function diePips(n) {
-  switch (n) {
-    case 1:
-      return ["c"];
-    case 2:
-      return ["tl", "br"];
-    case 3:
-      return ["tl", "c", "br"];
-    case 4:
-      return ["tl", "tr", "bl", "br"];
-    case 5:
-      return ["tl", "tr", "c", "bl", "br"];
-    case 6:
-      return ["tl", "ml", "bl", "tr", "mr", "br"];
-    default:
-      return [];
-  }
-}
-
-function dieHtml(n) {
-  const pips = diePips(n)
-    .map((pos) => `<span class="pip ${pos}"></span>`)
-    .join("");
-  return `<div class="die" aria-label="Die ${escapeHtml(n)}">${pips}</div>`;
-}
-
-function renderDice(lastRoll) {
-  if (!lastRoll) {
-    return `<div class="dicePanel">
-      <div class="diceGroup">
-        <div class="die empty"></div>
-        <div class="die empty"></div>
-      </div>
-      <div class="diceTotalWrap">
-        <div class="diceLabel">Total</div>
-        <div class="diceTotal">—</div>
-      </div>
-    </div>`;
-  }
-  const total = lastRoll.sum ?? (lastRoll.d1 ?? 0) + (lastRoll.d2 ?? 0);
-  return `<div class="dicePanel">
-    <div class="diceGroup">
-      ${dieHtml(lastRoll.d1)}
-      ${dieHtml(lastRoll.d2)}
-    </div>
-    <div class="diceTotalWrap">
-      <div class="diceLabel">Total</div>
-      <div class="diceTotal">${escapeHtml(total)}</div>
-    </div>
-  </div>`;
+function stablePart(v) {
+  return v == null ? "" : String(v);
 }
 
 function flashClass(el, cls, durationMs = 650) {
@@ -1209,389 +130,203 @@ function flashClass(el, cls, durationMs = 650) {
   // Force reflow so repeated flashes still animate.
   void el.offsetHeight;
   el.classList.add(cls);
-  const t = setTimeout(() => el.classList.remove(cls), Math.max(0, Math.floor(durationMs)));
-  flashTimers.set(el, t);
+  flashTimers.set(
+    el,
+    setTimeout(() => el.classList.remove(cls), Math.max(0, Math.floor(durationMs)))
+  );
 }
+
+function playerById(id) {
+  return (lastRoomState?.players || []).find((p) => p.playerId === id) || null;
+}
+
+// -----------------------------------------------------------------------------
+// Moments: the board stays clear. Only rare events earn a card at its centre.
+// -----------------------------------------------------------------------------
 
 async function runBeat(beat) {
   const reducedMotion = !!getSettings()?.reducedMotion;
-  const pace = beat?.gameMode === "quick" ? 0.8 : 1;
-  const linger = 1.5;
-  const d = (ms) => {
-    const v = Number(ms);
-    if (!Number.isFinite(v)) return 0;
-    return Math.max(0, Math.floor(v * pace * linger));
-  };
+  // Catch up when the table is playing faster than the show.
+  const backlog = showQueue.pendingCount() > 3 ? 0.55 : 1;
+  const pace = (beat?.gameMode === "quick" ? 0.8 : 1) * backlog;
+  const d = (ms) => Math.max(0, Math.floor((Number(ms) || 0) * pace));
   const wait = (ms) => sleep(reducedMotion ? Math.min(140, d(ms)) : d(ms));
-
   const type = beat?.type || "beat";
-  // -------------------------------------------------------------------------
-  // Turn Nudge - gentle reminder for slow players
-  // -------------------------------------------------------------------------
+  const game = lastRoomState?.game || null;
+
   if (type === "turn_nudge") {
-    const room = lastRoomState;
-    const game = room?.status === "in_game" ? room.game || null : null;
-    if (!room || !game) return wait(0);
-    if (room.gameMode !== "quick") return wait(0);
-    if (game.phase !== "turn") return wait(0);
-    if (game.turnNumber !== beat?.turnNumber) return wait(0);
-    if (game.currentPlayerId !== beat?.playerId) return wait(0);
-    if (game.subphase !== "needs_roll" && game.subphase !== "main") return wait(0);
-
+    if (game?.turnNumber !== beat?.turnNumber || game?.currentPlayerId !== beat?.playerId) return;
     playSfx("turn_nudge");
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    flashClass(elPhasePill, "cardFlash", d(520));
-    await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1600) });
-
-    if (beat?.expected === "ROLL_DICE") {
-      show.spotlightElement(elDiceBox, { tone: "warn", pad: 14, durationMs: d(900), pulse: true, shade: 0.36 });
-    } else {
-      const rowEl =
-        elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
-        elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
-        null;
-      show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(900), pulse: false, shade: 0.32 });
-    }
-
-    return wait(420);
+    const copy = hostCopyForMoment(beat, { audience: "tv" });
+    flashClass(elTurnCard, "flash", d(900));
+    show.toast({ title: copy.title, subtitle: copy.subtitle, tone: copy.tone });
+    return wait(400);
   }
 
-  // -------------------------------------------------------------------------
-  // Turn Start - announce whose turn it is
-  // -------------------------------------------------------------------------
   if (type === "turn_start") {
-    flashClass(elPhasePill, "cardFlash", d(650));
     playSfx("turn");
-    // === CINEMATIC CAMERA: Focus on player's area ===
-    const structures = lastRoomState?.game?.structures || null;
-    focusPlayerArea(elBoard, beat?.playerId, structures, { duration: d(1000) });
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: d(1150)
-    });
-    const rowEl =
-      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
-      elPlayers?.querySelector?.(`[data-player-id="${beat?.playerId}"]`) ||
-      null;
-    show.spotlightElement(rowEl, { tone: "info", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
-    return wait(640);
+    flashClass(elTurnCard, "flash", d(900));
+    flashClass(elBoardStage, "turnPulse", d(1100));
+    return wait(500);
   }
 
-  // -------------------------------------------------------------------------
-  // Dice Roll - show the result with appropriate fanfare
-  // -------------------------------------------------------------------------
   if (type === "dice_roll") {
-    flashClass(elDiceBox, "diceRolling", d(650));
+    // A newer roll has landed, so this one would contradict the dice on screen.
+    if (game?.lastRoll && (game.lastRoll.d1 !== beat?.d1 || game.lastRoll.d2 !== beat?.d2)) return;
     playSfx("dice");
-    const sum = beat?.sum;
+    flashClass(elDiceHud, "flash", d(900));
+    const sum = Number(beat?.sum);
+    const dice = `<div class="stingerDice">${dieHtml(beat?.d1)}${dieHtml(beat?.d2)}</div>`;
 
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: sum === 7 ? d(1200) : d(900)
-    });
-
-    // Show resources collected message (if not 7)
-    if (sum && sum !== 7) {
-      const room = lastRoomState;
-      const gainsText = formatRollGains(latestRollGains(room?.game?.log), room?.players);
-      if (gainsText) {
-        await show.toast({
-          title: "Resources collected",
-          subtitle: gainsText,
-          tone: "good",
-          durationMs: d(3200)
-        });
-      }
+    if (sum === 7) {
+      const copy = hostCopyForMoment(beat, { audience: "tv" });
+      await show.showMoment({
+        artHtml: `${dice}<img class="stingerSprite" src="/shared/icons/robber.png" alt="" />`,
+        title: copy.title,
+        subtitle: copy.subtitle,
+        tone: "bad",
+        durationMs: d(1700)
+      });
+      return wait(1900);
     }
 
-    return wait(660);
+    await show.showMoment({ artHtml: dice, title: String(sum), tone: "info", durationMs: d(1100) });
+    await wait(900);
+    flashRolledHexes(elBoard, sum, { robberHexId: game?.robberHexId });
+    playerCards.showGains(latestRollGains(game?.log));
+    return wait(500);
   }
 
-  // -------------------------------------------------------------------------
-  // Robber Step - clear multi-step flow: discard -> move -> steal
-  // -------------------------------------------------------------------------
   if (type === "robber_step") {
-    flashClass(elPhasePill, "cardFlash", d(650));
+    // The turn card already tracks this step; skip it once play has moved on.
+    if (game?.subphase !== beat?.subphase) return;
     playSfx("robber", { gain: 0.75 });
-    const sub = String(beat?.subphase || "");
-
-    // Step 1: Discard Phase
-    if (sub === "robber_discard") {
-      const pending = Array.isArray(beat?.pendingDiscards) ? beat.pendingDiscards : [];
-      const who = pending.length ? pending.map((p) => `${p.name} (${p.count})`).join(", ") : "";
-      await show.showMoment({
-        title: "Discard Phase",
-        subtitle: who ? `Waiting: ${who}` : "Players with 8+ cards must discard half",
-        tone: "warn",
-        durationMs: d(1500)
-      });
-      const spotlightTarget = lastRoomState?.players?.length >= 5 && elPlayerBar ? elPlayerBar : elPlayers;
-      show.spotlightElement(spotlightTarget, { tone: "warn", pad: 12, durationMs: d(850), pulse: false, shade: 0.34 });
-      return wait(720);
-    }
-
-    // Step 2: Move the Robber
-    if (sub === "robber_move") {
-      await show.showMoment({
-        title: "Move the Robber",
-        subtitle: "Pick a new hex",
-        tone: "warn",
-        durationMs: d(1300)
-      });
-      const boardRoot = elBoard?.querySelector?.(".board") || elBoard;
-      show.spotlightElement(boardRoot, { tone: "warn", pad: 14, durationMs: d(820), pulse: false, shade: 0.34 });
-      return wait(650);
-    }
-
-    // Step 3: Pick a Victim to Steal From
-    if (sub === "robber_steal") {
-      await show.showMoment({
-        title: "Pick a Victim",
-        subtitle: "Steal one random card",
-        tone: "warn",
-        durationMs: d(1300)
-      });
-      return wait(650);
-    }
-
-    return wait(520);
+    flashClass(elTurnCard, "flash", d(900));
+    return wait(350);
   }
 
-  // -------------------------------------------------------------------------
-  // Robber Moved - confirm placement + particle FX
-  // -------------------------------------------------------------------------
   if (type === "robber_moved") {
-    flashClass(elBoard, "boardFlash", d(650));
     playSfx("ui_tick", { gain: 0.7 });
-    const hexId = beat?.hexId || null;
-    // === CINEMATIC CAMERA: Focus on robber tile ===
-    if (hexId) focusHex(elBoard, hexId, { duration: d(1000) });
-    const hexEl = hexId ? elBoard?.querySelector?.(`[data-hex-id="${hexId}"]`) : null;
-    if (!hexEl && hexId) await applyBoardMoment(elBoard, { kind: "robber_moved", data: { hexId } });
-    show.spotlightElement(hexEl, { tone: "warn", pad: 18, durationMs: d(900), pulse: true, shade: 0.42 });
-
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1400) });
-    return wait(700);
-  }
-
-  // -------------------------------------------------------------------------
-  // Robber Discarded - player submitted their discard
-  // -------------------------------------------------------------------------
-  if (type === "robber_discarded") {
-    playSfx("ui_tick", { gain: 0.7 });
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1600) });
-    return wait(360);
-  }
-
-  // -------------------------------------------------------------------------
-  // Robber Stole - theft complete (or failed if no cards)
-  // -------------------------------------------------------------------------
-  if (type === "robber_stole") {
-    const didSteal = beat?.didSteal !== false;
-    if (didSteal) playSfx("steal_success");
-    else playSfx("steal_fail");
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: didSteal ? d(1400) : d(1300)
-    });
-    const rowEl =
-      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`) ||
-      elPlayers?.querySelector?.(`[data-player-id="${beat?.fromPlayerId}"]`) ||
-      null;
-    show.spotlightElement(rowEl, { tone: "warn", pad: 10, durationMs: d(820), pulse: false, shade: 0.32 });
-    return wait(700);
-  }
-
-  // -------------------------------------------------------------------------
-  // Build - road, settlement, or city placed + particle FX
-  // -------------------------------------------------------------------------
-  if (type === "build") {
-    flashClass(elBoard, "boardFlash", d(650));
-    playSfx("build");
-    const kind = beat?.kind || "build";
-    // === CINEMATIC CAMERA: Focus on build location ===
-    if (kind === "road" && beat?.edgeId) {
-      focusEdge(elBoard, beat.edgeId, { duration: d(800) });
-    } else if (beat?.vertexId) {
-      focusVertex(elBoard, beat.vertexId, { duration: d(800) });
-    }
-    const hostCopy = hostCopyForMoment({ ...beat, kind: `build_${kind}` }, { audience: "tv" });
-    await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1800) });
-    const target =
-      kind === "road" && beat?.edgeId
-        ? elBoard?.querySelector?.(`[data-edge-id="${beat.edgeId}"]`)
-        : beat?.vertexId
-          ? elBoard?.querySelector?.(`[data-vertex-id="${beat.vertexId}"]`)
-          : null;
-    if (!target) {
-      const momentKind =
-        kind === "road"
-          ? "build_road"
-          : kind === "settlement"
-            ? "build_settlement"
-            : kind === "city"
-              ? "build_city"
-              : "";
-      const data =
-        momentKind === "build_road" ? { edgeId: beat?.edgeId || null } : { vertexId: beat?.vertexId || null };
-      if (momentKind) await applyBoardMoment(elBoard, { kind: momentKind, data });
-    }
-    show.spotlightElement(target, { tone: "good", pad: 18, durationMs: d(850), pulse: true, shade: 0.34 });
-
-    return wait(620);
-  }
-
-  // -------------------------------------------------------------------------
-  // Trade Open - someone proposed a trade
-  // -------------------------------------------------------------------------
-  if (type === "trade_open") {
-    flashClass(elOffersCard, "cardFlash", d(700));
-    playSfx("trade", { gain: 0.85 });
-    const count = clampNonNegativeInt(beat?.count ?? 0);
-    const more = count > 1 ? ` (+${count - 1} more)` : "";
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    const offer = beat?.offer || null;
-    const giveBadges = renderResourceBadges(offer?.give, { prefix: "-" });
-    const wantBadges = renderResourceBadges(offer?.want, { prefix: "+" });
-    const badges = `${giveBadges ? `<span class="badge">Gives</span>${giveBadges}` : ""}${wantBadges ? `<span class="badge">Wants</span>${wantBadges}` : ""}`;
-    await show.showMoment({
-      title: `${hostCopy.title}${more}`,
-      subtitle: hostCopy.subtitle,
-      badgesHtml: badges,
-      tone: hostCopy.tone,
-      durationMs: d(1600)
-    });
-    show.spotlightElement(elOffersCard, { tone: "info", pad: 12, durationMs: d(900), pulse: true, shade: 0.34 });
-    return wait(720);
-  }
-
-  // -------------------------------------------------------------------------
-  // Trade Accepted - deal complete
-  // -------------------------------------------------------------------------
-  if (type === "trade_accepted") {
-    flashClass(elOffersCard, "cardFlash", d(700));
-    playSfx("trade");
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: d(1500)
-    });
-    return wait(720);
-  }
-
-  // -------------------------------------------------------------------------
-  // Trade Cancelled - offer withdrawn
-  // -------------------------------------------------------------------------
-  if (type === "trade_cancelled") {
-    flashClass(elOffersCard, "cardFlash", d(700));
-    playSfx("ui_bonk", { gain: 0.65 });
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1700) });
-    return wait(520);
-  }
-
-  // -------------------------------------------------------------------------
-  // Trade Rejected - offer declined
-  // -------------------------------------------------------------------------
-  if (type === "trade_rejected") {
-    flashClass(elOffersCard, "cardFlash", d(700));
-    playSfx("ui_bonk", { gain: 0.65 });
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.toast({ title: hostCopy.title, subtitle: hostCopy.subtitle, tone: hostCopy.tone, durationMs: d(1700) });
-    return wait(520);
-  }
-
-  // -------------------------------------------------------------------------
-  // Game Over - victory celebration
-  // -------------------------------------------------------------------------
-  if (type === "game_over") {
-    flashClass(elPhasePill, "cardFlash", d(900));
-    playSfx("win");
-    // === CINEMATIC CAMERA: Reset to full board view for victory ===
-    cinematicReset(elBoard, { duration: d(1200) });
-    show.confetti({ count: 70, durationMs: d(1900) });
-    const hostCopy = hostCopyForMoment(beat, { audience: "tv" });
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: d(2000)
-    });
-    const rowEl =
-      elPlayerBar?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) ||
-      elPlayers?.querySelector?.(`[data-player-id="${beat?.winnerPlayerId}"]`) ||
-      null;
-    show.spotlightElement(rowEl, { tone: "good", pad: 10, durationMs: d(1400), pulse: false, shade: 0.32 });
-    return wait(1100);
-  }
-
-  // -------------------------------------------------------------------------
-  // Segment Transition - show when game moves to new phase
-  // -------------------------------------------------------------------------
-  if (type === "segment_transition") {
-    playSfx("segment_start");
-    const hostCopy = beat?.copy || { title: "Phase Change", subtitle: "", tone: "info" };
-    await show.showMoment({
-      title: hostCopy.title,
-      subtitle: hostCopy.subtitle,
-      tone: hostCopy.tone,
-      durationMs: d(1400)
-    });
+    show.ping(elBoard.querySelector(`[data-hex-id="${beat?.hexId}"]`), { color: "#ff5c7a" });
     return wait(600);
   }
 
-  // -------------------------------------------------------------------------
-  // Event Drawn - party mode event started
-  // -------------------------------------------------------------------------
-  if (type === "event_drawn") {
-    flashClass(elPhasePill, "cardFlash", d(900));
-    playSfx("event_drawn");
-    const eventName = beat?.eventName || "Event";
-    const eventShortText = beat?.eventShortText || "";
-    await show.showMoment({
-      title: eventName,
-      subtitle: eventShortText,
-      badgesHtml: `<span class="badge" data-tone="good">Event</span>`,
-      tone: "good",
-      durationMs: d(2200)
-    });
-    return wait(1000);
+  if (type === "robber_discarded") {
+    playSfx("ui_tick", { gain: 0.7 });
+    return wait(150);
   }
 
-  // -------------------------------------------------------------------------
-  // Event Ended - party mode event expired
-  // -------------------------------------------------------------------------
+  if (type === "robber_stole") {
+    playSfx(beat?.didSteal !== false ? "steal_success" : "steal_fail");
+    const copy = hostCopyForMoment(beat, { audience: "tv" });
+    show.toast({ title: copy.title, subtitle: copy.subtitle, tone: copy.tone });
+    return wait(500);
+  }
+
+  if (type === "build") {
+    playSfx("build");
+    const target =
+      beat?.kind === "road"
+        ? elBoard.querySelector(`[data-edge-id="${beat?.edgeId}"]`)
+        : elBoard.querySelector(`[data-vertex-id="${beat?.vertexId}"]`);
+    show.ping(target, { color: playerById(beat?.playerId)?.color || "#fff" });
+    return wait(450);
+  }
+
+  if (type === "award") {
+    playSfx("segment_start");
+    await show.showMoment({
+      artHtml: `<img class="stingerSprite" src="/shared/icons/${escapeHtml(beat.icon)}.png" alt="" />`,
+      title: beat.title,
+      subtitle: beat.playerName,
+      tone: "good",
+      durationMs: d(1500)
+    });
+    return wait(1600);
+  }
+
+  if (type === "trade_open") {
+    playSfx("trade", { gain: 0.85 });
+    flashClass(elOffersPanel, "flash", d(900));
+    return wait(350);
+  }
+
+  if (type === "trade_accepted") {
+    playSfx("trade");
+    const copy = hostCopyForMoment(beat, { audience: "tv" });
+    show.toast({ title: copy.title, subtitle: copy.subtitle, tone: copy.tone });
+    return wait(500);
+  }
+
+  if (type === "trade_cancelled" || type === "trade_rejected") {
+    playSfx("ui_bonk", { gain: 0.65 });
+    return wait(200);
+  }
+
+  if (type === "game_over") {
+    playSfx("win");
+    show.confetti({
+      count: 80,
+      colors: (lastRoomState?.players || []).map((p) => p.color)
+    });
+    return wait(1500);
+  }
+
+  if (type === "segment_transition") {
+    playSfx("segment_start");
+    const copy = beat?.copy || { title: "Next phase", subtitle: "", tone: "info" };
+    await show.showMoment({ title: copy.title, subtitle: copy.subtitle, tone: copy.tone, durationMs: d(1700) });
+    return wait(1900);
+  }
+
+  if (type === "event_drawn") {
+    playSfx("event_drawn");
+    flashClass(elEventPanel, "flash", d(900));
+    await show.showMoment({
+      title: beat?.eventName || "Event",
+      subtitle: beat?.eventShortText || "",
+      tone: "good",
+      durationMs: d(2400)
+    });
+    return wait(2600);
+  }
+
   if (type === "event_ended") {
     playSfx("event_ended");
-    const eventName = beat?.eventName || "Event";
-    await show.toast({
-      title: `${eventName} ended`,
-      subtitle: "",
-      tone: "info",
-      durationMs: d(1200)
-    });
-    return wait(400);
+    show.toast({ title: `${beat?.eventName || "Event"} ended` });
+    return wait(300);
   }
 }
 
+// Longest road and largest army aren't in the moment detector, so they're read from the room diff.
+function computeAwardBeats(prevGame, game, roomKey) {
+  if (!prevGame || !game) return [];
+  const awards = [
+    ["longestRoadPlayerId", "Longest Road", "award-longest-road"],
+    ["largestArmyPlayerId", "Largest Army", "award-largest-army"]
+  ];
+  return awards.flatMap(([key, title, icon]) => {
+    const playerId = game.awards?.[key] || null;
+    if (!playerId || playerId === prevGame.awards?.[key]) return [];
+    return [
+      {
+        id: `award:${roomKey}:${key}:${playerId}:${stablePart(game.turnNumber)}`,
+        type: "award",
+        title,
+        icon,
+        playerName: playerById(playerId)?.name || ""
+      }
+    ];
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Turn timer
+// -----------------------------------------------------------------------------
+
 function formatMmSs(ms) {
   const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(Math.floor(totalSec / 60)).padStart(2, "0")}:${String(totalSec % 60).padStart(2, "0")}`;
 }
 
 function serverNowMs() {
@@ -1599,52 +334,42 @@ function serverNowMs() {
 }
 
 function computeTurnElapsedMs(room) {
-  const timer = room?.timer && typeof room.timer === "object" ? room.timer : null;
-  if (!timer) return null;
-  const startedAt = Number(timer.turnStartedAt);
+  const timer = room?.timer;
+  const startedAt = Number(timer?.turnStartedAt);
   if (!Number.isFinite(startedAt)) return null;
-
-  const pausedTotalMs = clampNonNegativeInt(timer.pausedTotalMs ?? 0);
+  const pausedTotalMs = Math.max(0, Number(timer.pausedTotalMs) || 0);
   const now = serverNowMs();
-  const endAt = timer.paused ? (Number.isFinite(timer.pausedAt) ? Number(timer.pausedAt) : now) : now;
+  const endAt = timer.paused && Number.isFinite(timer.pausedAt) ? Number(timer.pausedAt) : now;
   return Math.max(0, Math.floor(endAt - startedAt - pausedTotalMs));
+}
+
+function renderTurnTimer(room) {
+  const elapsed = computeTurnElapsedMs(room);
+  if (elapsed == null) return setText(elTurnTimer, "");
+  setText(elTurnTimer, room.timer?.paused ? `Paused ${formatMmSs(elapsed)}` : formatMmSs(elapsed));
+  if (!room.timer?.paused) maybeQueueTurnNudge(elapsed);
 }
 
 function stopTurnTimer() {
   if (turnTimerInterval) clearInterval(turnTimerInterval);
   turnTimerInterval = null;
-  lastTurnPlayerId = null;
-  turnStartMs = null;
   turnNudgeKey = null;
   turnNudgeFired.clear();
-  if (elTurnTimer) elTurnTimer.style.display = "none";
+  setText(elTurnTimer, "");
 }
 
 function ensureTurnTimerRunning() {
-  if (!elTurnTimer) return;
   if (turnTimerInterval) return;
   turnTimerInterval = setInterval(() => {
-    const room = lastRoomState;
-    const game = room?.status === "in_game" ? room.game || null : null;
-    if (!room || !game) return;
-    if (!game.currentPlayerId) return;
-    const elapsed = computeTurnElapsedMs(room);
-    if (elapsed == null) return;
-    const paused = !!room?.timer?.paused;
-    elTurnTimer.textContent = paused ? `⏸ ${formatMmSs(elapsed)}` : formatMmSs(elapsed);
-    if (!paused) maybeQueueTurnNudge(elapsed);
-  }, 250);
+    if (lastRoomState?.game?.currentPlayerId) renderTurnTimer(lastRoomState);
+  }, 500);
 }
 
 function maybeQueueTurnNudge(elapsedMs) {
   const room = lastRoomState;
-  const game = room?.status === "in_game" ? room.game || null : null;
-  if (!room || !game) return;
-  if (room.gameMode !== "quick") return;
-  if (game.phase !== "turn") return;
+  const game = room?.status === "in_game" ? room.game : null;
+  if (!game || room.gameMode !== "quick" || game.phase !== "turn") return;
   if (game.subphase !== "needs_roll" && game.subphase !== "main") return;
-  if (!game.currentPlayerId) return;
-  if (room.timer?.paused) return;
 
   const key = `${game.turnNumber}:${game.currentPlayerId}`;
   if (key !== turnNudgeKey) {
@@ -1656,965 +381,138 @@ function maybeQueueTurnNudge(elapsedMs) {
     if (elapsedMs < thresholdMs) break;
     if (turnNudgeFired.has(thresholdMs)) continue;
     turnNudgeFired.add(thresholdMs);
-
-    const current = (room.players || []).find((p) => p.playerId === game.currentPlayerId) || null;
     showQueue.enqueue({
-      id: `turn_nudge:${stableRoomPart(room.roomCode)}:${stableRoomPart(game.turnNumber)}:${stableRoomPart(game.currentPlayerId)}:${stableRoomPart(thresholdMs)}`,
+      id: `turn_nudge:${stablePart(room.roomCode)}:${stablePart(game.turnNumber)}:${stablePart(game.currentPlayerId)}:${thresholdMs}`,
       type: "turn_nudge",
       gameMode: "quick",
       thresholdMs,
       turnNumber: game.turnNumber,
       playerId: game.currentPlayerId,
-      playerName: current?.name || "Player",
+      playerName: playerById(game.currentPlayerId)?.name || "Player",
       subphase: game.subphase,
       expected: game.hints?.expected || null
     });
   }
 }
 
-function phaseActionLabel(game) {
-  const expected = game?.hints?.expected || null;
-  if (expected === "PLACE_SETTLEMENT") return "Place settlement";
-  if (expected === "PLACE_ROAD") return "Place road";
-  if (expected === "ROLL_DICE") return "Roll dice";
-  if (expected === "DISCARD_CARDS") return "Discard";
-  if (expected === "MOVE_ROBBER") return "Move robber";
-  if (expected === "STEAL_CARD") return "Steal";
-  if (game?.phase === "turn" && game?.subphase === "main") return "Build / Trade / End";
-  return game?.hints?.prompt || "…";
+// -----------------------------------------------------------------------------
+// Joining: attract and lobby
+// -----------------------------------------------------------------------------
+
+function roomUrlForPhones() {
+  // Only a TV opened on loopback needs the LAN IP. Any other host, including a reverse proxy, already works for phones.
+  const isLoopback = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  const host = isLoopback && serverLanIp ? `${serverLanIp}:${location.port || 80}` : location.host;
+  return { host, url: `${location.protocol}//${host}/phone?room=${encodeURIComponent(roomCode)}` };
 }
 
-function clampNonNegativeInt(n) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.floor(n));
-}
+function renderJoinInfo() {
+  const { host, url } = roomUrlForPhones();
+  if (url === lastJoinKey) return;
+  lastJoinKey = url;
 
-function renderResourceBadges(counts, { prefix = "+" } = {}) {
-  if (!counts || typeof counts !== "object") return "";
-  const parts = [];
-  for (const r of RESOURCE_TYPES) {
-    const n = clampNonNegativeInt(counts[r] ?? 0);
-    if (n <= 0) continue;
-    parts.push(
-      `<span class="badge res-${escapeHtml(r)}">${escapeHtml(prefix)}${escapeHtml(n)} ${escapeHtml(r)}</span>`
-    );
-  }
-  return parts.join("");
-}
-
-function renderOpenOffers(room, { newOfferIds = new Set() } = {}) {
-  if (!elOffersCard || !elOffers || !elOffersEmpty) return;
-  if (!room || room.status !== "in_game" || !room.game) {
-    elOffersCard.style.display = "none";
-    return;
-  }
-
-  const byId = new Map((room.players || []).map((p) => [p.playerId, p]));
-  const offers = (room.game.tradeOffers || [])
-    .filter((o) => o && o.status === "open")
-    .slice()
-    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-
-  elOffersCard.style.display = "";
-  if (!offers.length) {
-    elOffersEmpty.style.display = "";
-    elOffers.style.display = "none";
-    elOffers.innerHTML = "";
-    return;
-  }
-
-  elOffersEmpty.style.display = "none";
-  elOffers.style.display = "";
-  elOffers.innerHTML = offers
-    .map((o) => {
-      const from = byId.get(o.fromPlayerId) || { name: "Player", color: "rgba(255,255,255,0.28)" };
-      const toName = o.to === "all" ? "Everyone" : byId.get(o.to)?.name || "Player";
-      const giveBadges = renderResourceBadges(o.give, { prefix: "-" });
-      const wantBadges = renderResourceBadges(o.want, { prefix: "+" });
-      const badges = `<div class="logBadges">${giveBadges ? `<span class="badge">Gives</span>${giveBadges}` : ""}${wantBadges ? `<span class="badge">Wants</span>${wantBadges}` : ""}</div>`;
-      const cls = ["tradeOffer"];
-      if (newOfferIds.has(o.id)) cls.push("new");
-      return `<div class="${cls.join(" ")}" data-offer-id="${escapeHtml(o.id)}">
-        <div class="tradeOfferTop">
-          <div class="name" style="display:flex; gap:10px; align-items:center;">
-            <span class="dot" style="background:${escapeHtml(from.color)};"></span>
-            <div>${escapeHtml(from.name)} → ${escapeHtml(toName)}</div>
-          </div>
-          <div class="tradeOfferBtns"><span class="tag">Open</span></div>
-        </div>
-        ${badges}
-      </div>`;
-    })
-    .join("");
-
-  for (const id of newOfferIds) {
-    if (!id || offerNewTimers.has(id)) continue;
-    const t = setTimeout(() => {
-      offerNewTimers.delete(id);
-      const el = elOffers?.querySelector?.(`[data-offer-id="${id}"]`);
-      el?.classList.remove("new");
-    }, 4500);
-    offerNewTimers.set(id, t);
-  }
-}
-
-function computePhaseText(room) {
-  if (!room || room.status !== "in_game" || !room.game) return "Lobby";
-  const game = room.game;
-  const byId = new Map((room.players || []).map((p) => [p.playerId, p]));
-
-  if (game.phase === "game_over") {
-    const winner = byId.get(game.winnerPlayerId)?.name || "Winner";
-    return `Game Over · ${winner} wins`;
-  }
-
-  const who = byId.get(game.currentPlayerId)?.name || "Player";
-  const action = phaseActionLabel(game);
-  if (game.phase === "setup_round_1" || game.phase === "setup_round_2") return `Setup · ${who} · ${action}`;
-  if (game.phase === "turn") return `Turn ${game.turnNumber} · ${who} · ${action}`;
-  return `${who} · ${action}`;
-}
-
-function structureCounts(game) {
-  const roads = Object.keys(game?.structures?.roads || {}).length;
-  let settlements = 0;
-  let cities = 0;
-  for (const s of Object.values(game?.structures?.settlements || {})) {
-    if (!s) continue;
-    if (s.kind === "city") cities += 1;
-    else settlements += 1;
-  }
-  return { roads, settlements, cities };
-}
-
-function computePlacedStructures(prevStructures, nextStructures) {
-  const placedEdgeIds = [];
-  const placedVertexIds = [];
-  if (!prevStructures || !nextStructures) return { placedEdgeIds, placedVertexIds };
-
-  const prevRoads = prevStructures.roads || {};
-  const nextRoads = nextStructures.roads || {};
-  for (const edgeId of Object.keys(nextRoads)) {
-    if (!prevRoads[edgeId]) placedEdgeIds.push(edgeId);
-  }
-
-  const prevSettlements = prevStructures.settlements || {};
-  const nextSettlements = nextStructures.settlements || {};
-  for (const [vertexId, s] of Object.entries(nextSettlements)) {
-    const prev = prevSettlements[vertexId] || null;
-    if (!prev) {
-      placedVertexIds.push(vertexId);
-      continue;
-    }
-    if (prev.kind !== s?.kind) placedVertexIds.push(vertexId);
-  }
-
-  return { placedEdgeIds, placedVertexIds };
-}
-
-function computeShowBeats(prevRoom, room) {
-  const game = room?.status === "in_game" ? room?.game || null : null;
-  const moments = detectMoments(prevRoom, room);
-  const beats = [];
-  const newOfferIds = new Set();
-  if (!game || !moments.length) return { beats, moments, newOfferIds };
-
-  const byId = new Map((room?.players || []).map((p) => [p.playerId, p]));
-  const playerMeta = (pid) => {
-    const p = pid ? byId.get(pid) : null;
-    return {
-      playerId: pid,
-      name: p?.name || "Player",
-      color: p?.color || "rgba(255,255,255,0.28)"
-    };
-  };
-
-  for (const m of moments) {
-    const kind = m?.kind || "";
-    const data = m?.data && typeof m.data === "object" ? m.data : {};
-    if (!m?.id || typeof m.id !== "string") continue;
-
-    if (kind === "expected_action") continue;
-
-    if (kind === "game_over") {
-      const winnerPlayerId = typeof data.winnerPlayerId === "string" ? data.winnerPlayerId : null;
-      const winner = playerMeta(winnerPlayerId);
-      beats.push({ id: m.id, type: "game_over", winnerPlayerId, winnerName: winner.name, winnerColor: winner.color });
-      continue;
-    }
-
-    if (kind === "turn_start") {
-      const pid = typeof data.playerId === "string" ? data.playerId : null;
-      const p = playerMeta(pid);
-      beats.push({ id: m.id, type: "turn_start", playerId: pid, playerName: p.name, playerColor: p.color });
-      continue;
-    }
-
-    if (kind === "dice_roll") {
-      const by = playerMeta(typeof data.byPlayerId === "string" ? data.byPlayerId : null);
-      beats.push({
-        id: m.id,
-        type: "dice_roll",
-        at: m.at ?? null,
-        sum: data.sum ?? null,
-        d1: data.d1 ?? null,
-        d2: data.d2 ?? null,
-        byPlayerId: by.playerId,
-        byName: by.name,
-        byColor: by.color
-      });
-      continue;
-    }
-
-    if (kind === "robber_step") {
-      const subphase = typeof data.subphase === "string" ? data.subphase : "";
-      const required = game.robber?.discardRequiredByPlayerId || {};
-      const submitted = game.robber?.discardSubmittedByPlayerId || {};
-      const pending = Object.entries(required)
-        .filter(([, count]) => Number.isFinite(count) && count > 0)
-        .map(([playerId, count]) => ({
-          ...playerMeta(playerId),
-          count: clampNonNegativeInt(count),
-          submitted: !!submitted[playerId]
-        }));
-      beats.push({
-        id: m.id,
-        type: "robber_step",
-        subphase,
-        pendingDiscards: pending.filter((p) => !p.submitted),
-        totalPendingDiscards: pending.filter((p) => !p.submitted).length
-      });
-      continue;
-    }
-
-    if (kind === "robber_moved") {
-      const hexId = typeof data.hexId === "string" ? data.hexId : null;
-      beats.push({ id: m.id, type: "robber_moved", hexId });
-      continue;
-    }
-
-    if (kind === "build_road") {
-      const edgeId = typeof data.edgeId === "string" ? data.edgeId : null;
-      const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (edgeId)
-        beats.push({
-          id: m.id,
-          type: "build",
-          kind: "road",
-          edgeId,
-          playerId: p.playerId,
-          playerName: p.name,
-          playerColor: p.color
-        });
-      continue;
-    }
-    if (kind === "build_settlement") {
-      const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
-      const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId)
-        beats.push({
-          id: m.id,
-          type: "build",
-          kind: "settlement",
-          vertexId,
-          playerId: p.playerId,
-          playerName: p.name,
-          playerColor: p.color
-        });
-      continue;
-    }
-    if (kind === "build_city") {
-      const vertexId = typeof data.vertexId === "string" ? data.vertexId : null;
-      const p = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      if (vertexId)
-        beats.push({
-          id: m.id,
-          type: "build",
-          kind: "city",
-          vertexId,
-          playerId: p.playerId,
-          playerName: p.name,
-          playerColor: p.color
-        });
-      continue;
-    }
-
-    if (kind === "trade_open") {
-      const offerId = typeof data.offerId === "string" ? data.offerId : null;
-      if (offerId) newOfferIds.add(offerId);
-      const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      const toName = data.to === "all" ? "Everyone" : playerMeta(typeof data.to === "string" ? data.to : null).name;
-      beats.push({
-        id: m.id,
-        type: "trade_open",
-        count: 1,
-        offer: { give: data.give || null, want: data.want || null },
-        fromPlayerId: from.playerId,
-        fromName: from.name,
-        fromColor: from.color,
-        to: data.to === "all" ? "all" : data.to,
-        toName
-      });
-      continue;
-    }
-
-    if (kind === "trade_accepted") {
-      const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      const acceptedBy = playerMeta(typeof data.acceptedByPlayerId === "string" ? data.acceptedByPlayerId : null);
-      beats.push({
-        id: m.id,
-        type: "trade_accepted",
-        count: 1,
-        fromPlayerId: from.playerId,
-        fromName: from.name,
-        fromColor: from.color,
-        acceptedByPlayerId: acceptedBy.playerId,
-        acceptedByName: acceptedBy.name,
-        acceptedByColor: acceptedBy.color
-      });
-      continue;
-    }
-
-    if (kind === "trade_cancelled") {
-      const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      beats.push({
-        id: m.id,
-        type: "trade_cancelled",
-        count: 1,
-        fromPlayerId: from.playerId,
-        fromName: from.name,
-        fromColor: from.color
-      });
-      continue;
-    }
-
-    if (kind === "trade_rejected") {
-      const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      const toName = data.to === "all" ? "Everyone" : playerMeta(typeof data.to === "string" ? data.to : null).name;
-      beats.push({
-        id: m.id,
-        type: "trade_rejected",
-        count: 1,
-        fromPlayerId: from.playerId,
-        fromName: from.name,
-        fromColor: from.color,
-        to: data.to === "all" ? "all" : data.to,
-        toName
-      });
-      continue;
-    }
-
-    if (kind === "robber_discarded") {
-      const actor = playerMeta(typeof data.playerId === "string" ? data.playerId : null);
-      beats.push({
-        id: m.id,
-        type: "robber_discarded",
-        playerId: actor.playerId,
-        playerName: actor.name,
-        count: clampNonNegativeInt(data.count ?? 0)
-      });
-      continue;
-    }
-
-    if (kind === "robber_stole") {
-      const from = playerMeta(typeof data.fromPlayerId === "string" ? data.fromPlayerId : null);
-      beats.push({
-        id: m.id,
-        type: "robber_stole",
-        fromPlayerId: from.playerId,
-        fromName: from.name,
-        fromColor: from.color,
-        didSteal: data?.didSteal !== false
-      });
-    }
-  }
-
-  return { beats, moments, newOfferIds };
-}
-
-// =============================================================================
-// Attract Mode - Jackbox-like idle screen with board preview
-// =============================================================================
-
-/**
- * Sample board data for attract mode preview.
- * This creates a standard Catan board with all resource types.
- */
-function createAttractSampleBoard() {
-  const resources = [
-    "ore",
-    "sheep",
-    "wheat",
-    "brick",
-    "sheep",
-    "wheat",
-    "ore",
-    "wood",
-    "brick",
-    "desert",
-    "wood",
-    "wheat",
-    "ore",
-    "wood",
-    "sheep",
-    "brick",
-    "sheep",
-    "wheat",
-    "wood"
-  ];
-  const tokens = [10, 2, 9, 12, 6, 4, 10, 9, 11, 0, 3, 8, 8, 3, 4, 5, 5, 6, 11];
-
-  const SQRT3 = Math.sqrt(3);
-  const HEX_SIZE = 100;
-  const coords = [];
-  for (let x = -2; x <= 2; x++) {
-    for (let y = -2; y <= 2; y++) {
-      const z = -x - y;
-      if (Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) <= 2) {
-        coords.push({ q: x, r: z });
-      }
-    }
-  }
-  coords.sort((a, b) => a.r - b.r || a.q - b.q);
-
-  function axialToPixel(q, r) {
-    return { x: HEX_SIZE * SQRT3 * (q + r / 2), y: HEX_SIZE * 1.5 * r };
-  }
-
-  function hexCornerOffsets() {
-    const a = (SQRT3 / 2) * HEX_SIZE;
-    const b = 0.5 * HEX_SIZE;
-    return [
-      { x: 0, y: -HEX_SIZE },
-      { x: a, y: -b },
-      { x: a, y: b },
-      { x: 0, y: HEX_SIZE },
-      { x: -a, y: b },
-      { x: -a, y: -b }
-    ];
-  }
-
-  const verticesByKey = new Map();
-  const vertices = [];
-  const edges = [];
-  const edgesByKey = new Map();
-  const cornerOffsets = hexCornerOffsets();
-
-  function roundKey(n) {
-    return Math.round(n * 1000);
-  }
-  function pointKey(x, y) {
-    return `${roundKey(x)}:${roundKey(y)}`;
-  }
-
-  function getOrCreateVertex(pt) {
-    const key = pointKey(pt.x, pt.y);
-    const existing = verticesByKey.get(key);
-    if (existing) return existing;
-    const id = `V${vertices.length}`;
-    const v = { id, x: pt.x, y: pt.y, adjacentHexIds: [], neighborVertexIds: [], edgeIds: [] };
-    verticesByKey.set(key, v);
-    vertices.push(v);
-    return v;
-  }
-
-  function addEdge(vA, vB) {
-    const a = vA.id < vB.id ? vA : vB;
-    const b = vA.id < vB.id ? vB : vA;
-    const key = `${a.id}|${b.id}`;
-    const existing = edgesByKey.get(key);
-    if (existing) return existing;
-    const id = `E${edges.length}`;
-    const e = { id, vA: a.id, vB: b.id };
-    edgesByKey.set(key, e);
-    edges.push(e);
-    return e;
-  }
-
-  const hexes = coords.map((c, idx) => {
-    const center = axialToPixel(c.q, c.r);
-    const corners = cornerOffsets.map((off) => getOrCreateVertex({ x: center.x + off.x, y: center.y + off.y }));
-    const hexId = `H${idx}`;
-    for (const v of corners) v.adjacentHexIds.push(hexId);
-    for (let i = 0; i < corners.length; i++) {
-      addEdge(corners[i], corners[(i + 1) % corners.length]);
-    }
-    return {
-      id: hexId,
-      q: c.q,
-      r: c.r,
-      center,
-      resource: resources[idx] || "desert",
-      token: tokens[idx] || 0,
-      cornerVertexIds: corners.map((v) => v.id)
-    };
-  });
-
-  const vertexById = new Map(vertices.map((v) => [v.id, v]));
-  for (const e of edges) {
-    const vA = vertexById.get(e.vA);
-    const vB = vertexById.get(e.vB);
-    vA.neighborVertexIds.push(vB.id);
-    vB.neighborVertexIds.push(vA.id);
-    vA.edgeIds.push(e.id);
-    vB.edgeIds.push(e.id);
-  }
-
-  let minX = Infinity,
-    maxX = -Infinity,
-    minY = Infinity,
-    maxY = -Infinity;
-  for (const v of vertices) {
-    minX = Math.min(minX, v.x);
-    maxX = Math.max(maxX, v.x);
-    minY = Math.min(minY, v.y);
-    maxY = Math.max(maxY, v.y);
-  }
-
-  const edgeByVertexPair = {};
-  for (const [k, e] of edgesByKey.entries()) edgeByVertexPair[k] = e.id;
-
-  return {
-    layout: "standard-radius-2",
-    hexSize: HEX_SIZE,
-    hexes,
-    vertices,
-    edges,
-    ports: [],
-    edgeByVertexPair,
-    bounds: { minX, minY, maxX, maxY }
-  };
-}
-
-async function initAttractMode() {
-  if (!elAttractMode) return;
-  elAttractCreateBtn?.addEventListener("click", async () => {
-    await exitAttractMode();
-  });
-}
-
-async function showAttractMode() {
-  if (!elAttractMode || attractModeActive) return;
-
-  // Hide lobby overlay when entering attract mode
-  if (lobbyOverlayActive && elLobbyOverlay) {
-    lobbyOverlayActive = false;
-    elLobbyOverlay.style.display = "none";
-  }
-
-  attractModeActive = true;
-  updateWrapVisibility();
-  elAttractMode.style.display = "";
-  elAttractMode.classList.remove("hiding");
-
-  if (elAttractQr) {
-    const attractUrl = roomCode ? roomUrlForPhones() : `${location.protocol}//${location.host}/phone`;
-    try {
-      elAttractQr.innerHTML = qrSvg(attractUrl, { margin: 4, label: "Join Catan" });
-    } catch {
-      elAttractQr.innerHTML = "";
-    }
-  }
-}
-
-async function exitAttractMode() {
-  if (!elAttractMode || !attractModeActive) return;
-  elAttractMode.classList.add("hiding");
-  await sleep(350);
-  attractModeActive = false;
-  updateWrapVisibility();
-  elAttractMode.style.display = "none";
-  elAttractMode.classList.remove("hiding");
-
-  // Show lobby overlay if we're in lobby mode after exiting attract
-  const room = lastRoomState;
-  if (room && room.status === "lobby") {
-    showLobbyOverlay();
-    renderLobbyOverlay(room);
-  }
-}
-
-function checkIdleForAttractMode() {
-  const room = lastRoomState;
-  const hasPlayers = Array.isArray(room?.players) && room.players.length > 0;
-  const isInGame = room?.status === "in_game";
-
-  if (hasPlayers || isInGame) {
-    cancelAttractIdleTimer();
-    if (attractModeActive) exitAttractMode();
-    return;
-  }
-
-  if (!attractIdleTimer && !attractModeActive) {
-    attractIdleTimer = setTimeout(() => {
-      attractIdleTimer = null;
-      const currentRoom = lastRoomState;
-      const currentHasPlayers = Array.isArray(currentRoom?.players) && currentRoom.players.length > 0;
-      if (!currentHasPlayers && !attractModeActive) showAttractMode();
-    }, ATTRACT_IDLE_TIMEOUT_MS);
-  }
-}
-
-function cancelAttractIdleTimer() {
-  if (attractIdleTimer) {
-    clearTimeout(attractIdleTimer);
-    attractIdleTimer = null;
-  }
-}
-
-initAttractMode();
-
-// =============================================================================
-// Lobby Overlay - Purpose-built lobby screen
-// =============================================================================
-
-/**
- * Create a sample board for the lobby preview based on scenario and player count.
- * Uses the same pattern as createAttractSampleBoard but can be extended
- * for different scenarios in the future.
- * @param {string} scenarioId - Current scenario identifier
- * @param {number} [playerCount=0] - Number of players in the room
- */
-function createLobbyPreviewBoard(scenarioId, playerCount = 0) {
-  const radius = playerCount >= 5 ? 3 : 2;
-  return createAttractSampleBoardModule(radius);
-}
-
-function showLobbyOverlay() {
-  if (!elLobbyOverlay || lobbyOverlayActive) return;
-  lobbyOverlayActive = true;
-  updateWrapVisibility();
-  elLobbyOverlay.style.display = "";
-  elLobbyOverlay.classList.remove("hiding");
-}
-
-async function hideLobbyOverlay() {
-  if (!elLobbyOverlay || !lobbyOverlayActive) return;
-  elLobbyOverlay.classList.add("hiding");
-  await sleep(300);
-  lobbyOverlayActive = false;
-  updateWrapVisibility();
-  elLobbyOverlay.style.display = "none";
-  elLobbyOverlay.classList.remove("hiding");
-}
-
-function renderLobbyQr(url) {
-  if (!elLobbyQr || !url) return;
-  if (url === lastLobbyQrUrl) return;
-  lastLobbyQrUrl = url;
+  let qr = "";
   try {
-    elLobbyQr.innerHTML = qrSvg(url, { margin: 4, label: "Join Catan" });
-  } catch {
-    elLobbyQr.innerHTML = "";
+    qr = qrSvg(url, { margin: 2, label: "Join room" });
+  } catch (err) {
+    console.warn("[catan] failed to render join QR:", err);
+  }
+  for (const prefix of ["attract", "lobby"]) {
+    setText(qs(`#${prefix}Code`), roomCode);
+    setText(qs(`#${prefix}Url`), `${host}/phone`);
+    qs(`#${prefix}Qr`).innerHTML = qr;
   }
 }
 
-/**
- * Scale the URL text to match the room code width.
- */
-function scaleUrlToMatchRoomCode() {
-  if (!elLobbyRoomCode || !elLobbyJoinUrl) return;
-
-  const roomCodeWidth = elLobbyRoomCode.offsetWidth;
-  if (roomCodeWidth <= 0) return;
-
-  // Binary search for font size that makes URL match room code width
-  let minSize = 8;
-  let maxSize = 40;
-  while (maxSize - minSize > 1) {
-    const mid = (minSize + maxSize) / 2;
-    elLobbyJoinUrl.style.fontSize = mid + "px";
-    if (elLobbyJoinUrl.offsetWidth > roomCodeWidth) {
-      maxSize = mid;
-    } else {
-      minSize = mid;
-    }
-  }
-  elLobbyJoinUrl.style.fontSize = minSize + "px";
-}
-
-function renderLobbyPlayers(players) {
-  if (!elLobbyPlayers) return;
-
-  const list = Array.isArray(players) ? players : [];
-
-  if (list.length === 0) {
-    elLobbyPlayers.innerHTML = "";
-    if (elLobbyPlayersEmpty) elLobbyPlayersEmpty.style.display = "";
-    return;
-  }
-
-  if (elLobbyPlayersEmpty) elLobbyPlayersEmpty.style.display = "none";
-
-  const html = list
-    .map((p) => {
-      const dotColor = p.connected ? p.color : "rgba(255,255,255,0.18)";
-      const hostClass = p.isHost ? " host" : "";
-      const roleText = p.isHost ? "Host" : "";
-      const readyTag = p.ready ? `<span class="tag good">Ready</span>` : `<span class="tag warn">Not ready</span>`;
-
-      return `
-        <div class="lobbyPlayer${hostClass}">
-          <div class="lobbyPlayerDot" style="background:${escapeHtml(dotColor)};"></div>
-          <div class="lobbyPlayerInfo">
-            <div class="lobbyPlayerName">${escapeHtml(p.name || "Player")}</div>
-            ${roleText ? `<div class="lobbyPlayerRole">${escapeHtml(roleText)}</div>` : ""}
-          </div>
-          <div class="lobbyPlayerStatus">${readyTag}</div>
-        </div>
-      `;
-    })
-    .join("");
-
-  elLobbyPlayers.innerHTML = html;
-}
-
-function getEffectiveVpForLobby(room) {
-  const gameMode = room?.gameMode === "quick" ? "quick" : "classic";
+function effectiveVp(room) {
   const customVp = room?.settings?.houseRules?.victoryPointsToWin;
   if (Number.isFinite(customVp)) return Math.floor(customVp);
-  return gameMode === "quick" ? 8 : 10;
+  return room?.gameMode === "quick" ? 8 : 10;
 }
 
-function getLobbyConfigPills(room, scenario) {
-  const pills = [];
-  const vp = getEffectiveVpForLobby(room);
-  const eventDeck = room?.variants?.eventDeckEnabled === true;
-  const presets = room?.presets || [];
-  const preset = presets.find((p) => p?.id === room?.presetId);
-  const boardType = preset?.name || "Balanced";
-
-  pills.push({ label: `${vp} VP to win`, highlight: false });
-  pills.push({ label: boardType, highlight: false });
-  if (eventDeck) {
-    pills.push({ label: "Event Deck", highlight: true });
-  }
-  return pills;
+function lobbyStatus(room) {
+  const players = room.players || [];
+  const host = players.find((p) => p.playerId === room.hostPlayerId) || null;
+  const missing = MIN_PLAYERS - players.length;
+  if (missing > 0) return { text: `Need ${missing} more player${missing === 1 ? "" : "s"}`, ready: false };
+  const waiting = players.filter((p) => !p.ready).map((p) => p.name);
+  if (waiting.length) return { text: `Waiting on ${waiting.join(", ")} to tap Ready`, ready: false };
+  return { text: `Everybody's in! ${host?.name || "The host"} can tap Start`, ready: true };
 }
 
-function renderLobbyScenarios(room) {
-  const { scenarioId, scenarios } = scenarioMeta(room);
-  const display = scenarioDisplay(scenarios, scenarioId, { fallbackName: scenarioId || "Classic" });
-  const scenario = scenarios.find((s) => s?.id === scenarioId);
+function renderLobby(room) {
+  const scenario = scenarioDisplay(room.scenarios, room.settings?.scenarioId, { fallbackName: "Classic" });
+  setText(qs("#lobbyScenarioTitle"), scenario?.name || "Classic");
 
-  // Render scenario title
-  if (elLobbyScenarioTitle) {
-    setText(elLobbyScenarioTitle, display.name);
-  }
+  const preset = (room.presets || []).find((p) => p?.id === room.presetId);
+  const pills = [`${effectiveVp(room)} VP to win`, preset?.name || "Balanced"];
+  if (room.variants?.eventDeckEnabled === true) pills.push("Event deck");
+  elLobbyPills.innerHTML = pills.map((label) => `<span class="lobbyPill">${escapeHtml(label)}</span>`).join("");
 
-  // Render scenario description
-  if (elLobbyScenarioDescription) {
-    setText(elLobbyScenarioDescription, display.description || "");
-  }
+  const limit = Math.max(MIN_PLAYERS, Math.min(6, Math.floor(Number(room.maxPlayers)) || 4));
+  const players = room.players || [];
+  elLobbySlots.dataset.slots = String(limit);
+  elLobbySlots.innerHTML = Array.from({ length: Math.max(limit, players.length) }, (_, i) => {
+    const p = players[i];
+    if (!p) return `<div class="lobbySlot empty"><span class="slotHint">Open seat</span></div>`;
+    const state = !p.connected ? "Reconnecting…" : p.ready ? "Ready" : "Joined";
+    return `<div class="lobbySlot${p.ready ? " ready" : ""}${p.connected ? "" : " offline"}" style="--c:${escapeHtml(p.color)}">
+      ${settlementSprite(p.color)}
+      <div class="slotMain">
+        <div class="slotName">${escapeHtml(p.name)}</div>
+        <div class="slotState">${p.playerId === room.hostPlayerId ? "Host · " : ""}${state}</div>
+      </div>
+      ${p.ready ? `<span class="slotCheck" aria-hidden="true">✓</span>` : ""}
+    </div>`;
+  }).join("");
 
-  // Render config pills
-  if (elLobbyConfigPills) {
-    const pills = getLobbyConfigPills(room, scenario);
-    elLobbyConfigPills.innerHTML = pills
-      .map((p) => `<span class="configPill${p.highlight ? " highlight" : ""}">${escapeHtml(p.label)}</span>`)
-      .join("");
-  }
+  const status = lobbyStatus(room);
+  setText(elLobbyStatus, status.text);
+  elLobbyStatus.classList.toggle("ready", status.ready);
 
-  // Update legacy dropdown for backwards compatibility
-  if (elLobbyScenarioSelect) {
-    const nextOptionsKey = scenariosKey(scenarios);
-
-    if (nextOptionsKey !== lastLobbyScenarioOptionsKey) {
-      elLobbyScenarioSelect.innerHTML = scenarios
-        .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`)
-        .join("");
-      lastLobbyScenarioOptionsKey = nextOptionsKey;
-    }
-
-    const hasOption = scenarios.some((s) => s?.id === scenarioId);
-    if (hasOption && elLobbyScenarioSelect.value !== scenarioId) {
-      elLobbyScenarioSelect.value = scenarioId;
-    }
-
-    const canChange = room?.status === "lobby" && hasAdminSecret() && !scenarioUpdateInFlight;
-    elLobbyScenarioSelect.disabled = !canChange;
-  }
-
-  // Update description (legacy)
-  if (elLobbyScenarioDesc) {
-    setText(elLobbyScenarioDesc, display.description);
-  }
-}
-
-function renderLobbyThemes(room) {
-  if (!elLobbyThemeSelect) return;
-
-  const themes = Array.isArray(room?.themes) ? room.themes : [];
-  const currentThemeId = typeof room?.themeId === "string" ? room.themeId : "";
-
-  const nextOptionsKey = themes.map((t) => `${t?.id || ""}:${t?.name || ""}`).join("|");
-
-  if (nextOptionsKey !== lastLobbyThemeOptionsKey) {
-    elLobbyThemeSelect.innerHTML = themes
-      .map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`)
-      .join("");
-    lastLobbyThemeOptionsKey = nextOptionsKey;
-  }
-
-  const hasOption = themes.some((t) => t?.id === currentThemeId);
-  if (hasOption && elLobbyThemeSelect.value !== currentThemeId) {
-    elLobbyThemeSelect.value = currentThemeId;
-  }
-
-  const canChange = room?.status === "lobby" && hasAdminSecret() && !themeUpdateInFlight;
-  elLobbyThemeSelect.disabled = !canChange;
-}
-
-function renderLobbyBoardPreview(scenarioId, playerCount = 0) {
-  if (!elLobbyBoardPreview) return;
-
-  // Determine required radius based on player count
-  const neededRadius = playerCount >= 5 ? 3 : 2;
-
-  // Invalidate cache if radius changed
-  if (lobbyPreviewBoardRadius !== neededRadius) {
-    lobbyPreviewBoard = null;
-    lobbyPreviewBoardRadius = neededRadius;
-  }
-
-  // Create or reuse preview board
-  if (!lobbyPreviewBoard) {
-    lobbyPreviewBoard = createLobbyPreviewBoard(scenarioId, playerCount);
-  }
-
-  // Place robber on a desert hex: H18 for expanded, H9 for standard
-  const robberHexId = neededRadius >= 3 ? "H18" : "H9";
-
-  try {
-    renderBoard(elLobbyBoardPreview, lobbyPreviewBoard, {
+  const radius = players.length >= 5 ? 3 : 2;
+  if (radius !== lobbyPreviewRadius) {
+    lobbyPreviewRadius = radius;
+    renderBoard(elLobbyPreview, createAttractSampleBoard(radius), {
       players: [],
       structures: { roads: {}, settlements: {} },
-      selectableVertexIds: [],
-      selectableEdgeIds: [],
-      selectableHexIds: [],
-      robberHexId
+      robberHexId: radius >= 3 ? "H18" : "H9"
     });
-  } catch (err) {
-    console.warn("[catan] Failed to render lobby board preview:", err);
   }
 }
 
-function updateLobbyStartStatus(room) {
-  if (!elLobbyStartStatus) return;
+// -----------------------------------------------------------------------------
+// Room connection
+// -----------------------------------------------------------------------------
 
-  const players = Array.isArray(room?.players) ? room.players : [];
-  const readyCount = players.filter((p) => p.ready).length;
-  const totalCount = players.length;
-  const hasHost = !!room?.hostPlayerId;
-  const minPlayers = 3;
-
-  let statusText = "";
-  let isReady = false;
-
-  if (totalCount === 0) {
-    statusText = "Waiting for players to join...";
-  } else if (totalCount < minPlayers) {
-    statusText = `Need ${minPlayers - totalCount} more player${minPlayers - totalCount === 1 ? "" : "s"} to start`;
-  } else if (!hasHost) {
-    statusText = "Waiting for a host...";
-  } else if (readyCount < totalCount) {
-    statusText = `Waiting for host to start... (${readyCount}/${totalCount} players ready)`;
-  } else {
-    statusText = `All ${totalCount} players ready! Waiting for host to start...`;
-    isReady = true;
-  }
-
-  elLobbyStartStatus.textContent = statusText;
-  elLobbyStartStatus.classList.toggle("ready", isReady);
+async function adoptNewRoom() {
+  const created = await api("/api/rooms", { method: "POST" });
+  roomCode = created.roomCode;
+  lastRevisionSeen = null;
+  history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
 }
-
-function renderLobbyOverlay(room) {
-  if (!elLobbyOverlay || !room) return;
-
-  // Update room code
-  if (elLobbyRoomCode) setText(elLobbyRoomCode, room.roomCode || "-----");
-
-  // Update join URL
-  const joinUrl = roomUrlForPhones();
-  if (elLobbyJoinUrl) {
-    // Extract just the host/path without protocol
-    try {
-      const url = new URL(joinUrl);
-      setText(elLobbyJoinUrl, `${url.host}${url.pathname}`);
-    } catch {
-      setText(elLobbyJoinUrl, joinUrl);
-    }
-    // Scale URL to match room code width after text is set
-    requestAnimationFrame(scaleUrlToMatchRoomCode);
-  }
-
-  // Render QR code
-  renderLobbyQr(joinUrl);
-
-  // Render players
-  renderLobbyPlayers(room.players);
-
-  // Render scenario selection
-  renderLobbyScenarios(room);
-
-  // Render theme selection
-  renderLobbyThemes(room);
-
-  // Render board preview
-  const { scenarioId } = scenarioMeta(room);
-  renderLobbyBoardPreview(scenarioId, room.players?.length || 0);
-
-  // Update start status
-  updateLobbyStartStatus(room);
-}
-
-// Event listeners for lobby overlay scenario/theme changes
-elLobbyScenarioSelect?.addEventListener("change", () => {
-  const room = lastRoomState;
-  if (!room) return;
-  const current = typeof room?.settings?.scenarioId === "string" ? room.settings.scenarioId : "";
-  const next = String(elLobbyScenarioSelect.value || "");
-  if (next && next !== current) requestScenarioChange(next);
-});
-
-elLobbyThemeSelect?.addEventListener("change", async () => {
-  const room = lastRoomState;
-  if (!room || room.status !== "lobby") return;
-  const currentThemeId = typeof room?.themeId === "string" ? room.themeId : "";
-  const nextThemeId = String(elLobbyThemeSelect.value || "");
-  if (nextThemeId && nextThemeId !== currentThemeId) {
-    await requestThemeChange(nextThemeId);
-  }
-});
-
-// Rescale URL on window resize when lobby is active
-window.addEventListener("resize", () => {
-  if (lobbyOverlayActive) scaleUrlToMatchRoomCode();
-});
 
 async function ensureRoom() {
-  const url = new URL(location.href);
-  const fromQuery = url.searchParams.get("room");
+  const fromQuery = new URL(location.href).searchParams.get("room");
   if (fromQuery) {
     const candidate = String(fromQuery).toUpperCase();
     try {
       await api(`/api/rooms/${encodeURIComponent(candidate)}`);
       roomCode = candidate;
-      adminSecret = loadAdminSecret(roomCode);
-      isSecondaryTv = false;
       lastRevisionSeen = null;
       return;
     } catch {
       // Room doesn't exist anymore (server restart). Create a fresh one.
     }
   }
-  const created = await api("/api/rooms", { method: "POST" });
-  roomCode = created.roomCode;
-  adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
-  isSecondaryTv = false;
-  storeAdminSecret(roomCode, adminSecret);
-  lastRevisionSeen = null;
-  history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
+  await adoptNewRoom();
+}
+
+function setConnectionOverlay(isVisible, { title = "Reconnecting…", hint = "" } = {}) {
+  elConnectionOverlay.style.display = isVisible ? "" : "none";
+  if (!isVisible) return;
+  elConnectionTitle.textContent = title;
+  elConnectionHint.textContent = hint;
 }
 
 const renderScheduler = createRenderScheduler(() => {
@@ -2634,7 +532,6 @@ const renderScheduler = createRenderScheduler(() => {
 
 function connectStream() {
   if (es) es.close();
-  setTvStatus("Connecting…");
   setConnectionOverlay(false);
   es = new EventSource(`/api/rooms/${encodeURIComponent(roomCode)}/stream?role=tv`);
 
@@ -2651,23 +548,17 @@ function connectStream() {
       lastRevisionSeen = null;
     }
     const prev = lastRoomState;
-    lastRoomState = payload.room;
+    lastRoomState = applyDisplayColors(payload.room);
     if (debugPerfEnabled && markPayloadSize && measureUtf8Bytes) markPayloadSize("tv.state", measureUtf8Bytes(raw));
     if (prev && payload.room?.roomCode !== prev.roomCode) {
       lastRenderedRoomState = null;
-      lastPlayersRenderKey = null;
-      lastLogRenderKey = null;
       lastBoardRenderKey = null;
       showQueue.clear();
       segmentTracker.reset();
     }
-    setTvStatus("LIVE");
     setConnectionOverlay(false);
-    recoveryDelay = 1200; // Reset backoff on successful connection
+    recoveryDelay = 1200;
     renderScheduler.schedule();
-
-    // Check if we should show or exit attract mode based on room state
-    checkIdleForAttractMode();
   });
 
   es.addEventListener("emote", (ev) => {
@@ -2675,509 +566,235 @@ function connectStream() {
     try {
       payload = JSON.parse(ev.data || "null");
     } catch {
-      payload = null;
+      return;
     }
     const emote = String(payload?.emote || "");
-    const name = String(payload?.name || "Player");
-    const color = String(payload?.color || "rgba(255,255,255,0.30)");
-
-    const label = emote === "nice" ? "Nice!" : emote === "ouch" ? "Ouch" : emote === "gg" ? "GG" : "";
-    if (!label) return;
-    const tone = emote === "ouch" ? "warn" : "good";
-
-    show.toast({
-      title: label,
-      badgesHtml: `<span class="badge"><span class="miniDot" style="--c:${escapeHtml(color)}"></span>${escapeHtml(name)}</span>`,
-      tone,
-      durationMs: 1600
-    });
+    const label = { nice: "Nice!", ouch: "Ouch", gg: "GG" }[emote];
+    if (label) playerCards.showBubble(payload?.playerId, label, emote === "ouch" ? "warn" : "good");
   });
 
   es.addEventListener("ping", () => {});
 
   es.onerror = () => {
-    setTvStatus("Reconnecting…");
     setConnectionOverlay(true, {
       title: "Reconnecting…",
-      hint: "Phones can refresh to rejoin • If this room disappears, a new code will appear"
+      hint: "Hang tight. If this room is gone, a new code will appear."
     });
     scheduleRoomRecovery();
   };
 }
 
-let recoveryTimer = null;
-let recoveryDelay = 1200;
-const MAX_RECOVERY_DELAY = 10000;
-
 function scheduleRoomRecovery() {
   if (recoveryTimer) return;
   const code = roomCode;
-  const currentDelay = recoveryDelay;
   recoveryTimer = setTimeout(async () => {
     recoveryTimer = null;
     try {
       await api(`/api/rooms/${encodeURIComponent(code)}`);
-      // Success - reset backoff delay
       recoveryDelay = 1200;
     } catch (e) {
-      // Increase delay for next attempt (exponential backoff)
       recoveryDelay = Math.min(recoveryDelay * 2, MAX_RECOVERY_DELAY);
       if (errorCode(e) === "HTTP_404" && code === roomCode) {
         try {
-          const created = await api("/api/rooms", { method: "POST" });
-          roomCode = created.roomCode;
-          adminSecret = typeof created?.adminSecret === "string" ? created.adminSecret : null;
-          isSecondaryTv = false;
-          storeAdminSecret(roomCode, adminSecret);
-          lastRevisionSeen = null;
-          history.replaceState(null, "", `/tv?room=${encodeURIComponent(roomCode)}`);
-          recoveryDelay = 1200; // Reset on successful room creation
+          await adoptNewRoom();
+          recoveryDelay = 1200;
           connectStream();
         } catch {
           // Ignore; we'll retry on the next error tick.
         }
       }
     }
-  }, currentDelay);
+  }, recoveryDelay);
 }
 
 async function applyThemeFromRoom(room) {
-  const raw = typeof room?.themeId === "string" ? room.themeId : "";
-  const themeId = raw.trim() || null;
+  const themeId = (typeof room?.themeId === "string" ? room.themeId : "").trim() || null;
   if (themeId === lastThemeId) return;
   lastThemeId = themeId;
 
-  if (themeId) {
-    try {
-      await loadTheme(themeId);
-    } catch (err) {
-      console.warn("[catan] Failed to load theme:", err);
-      // Fallback: just set the data-theme attribute
-      const root = document?.documentElement;
-      if (root) root.setAttribute("data-theme", themeId);
-    }
-  } else {
-    const root = document?.documentElement;
-    if (root) root.removeAttribute("data-theme");
+  const root = document.documentElement;
+  if (!themeId) return root.removeAttribute("data-theme");
+  try {
+    await loadTheme(themeId);
+  } catch (err) {
+    console.warn("[catan] Failed to load theme:", err);
+    root.setAttribute("data-theme", themeId);
   }
+}
+
+// -----------------------------------------------------------------------------
+// Render
+// -----------------------------------------------------------------------------
+
+function screenFor(room) {
+  if (room.status === "in_game" && room.game) return room.game.phase === "game_over" ? "over" : "game";
+  return (room.players || []).length ? "lobby" : "attract";
+}
+
+function renderTurnCard(room) {
+  const game = room.game;
+  const current = playerById(game.currentPlayerId);
+  const color = current?.color || "#fff";
+  document.body.style.setProperty("--turn-color", color);
+  setText(elTurnKicker, turnKickerText(game));
+  setText(elTurnName, current?.name || "");
+  setText(elTurnAction, turnActionText(game));
+
+  const pending = pendingDiscards(room);
+  setText(
+    elTurnWaiting,
+    pending.length ? `Discarding: ${pending.map((p) => `${p.name} (${p.count})`).join(", ")}` : ""
+  );
+}
+
+function renderOffers(room) {
+  const open = (room.game.tradeOffers || []).filter((o) => o?.status === "open");
+  elOffersPanel.hidden = open.length === 0;
+  elOffers.innerHTML = open
+    .slice(-3)
+    .map((o) => offerHtml(o, room.players))
+    .join("");
+}
+
+function renderEvent(game) {
+  const event = game.currentEvent;
+  elEventPanel.hidden = !event?.id;
+  if (!event?.id) return;
+  setText(elEventTitle, event.name || "Event");
+  setText(elEventDescription, event.description || event.shortText || "");
+}
+
+function renderRejoin(room) {
+  const dropped = (room.players || []).filter((p) => !p.connected);
+  elRejoinPill.classList.toggle("alert", dropped.length > 0);
+  setText(elRejoinPill, dropped.length ? `Rejoin with code ${room.roomCode}` : `Room ${room.roomCode}`);
+}
+
+function boardRenderKey(room) {
+  const game = room.game;
+  const s = game.structures || {};
+  const roads = Object.entries(s.roads || {}).map(([id, r]) => `${id}:${r?.playerId}`);
+  const towns = Object.entries(s.settlements || {}).map(([id, t]) => `${id}:${t?.playerId}:${t?.kind}`);
+  const hints = game.hints || {};
+  return [
+    room.roomCode,
+    game.board?.layout,
+    (game.board?.hexes || []).map((h) => `${h?.id}:${h?.resource}:${h?.token}`).join(","),
+    roads.sort().join(","),
+    towns.sort().join(","),
+    hints.expected,
+    (hints.legalVertexIds || []).join(","),
+    (hints.legalEdgeIds || []).join(","),
+    (hints.legalHexIds || []).join(","),
+    game.robberHexId,
+    (room.players || []).map((p) => `${p.playerId}:${p.color}`).join(",")
+  ].join("|");
+}
+
+function renderGameBoard(room, prevGame) {
+  const game = room.game;
+  const key = boardRenderKey(room);
+  if (key === lastBoardRenderKey) return;
+  lastBoardRenderKey = key;
+
+  const placed = computePlacedStructures(prevGame?.structures || null, game.structures || null);
+  const highlightMode =
+    room.gameMode === "quick" && ["PLACE_SETTLEMENT", "PLACE_ROAD"].includes(game.hints?.expected || "")
+      ? "quick-setup"
+      : "";
+  renderBoard(elBoard, game.board, {
+    players: room.players,
+    structures: game.structures,
+    placedVertexIds: placed.placedVertexIds,
+    placedEdgeIds: placed.placedEdgeIds,
+    selectableVertexIds: game.hints?.legalVertexIds || [],
+    selectableEdgeIds: game.hints?.legalEdgeIds || [],
+    selectableHexIds: game.hints?.legalHexIds || [],
+    robberHexId: game.robberHexId,
+    highlightMode
+  });
 }
 
 function render(room, prevRoom) {
   applyThemeFromRoom(room);
   updateMusicMode(room);
-  setText(elRoomCode, room.roomCode);
-  const joinUrl = roomUrlForPhones();
-  setText(elJoinUrl, joinUrl);
-  const maxPlayers = Number(room.maxPlayers);
-  const limit = Number.isFinite(maxPlayers) ? Math.max(3, Math.min(6, Math.floor(maxPlayers))) : 4;
-  setText(elPlayerCount, `${room.players.length}/${limit}`);
-  document.body.dataset.playerCountBucket = room.players.length >= 5 ? "5-6" : "3-4";
+  renderJoinInfo();
 
-  syncScenarioUi(room);
+  const screen = screenFor(room);
+  document.body.dataset.screen = screen;
+  document.body.dataset.playerCountBucket = (room.players || []).length >= 5 ? "5-6" : "3-4";
 
-  const preset = (room.presets || []).find((p) => p.id === room.presetId);
-  setText(elPresetName, preset ? preset.name : room.presetId);
-  const theme = (room.themes || []).find((t) => t.id === room.themeId);
-  if (elThemeName) setText(elThemeName, theme ? theme.name : room.themeId);
-  const baseModeName = room.gameMode === "quick" ? "Quick" : "Classic";
-  const houseRules = room?.settings?.houseRules ?? null;
-  const hasHouseRules =
-    !!houseRules &&
-    typeof houseRules === "object" &&
-    !Array.isArray(houseRules) &&
-    Object.keys(houseRules).some((k) => k !== "emotesEnabled");
-  const customVp = Number(houseRules?.victoryPointsToWin ?? NaN);
-  const vpLabel = Number.isFinite(customVp) ? Math.floor(customVp) : null;
-  setText(elModeName, hasHouseRules ? (vpLabel != null ? `Custom (${vpLabel} VP)` : "Custom") : baseModeName);
+  if (screen === "lobby") renderLobby(room);
 
-  const mode = room.status === "in_game" ? "in_game" : "lobby";
-  const currentPlayerId = room.game?.currentPlayerId ?? null;
-  const winnerPlayerId = room.game?.winnerPlayerId ?? null;
-  const isGameOver = mode === "in_game" && room.game?.phase === "game_over";
-
-  // Show/hide lobby overlay based on room status
-  if (mode === "lobby" && !attractModeActive) {
-    showLobbyOverlay();
-    renderLobbyOverlay(room);
-  } else if (lobbyOverlayActive) {
-    hideLobbyOverlay();
-  }
-
-  elSideTitle.textContent =
-    mode === "in_game" && room.game?.phase === "game_over" ? "Game Over" : mode === "in_game" ? "Players" : "Lobby";
-  elJoinInfo.style.display = mode === "in_game" || lobbyOverlayActive ? "none" : "";
-  if (mode !== "in_game") renderJoinQr(joinUrl);
-
-  if (elEndScreenCard) elEndScreenCard.style.display = isGameOver ? "" : "none";
-  if (elEndScreenWinner) {
-    if (winnerPlayerId === null) {
-      elEndScreenWinner.textContent = "Game ended (no winner)";
-    } else {
-      const winner = (room.players || []).find((p) => p.playerId === winnerPlayerId) || null;
-      elEndScreenWinner.textContent = `Winner: ${winner?.name || "—"}`;
-    }
-  }
-  if (elRematchBtn) {
-    const playersCount = Array.isArray(room?.players) ? room.players.length : 0;
-    const hasHost = !!room?.hostPlayerId;
-    const canRematch = isGameOver && hasHost && playersCount >= 3 && playersCount <= limit && !rematchInFlight;
-    elRematchBtn.disabled = !canRematch;
-  }
-  if (elNewRoomBtn) elNewRoomBtn.disabled = newRoomInFlight;
-
-  if (!isGameOver) {
-    setEndScreenHint("");
-  } else if (elEndScreenHint && !String(elEndScreenHint.textContent || "").trim()) {
-    setEndScreenHint(room?.hostPinEnabled ? "Host PIN may be required." : "");
-  }
-
-  if (elPhaseText) elPhaseText.textContent = computePhaseText(room);
-  if (isHostControlsOpen()) syncHostControls(room);
-
-  const prevGame = prevRoom?.status === "in_game" ? prevRoom?.game || null : null;
+  const prevGame = prevRoom?.status === "in_game" ? prevRoom.game || null : null;
   const game = room.status === "in_game" ? room.game || null : null;
-  const pointsByPlayerId = room.game?.pointsByPlayerId || {};
-  const victoryPointsToWin = room.game?.victoryPointsToWin ?? 0;
 
-  const { beats, newOfferIds } = computeShowBeats(prevRoom, room);
-  const gameMode = room.gameMode === "quick" ? "quick" : "classic";
-  for (const beat of beats) {
-    if (!beat || typeof beat !== "object") continue;
-    beat.gameMode = gameMode;
-  }
-
-  // Check for segment transitions (Setup -> Main -> Endgame)
-  const segmentResult = segmentTracker.update(game);
-  if (segmentResult.changed && segmentResult.copy) {
-    const transitionBeat = {
-      id: `segment_transition:${stableRoomPart(room.roomCode)}:${stableRoomPart(segmentResult.from)}:${stableRoomPart(segmentResult.to)}`,
+  const { beats } = computeShowBeats(prevRoom, room);
+  beats.push(...computeAwardBeats(prevGame, game, stablePart(room.roomCode)));
+  const segment = segmentTracker.update(game);
+  if (segment.changed && segment.copy) {
+    beats.unshift({
+      id: `segment_transition:${stablePart(room.roomCode)}:${stablePart(segment.from)}:${stablePart(segment.to)}`,
       type: "segment_transition",
-      gameMode,
-      from: segmentResult.from,
-      to: segmentResult.to,
-      copy: segmentResult.copy
-    };
-    beats.unshift(transitionBeat);
+      copy: segment.copy
+    });
   }
+  const gameMode = room.gameMode === "quick" ? "quick" : "classic";
+  for (const beat of beats) beat.gameMode = gameMode;
 
-  renderOpenOffers(room, { newOfferIds });
-
-  // Render event card if there's an active event
-  const currentEvent = room.game?.currentEvent || null;
-  if (elEventCard) {
-    if (currentEvent && currentEvent.id) {
-      elEventCard.style.display = "";
-      if (elEventTitle) setText(elEventTitle, currentEvent.name || "Event");
-      if (elEventDescription) setText(elEventDescription, currentEvent.description || currentEvent.shortText || "");
-    } else {
-      elEventCard.style.display = "none";
-    }
-  }
-
-  const inActiveGame = room.status === "in_game" && !!room.game && room.game.phase !== "game_over";
-  const pid = room.game?.currentPlayerId ?? null;
-  if (!inActiveGame || !pid) {
+  if (!game) {
     stopTurnTimer();
-  } else {
-    ensureTurnTimerRunning();
-    if (elTurnTimer) {
-      elTurnTimer.style.display = "";
-      const elapsed = computeTurnElapsedMs(room);
-      const paused = !!room.timer?.paused;
-      if (elapsed != null) elTurnTimer.textContent = paused ? `⏸ ${formatMmSs(elapsed)}` : formatMmSs(elapsed);
-    }
-  }
-
-  const nextPlayersKey = alwaysRenderEnabled
-    ? null
-    : tvPlayersRenderKey(room, {
-        mode,
-        currentPlayerId,
-        pointsByPlayerId,
-        victoryPointsToWin,
-        winnerPlayerId,
-        knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
-        largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
-        longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
-      });
-  if (alwaysRenderEnabled || nextPlayersKey !== lastPlayersRenderKey) {
-    elPlayers.innerHTML = room.players
-      .map((p) =>
-        playerRow(p, {
-          mode,
-          currentPlayerId,
-          pointsByPlayerId,
-          victoryPointsToWin,
-          winnerPlayerId,
-          knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
-          largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
-          longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
-        })
-      )
-      .join("");
-    lastPlayersRenderKey = nextPlayersKey;
-  }
-
-  if (elPlayerBar && room.players.length >= 5) {
-    const turnOrder = room.game?.turnOrder || [];
-    const sortedPlayers = turnOrder.length > 0
-      ? [...room.players].sort((a, b) => {
-          const ai = turnOrder.indexOf(a.playerId);
-          const bi = turnOrder.indexOf(b.playerId);
-          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-        })
-      : room.players;
-    elPlayerBar.innerHTML = sortedPlayers
-      .map((p) =>
-        playerBarCard(p, {
-          currentPlayerId,
-          pointsByPlayerId,
-          victoryPointsToWin,
-          winnerPlayerId,
-          knightsByPlayerId: room.game?.playedKnightsByPlayerId || {},
-          largestArmyPlayerId: room.game?.awards?.largestArmyPlayerId || null,
-          longestRoadPlayerId: room.game?.awards?.longestRoadPlayerId || null
-        })
-      )
-      .join("");
-  }
-
-  if (!room.game) {
-    const nextBoardKey = alwaysRenderEnabled ? null : `room:${room.roomCode}|board:none`;
-    if (alwaysRenderEnabled || nextBoardKey !== lastBoardRenderKey) {
-      elBoard.innerHTML = `<div class="muted">Start a game to see the board.</div>`;
-      lastBoardRenderKey = nextBoardKey;
-    }
-    lastDiceRollAt = null;
-
-    elDiceBox.innerHTML = renderDice(null);
-    if (elOffersCard) elOffersCard.style.display = "none";
-    const nextLogKey = alwaysRenderEnabled ? null : `room:${room.roomCode}|log:none`;
-    if (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey) {
-      renderLog(elLog, [], { players: room.players, reversed: true });
-      lastLogRenderKey = nextLogKey;
-    }
+    lastBoardRenderKey = null;
+    showQueue.enqueue(beats);
     return;
   }
 
-  elDiceBox.innerHTML = renderDice(room.game.lastRoll);
+  renderGameBoard(room, prevGame);
+  playerCards.update(room);
+  setText(elVpGoal, `First to ${game.victoryPointsToWin ?? effectiveVp(room)} VP`);
 
-  // Track last dice roll
-  if (room.game.lastRoll) {
-    lastDiceRollAt = room.game.lastRoll.at;
-  }
-
-  const nextLogKey = alwaysRenderEnabled ? null : tvLogRenderKey(room.game.log, room.players);
-  if (alwaysRenderEnabled || nextLogKey !== lastLogRenderKey) {
-    renderLog(elLog, room.game.log, { players: room.players, reversed: true });
-    lastLogRenderKey = nextLogKey;
-  }
-
-  const highlightMode =
-    room.gameMode === "quick" && ["PLACE_SETTLEMENT", "PLACE_ROAD"].includes(room.game.hints?.expected || "")
-      ? "quick-setup"
-      : "";
-  const nextBoardKey = alwaysRenderEnabled ? null : tvBoardRenderKey(room, { highlightMode });
-  if (alwaysRenderEnabled || nextBoardKey !== lastBoardRenderKey) {
-    const placed = computePlacedStructures(prevGame?.structures || null, game?.structures || null);
-    renderBoard(elBoard, room.game.board, {
-      players: room.players,
-      structures: room.game.structures,
-      placedVertexIds: placed.placedVertexIds,
-      placedEdgeIds: placed.placedEdgeIds,
-      selectableVertexIds: room.game.hints?.legalVertexIds || [],
-      selectableEdgeIds: room.game.hints?.legalEdgeIds || [],
-      selectableHexIds: room.game.hints?.legalHexIds || [],
-      robberHexId: room.game.robberHexId,
-      highlightMode
-    });
-    lastBoardRenderKey = nextBoardKey;
+  if (screen === "over") {
+    stopTurnTimer();
+    elEndPanel.innerHTML = endPanelHtml(room);
+  } else {
+    renderTurnCard(room);
+    renderOffers(room);
+    renderEvent(game);
+    renderRejoin(room);
+    elDiceHud.innerHTML = diceHudHtml(game.lastRoll);
+    elTicker.innerHTML = tickerHtml(game.log, room.players);
+    if (game.currentPlayerId) {
+      ensureTurnTimerRunning();
+      renderTurnTimer(room);
+    } else {
+      stopTurnTimer();
+    }
   }
 
   showQueue.enqueue(beats);
 }
 
-function stableRoomPart(v) {
-  return v == null ? "" : String(v);
-}
-
-function playerDisplayKey(players) {
-  if (!Array.isArray(players)) return "";
-  return players
-    .map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.name)}:${stableRoomPart(p?.color)}`)
-    .join(";");
-}
-
-function tvPlayersRenderKey(
-  room,
-  {
-    mode = "",
-    currentPlayerId = null,
-    pointsByPlayerId = {},
-    victoryPointsToWin = 0,
-    winnerPlayerId = null,
-    knightsByPlayerId = {},
-    largestArmyPlayerId = null,
-    longestRoadPlayerId = null
-  } = {}
-) {
-  const players = Array.isArray(room?.players) ? room.players : [];
-  const rows = players
-    .map((p) => {
-      const pid = stableRoomPart(p?.playerId);
-      const points = Math.max(0, Math.floor(pointsByPlayerId?.[pid] ?? 0));
-      const knights = Math.max(0, Math.floor(knightsByPlayerId?.[pid] ?? 0));
-      return [
-        pid,
-        stableRoomPart(p?.name),
-        stableRoomPart(p?.color),
-        p?.connected ? "1" : "0",
-        p?.ready ? "1" : "0",
-        p?.isHost ? "1" : "0",
-        String(points),
-        String(knights),
-        String(Math.max(0, Math.floor(p?.cardCount ?? 0)))
-      ].join(",");
-    })
-    .join(";");
-  return [
-    `room:${stableRoomPart(room?.roomCode)}`,
-    `mode:${stableRoomPart(mode)}`,
-    `turn:${stableRoomPart(currentPlayerId)}`,
-    `winner:${stableRoomPart(winnerPlayerId)}`,
-    `target:${stableRoomPart(victoryPointsToWin)}`,
-    `la:${stableRoomPart(largestArmyPlayerId)}`,
-    `lr:${stableRoomPart(longestRoadPlayerId)}`,
-    rows
-  ].join("|");
-}
-
-function tvLogTailKey(entries, { tail = 4 } = {}) {
-  const list = Array.isArray(entries) ? entries : [];
-  const n = list.length;
-  const k = Math.max(1, Math.min(12, Math.floor(tail)));
-  const start = Math.max(0, n - k);
-  const tailEntries = list.slice(start).map((e) => {
-    const at = stableRoomPart(e?.at);
-    const type = stableRoomPart(e?.type);
-    const actor = stableRoomPart(e?.actorPlayerId);
-    const msg = stableRoomPart(e?.message);
-    let data = "";
-    try {
-      data = JSON.stringify(e?.data ?? null);
-    } catch {
-      data = "";
-    }
-    return `${at}:${type}:${actor}:${msg}:${data}`;
-  });
-  return `${n}|${tailEntries.join("|")}`;
-}
-
-function tvLogRenderKey(entries, players) {
-  const tail = tvLogTailKey(entries);
-  const roster = playerDisplayKey(players);
-  return `${tail}|players:${roster}`;
-}
-
-function tvBoardStaticKey(board) {
-  const b = board && typeof board === "object" ? board : null;
-  if (!b) return "board:none";
-  const layout = stableRoomPart(b.layout);
-  const hexSig = Array.isArray(b.hexes)
-    ? b.hexes
-        .map((h) => `${stableRoomPart(h?.id)}:${stableRoomPart(h?.resource)}:${stableRoomPart(h?.token)}`)
-        .join(",")
-    : "";
-  const portSig = Array.isArray(b.ports)
-    ? b.ports.map((p) => `${stableRoomPart(p?.id)}:${stableRoomPart(p?.kind)}:${stableRoomPart(p?.edgeId)}`).join(",")
-    : "";
-  return `layout:${layout}|hexes:${hexSig}|ports:${portSig}`;
-}
-
-function tvStructuresKey(structures) {
-  const s = structures && typeof structures === "object" ? structures : null;
-  if (!s) return "structures:none";
-
-  const roads = s.roads && typeof s.roads === "object" ? s.roads : {};
-  const settlements = s.settlements && typeof s.settlements === "object" ? s.settlements : {};
-
-  const roadIds = Object.keys(roads).sort();
-  const roadSig = roadIds.map((id) => `${id}:${stableRoomPart(roads[id]?.playerId)}`).join(",");
-
-  const settlementIds = Object.keys(settlements).sort();
-  const settlementSig = settlementIds
-    .map((id) => `${id}:${stableRoomPart(settlements[id]?.playerId)}:${stableRoomPart(settlements[id]?.kind)}`)
-    .join(",");
-
-  return `roads:${roadSig}|settlements:${settlementSig}`;
-}
-
-function tvHintsKey(hints) {
-  const h = hints && typeof hints === "object" ? hints : null;
-  if (!h) return "hints:none";
-  const exp = stableRoomPart(h.expected);
-  const v = Array.isArray(h.legalVertexIds) ? h.legalVertexIds.join(",") : "";
-  const e = Array.isArray(h.legalEdgeIds) ? h.legalEdgeIds.join(",") : "";
-  const x = Array.isArray(h.legalHexIds) ? h.legalHexIds.join(",") : "";
-  return `exp:${exp}|v:${v}|e:${e}|h:${x}`;
-}
-
-function tvPlayerColorsKey(players) {
-  if (!Array.isArray(players)) return "";
-  return players.map((p) => `${stableRoomPart(p?.playerId)}:${stableRoomPart(p?.color)}`).join(";");
-}
-
-function tvBoardRenderKey(room, { highlightMode = "" } = {}) {
-  if (!room?.game) return `room:${stableRoomPart(room?.roomCode)}|board:none`;
-  const game = room.game;
-  const s = getSettings();
-  const parts = [
-    `room:${stableRoomPart(room?.roomCode)}`,
-    tvBoardStaticKey(game.board),
-    tvStructuresKey(game.structures),
-    tvHintsKey(game.hints),
-    `robber:${stableRoomPart(game.robberHexId)}`,
-    `hl:${stableRoomPart(highlightMode)}`,
-    `colors:${tvPlayerColorsKey(room.players)}`,
-    `br:${stableRoomPart(s?.boardRenderer)}`,
-    `rq:${stableRoomPart(s?.rendererQuality)}`,
-    `lpm:${s?.lowPowerMode ? "1" : "0"}`
-  ];
-  return parts.join("|");
-}
-
-// ============================================================================
-// THEME INDEX + PRELOAD
-// ============================================================================
-// Fetch theme index and preload all themes from index.json
-// Falls back to hardcoded list if index fetch fails
+// -----------------------------------------------------------------------------
+// Startup
+// -----------------------------------------------------------------------------
 
 async function initThemes() {
   const index = await fetchThemeIndex();
-  if (index && index.themes && index.themes.length > 0) {
-    const themeIds = index.themes.map((t) => t.id);
-    await preloadThemes(themeIds);
-  } else {
-    // Fallback to hardcoded list
-    await preloadThemes(["aurora", "ember", "ocean", "classic-night", "neon-arcade", "deep-sea"]);
-  }
+  const themeIds = index?.themes?.map((t) => t.id);
+  await preloadThemes(
+    themeIds?.length ? themeIds : ["aurora", "ember", "ocean", "classic-night", "neon-arcade", "deep-sea"]
+  );
 }
 
 await initThemes();
 
-// Fetch server info (LAN IP) for proper QR codes
 try {
   const serverInfo = await api("/api/server-info");
-  if (serverInfo?.lanIp) {
-    serverLanIp = serverInfo.lanIp;
-  }
+  if (serverInfo?.lanIp) serverLanIp = serverInfo.lanIp;
 } catch {
-  // Ignore - will fall back to location.host
+  // Ignore: phones fall back to location.host.
 }
 
-// Create room and connect SSE, then show attract mode
-// The QR code will include the room code so phones can join directly
-// When first player joins, attract mode exits automatically via checkIdleForAttractMode()
 await ensureRoom();
+renderJoinInfo();
 connectStream();
-showAttractMode();

@@ -45,7 +45,8 @@ const SCENARIOS = [
   {
     id: "classic",
     name: "Classic",
-    description: "Standard Catan rules with a balanced board. Race to build settlements, cities, and roads while trading resources with other players.",
+    description:
+      "Standard Catan rules with a balanced board. Race to build settlements, cities, and roads while trading resources with other players.",
     rulesSummary: "10 VP to win • Balanced board • Standard dice",
     presetId: "classic-balanced",
     boardSeed: null,
@@ -58,7 +59,8 @@ const SCENARIOS = [
   {
     id: "quick",
     name: "Quick",
-    description: "A shorter game perfect for time-limited sessions. Same great Catan gameplay with a lower victory point target for faster matches.",
+    description:
+      "A shorter game perfect for time-limited sessions. Same great Catan gameplay with a lower victory point target for faster matches.",
     rulesSummary: "8 VP to win • Balanced board • Faster game",
     presetId: "classic-balanced",
     boardSeed: null,
@@ -71,7 +73,8 @@ const SCENARIOS = [
   {
     id: "traders-paradise",
     name: "Trader's Paradise",
-    description: "A trade-focused variant with accessible ports and resource variety. Perfect for players who love negotiation and wheeling-and-dealing.",
+    description:
+      "A trade-focused variant with accessible ports and resource variety. Perfect for players who love negotiation and wheeling-and-dealing.",
     rulesSummary: "10 VP to win • Trade-heavy board • Port access",
     presetId: "trade-heavy",
     boardSeed: null,
@@ -84,7 +87,8 @@ const SCENARIOS = [
   {
     id: "high-conflict",
     name: "High Conflict",
-    description: "More aggressive gameplay with increased robber activity. Block opponents, steal resources, and fight for dominance on a contested board.",
+    description:
+      "More aggressive gameplay with increased robber activity. Block opponents, steal resources, and fight for dominance on a contested board.",
     rulesSummary: "10 VP to win • More 7s rolled • Robber pressure",
     presetId: "high-brick-wood",
     boardSeed: null,
@@ -98,7 +102,8 @@ const SCENARIOS = [
   {
     id: "party-mode",
     name: "Party Mode",
-    description: "Unpredictable fun with random events that shake up the game every few turns. Great for casual groups who want memorable moments.",
+    description:
+      "Unpredictable fun with random events that shake up the game every few turns. Great for casual groups who want memorable moments.",
     rulesSummary: "10 VP to win • Event deck ON • Random surprises",
     presetId: "random-balanced",
     boardSeed: null,
@@ -1468,6 +1473,19 @@ function isAdmin(room, adminSecret) {
   return adminSecret === room.adminSecret;
 }
 
+// Room controls are open to the admin console and to the host's phone: the cast
+// TV has no input, so the host player is the only person who can reach them.
+function hostControlError(room, body) {
+  if (typeof body?.adminSecret === "string" && body.adminSecret) {
+    if (!isAdmin(room, body.adminSecret)) return "BAD_ADMIN_SECRET";
+  } else {
+    if (!isUuid(body?.playerId)) return "BAD_PLAYER_ID";
+    if (!isHost(room, body.playerId)) return "ONLY_HOST";
+  }
+  const pinCheck = verifyHostPin(room, body?.hostPin);
+  return pinCheck.ok ? null : pinCheck.error;
+}
+
 function adminSecretFromHeaders(req) {
   const auth = req.headers.authorization;
   if (typeof auth === "string") {
@@ -1779,9 +1797,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readJsonBody(req);
     if (body === Symbol.for("too_large")) return payloadTooLarge(res);
     if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
-    if (!isAdmin(room, body?.adminSecret)) return forbidden(res, "BAD_ADMIN_SECRET");
-    const pinCheck = verifyHostPin(room, body?.hostPin);
-    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
+    const authError = hostControlError(room, body);
+    if (authError) return authError === "BAD_PLAYER_ID" ? badRequest(res, authError) : forbidden(res, authError);
 
     setRoomTimerPaused(room, !!body?.paused);
     broadcastRoomState(room);
@@ -1797,9 +1814,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readJsonBody(req);
     if (body === Symbol.for("too_large")) return payloadTooLarge(res);
     if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
-    if (!isAdmin(room, body?.adminSecret)) return forbidden(res, "BAD_ADMIN_SECRET");
-    const pinCheck = verifyHostPin(room, body?.hostPin);
-    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
+    const authError = hostControlError(room, body);
+    if (authError) return authError === "BAD_PLAYER_ID" ? badRequest(res, authError) : forbidden(res, authError);
 
     const targetPlayerId = typeof body?.targetPlayerId === "string" ? body.targetPlayerId : null;
     if (!targetPlayerId) return badRequest(res, "MISSING_TARGET_PLAYER_ID");
@@ -1864,9 +1880,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readJsonBody(req);
     if (body === Symbol.for("too_large")) return payloadTooLarge(res);
     if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
-    if (!isAdmin(room, body?.adminSecret)) return forbidden(res, "BAD_ADMIN_SECRET");
-    const pinCheck = verifyHostPin(room, body?.hostPin);
-    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
+    const authError = hostControlError(room, body);
+    if (authError) return authError === "BAD_PLAYER_ID" ? badRequest(res, authError) : forbidden(res, authError);
 
     const hostPlayerId = typeof body?.hostPlayerId === "string" ? body.hostPlayerId : null;
     if (!hostPlayerId) return badRequest(res, "MISSING_HOST_PLAYER_ID");
@@ -1886,9 +1901,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readJsonBody(req);
     if (body === Symbol.for("too_large")) return payloadTooLarge(res);
     if (body === Symbol.for("bad_json")) return badRequest(res, "BAD_JSON");
-    if (!isAdmin(room, body?.adminSecret)) return forbidden(res, "BAD_ADMIN_SECRET");
-    const pinCheck = verifyHostPin(room, body?.hostPin);
-    if (!pinCheck.ok) return forbidden(res, pinCheck.error);
+    const authError = hostControlError(room, body);
+    if (authError) return authError === "BAD_PLAYER_ID" ? badRequest(res, authError) : forbidden(res, authError);
     if (body?.confirm !== true) return badRequest(res, "CONFIRM_RESET_REQUIRED");
 
     for (const t of room.disconnectTimers.values()) clearTimeout(t);
