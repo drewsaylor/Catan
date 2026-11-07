@@ -9,8 +9,8 @@
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-end;
   padding: 28px;
 }
 
@@ -72,9 +72,9 @@
 
 .toastRail {
   position: absolute;
-  top: calc(14px + env(safe-area-inset-top));
-  right: 14px;
-  width: min(500px, calc(100% - 28px));
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  left: 28px;
+  width: min(560px, calc(100% - 56px));
   display: grid;
   gap: 10px;
 }
@@ -391,7 +391,40 @@ body.tv[data-view="game"] {
 }
 
 body.tv .pill {
-  padding: 10px 14px;
+  padding: 12px 18px;
+  font-size: 24px;
+}
+
+body.tv .pill .k {
+  font-size: 16px;
+}
+
+body.tv #status {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+body.tv .player .name {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+body.tv .player .tag {
+  font-size: 20px;
+}
+
+body.tv .player .dot {
+  width: 18px;
+  height: 18px;
+}
+
+body.tv .tag.cardCount {
+  white-space: nowrap;
+}
+
+body.tv .showToast {
+  font-size: 22px;
 }
 
 body.tv .badge,
@@ -400,7 +433,7 @@ body.tv .tag {
 }
 
 body.tv .player {
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 
 body.tv .player.turn {
@@ -1221,4 +1254,9 @@ html[data-high-contrast="true"] .lobbyPlayerName {
 
 html[data-high-contrast="true"] .lobbyStartStatus {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Keep score pills like "10/10 VP" on one line. */
+.tag {
+  white-space: nowrap;
 }

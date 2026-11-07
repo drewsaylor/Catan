@@ -139,6 +139,44 @@ async function kickPlayer(baseUrl, roomCode, adminSecret, targetPlayerId) {
 }
 
 /**
+ * Reads a player's private hand from their phone event stream
+ */
+async function getHand(baseUrl, roomCode, playerId) {
+  const controller = new AbortController();
+  const res = await fetch(`${baseUrl}/api/rooms/${roomCode}/stream?role=phone&playerId=${playerId}`, {
+    signal: controller.signal
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) throw new Error("stream ended before a state event");
+      buffer += decoder.decode(value, { stream: true });
+      const match = buffer.match(/event: state\ndata: (.*)\n\n/);
+      if (match) return JSON.parse(match[1]).you.hand;
+    }
+  } finally {
+    controller.abort();
+  }
+}
+
+/**
+ * Picks `count` cards to discard from a real hand
+ */
+function discardCountsFromHand(hand, count) {
+  const counts = {};
+  let remaining = count;
+  for (const [resource, held] of Object.entries(hand)) {
+    const take = Math.min(held, remaining);
+    if (take > 0) counts[resource] = take;
+    remaining -= take;
+  }
+  return counts;
+}
+
+/**
  * Gets current room state
  */
 async function getRoom(baseUrl, roomCode) {
@@ -313,18 +351,21 @@ describe("Kick scenarios", () => {
         const discardRequired = room.game.hints?.discardRequiredByPlayerId || {};
         const requiredPlayers = Object.keys(discardRequired).filter((pid) => discardRequired[pid] > 0);
 
-        if (requiredPlayers.length >= 2) {
+        // Kicking the roller ends their turn instead, so the kicked player must be someone else.
+        const playerToKick = requiredPlayers.find((pid) => pid !== room.game.currentPlayerId);
+
+        if (requiredPlayers.length >= 2 && playerToKick) {
           foundDiscardScenario = true;
 
           // Have all but one player discard
-          const playerToKick = requiredPlayers[0];
           for (const pid of requiredPlayers) {
             if (pid !== playerToKick) {
-              const count = discardRequired[pid];
-              await httpJson(baseUrl, `/api/rooms/${roomCode}/action`, {
+              const hand = await getHand(baseUrl, roomCode, pid);
+              const discard = await httpJson(baseUrl, `/api/rooms/${roomCode}/action`, {
                 method: "POST",
-                body: { playerId: pid, type: "DISCARD_CARDS", counts: { wood: count } }
+                body: { playerId: pid, type: "DISCARD_CARDS", counts: discardCountsFromHand(hand, discardRequired[pid]) }
               });
+              assert.equal(discard.json?.ok, true);
             }
           }
 
@@ -456,6 +497,26 @@ describe("Kick scenarios", () => {
 
     // Test passes if we found and handled the scenario, or if game is still valid
     assert.ok(room.game.phase === "turn" || room.game.phase === "game_over" || foundStealScenario);
+  });
+
+  test("kick a waiting player during main - current player keeps their turn", { timeout: 30000 }, async (t) => {
+    const { baseUrl } = await startTestServer(t);
+    const { roomCode, adminSecret, players, hostId } = await createRoomWithPlayers(baseUrl, ["Alice", "Bob", "Charlie"]);
+
+    await startGame(baseUrl, roomCode, players, hostId);
+    await completeSetupPhase(baseUrl, roomCode, players);
+
+    const before = await rollAndHandleRobber(baseUrl, roomCode, players);
+    assert.equal(before.game.subphase, "main");
+    const currentPlayerId = before.game.currentPlayerId;
+    const waitingPlayerId = before.game.turnOrder.find((pid) => pid !== currentPlayerId);
+
+    const kickResult = await kickPlayer(baseUrl, roomCode, adminSecret, waitingPlayerId);
+    assert.equal(kickResult.json?.ok, true);
+
+    const after = await getRoom(baseUrl, roomCode);
+    assert.equal(after.game.currentPlayerId, currentPlayerId);
+    assert.equal(after.game.subphase, "main", "A kick must not hand the current player a second roll");
   });
 
   test("kick player with longest road - award recalculates to another player", { timeout: 30000 }, async (t) => {

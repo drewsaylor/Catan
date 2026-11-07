@@ -310,6 +310,20 @@
    * Dismiss the current hint (or a specific hint).
    * @param {string} [hintId] - If provided, marks this hint as seen
    */
+  // Hide the visible hint without marking it seen, so it can still teach on its next real trigger.
+  function dismissCurrentHint() {
+    if (autoDismissTimer) {
+      clearTimeout(autoDismissTimer);
+      autoDismissTimer = null;
+    }
+    if (!currentHintEl) return;
+    const el = currentHintEl;
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 300);
+    currentHintEl = null;
+    currentHintId = null;
+  }
+
   function dismissHint(hintId) {
     if (autoDismissTimer) {
       clearTimeout(autoDismissTimer);
@@ -450,6 +464,7 @@
     // Core API
     showHint,
     dismissHint,
+    dismissCurrentHint,
     hasSeenHint,
     markHintSeen,
     clearSeenHints,

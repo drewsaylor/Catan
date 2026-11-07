@@ -1,5 +1,5 @@
 import { api, qs, renderLog, sanitizeRoomCode, setText } from "/shared/common.js";
-import { renderBoard } from "/shared/board-renderer.js";
+import { renderBoard, setBoardSelection } from "/shared/board-renderer.js";
 import { DEV_CARD_COST, gateAction, hasAnyResources, hasEnoughResources as hasEnough } from "/shared/action-gates.js";
 import { createRenderScheduler } from "/shared/render-scheduler.js";
 import { getSettings, initSettings, onSettingsChange, setSettings } from "/shared/settings.js";
@@ -104,29 +104,22 @@ const elPostGameErr = qs("#postGameErr");
 const elResourcesBarCard = qs("#resourcesBarCard");
 const elPrimaryActionCard = qs("#primaryActionCard");
 const elPrimaryBtn = qs("#primaryBtn");
+const elPlacementBar = qs("#placementBar");
+const elPlacementBarTitle = qs("#placementBarTitle");
+const elPlacementConfirmBtn = qs("#placementConfirmBtn");
+const elPlacementCancelBtn = qs("#placementCancelBtn");
 const elActionHint = qs("#actionHint");
 const elBoardShell = qs("#boardShell");
 const elBoardFrame = qs("#boardFrame");
 const elBoardResetBtn = qs("#boardResetBtn");
 const elBoardFullscreenBtn = qs("#boardFullscreenBtn");
 const elBoard = qs("#board");
-const elBuildFlowOverlay = qs("#buildFlowOverlay");
-const elBuildFlowTitle = qs("#buildFlowTitle");
-const elBuildFlowBoard = qs("#buildFlowBoard");
-const elBuildFlowBoardMount = qs("#buildFlowBoardMount");
-const elBuildFlowCancelBtn = qs("#buildFlowCancelBtn");
-const elBuildFlowHint = qs("#buildFlowHint");
 const elDiscardModal = qs("#discardModal");
 const elDiscardModalHint = qs("#discardModalHint");
 const elDiscardModalSelected = qs("#discardModalSelected");
 const elDiscardModalRequired = qs("#discardModalRequired");
 const elDiscardModalSubmitBtn = qs("#discardModalSubmitBtn");
 const elDiscardModalErr = qs("#discardModalErr");
-const elMainActions = qs("#mainActions");
-const elBuildRoadBtn = qs("#buildRoadBtn");
-const elBuildSettlementBtn = qs("#buildSettlementBtn");
-const elBuildCityBtn = qs("#buildCityBtn");
-const elCancelModeBtn = qs("#cancelModeBtn");
 const elResTotalValue = qs("#resTotalValue");
 const elResCountWood = qs("#resCountWood");
 const elResCountBrick = qs("#resCountBrick");
@@ -256,8 +249,6 @@ let lastRenderedRoomState = null;
 let lastRevisionSeen = null;
 let lastThemeId = null;
 let mode = null; // "build_road" | "build_settlement" | "build_city" | null
-let buildFlowActive = false; // true when fullscreen build overlay is showing
-let buildFlowMode = null; // "road" | "settlement" | "city" | "road_building"
 let discardModalState = { required: 0, selected: {}, open: false };
 let reconnectCheckTimer = null;
 let reconnectDelay = 1200;
@@ -285,7 +276,8 @@ let rematchInFlight = false;
 let lastResourceCounts = null; // Track previous resource counts for notifications
 let notifyActionCallback = null; // Callback for notification action button
 let notifyTapCallback = null; // Callback for tapping notification body
-let pendingAction = null; // { label, execute } — awaiting confirm tap
+let pendingAction = null; // { label, execute, target, contextKey } — awaiting confirm tap
+let placementSubmitting = false;
 const momentQueue = createMomentQueue({ maxQueue: 18, maxSeen: 512, cooldownMsByKind: { trade_open: 1400 } });
 const HOST_ADVANCED_OPEN_KEY = "catan.phone.hostAdvancedOpen";
 let hostAdvancedOpen = localStorage.getItem(HOST_ADVANCED_OPEN_KEY) === "1";
@@ -1023,28 +1015,51 @@ function showNotify({ title, hint = "", tone = "info", durationMs = 3600, action
   notifyTimer = setTimeout(() => clearNotify(), Math.max(800, parseNonNegativeInt(durationMs)));
 }
 
-function requestPlacementConfirm(label, executeFn) {
-  pendingAction = { label, execute: executeFn };
+// Identifies the step a pending placement belongs to. Other players' updates leave this unchanged.
+function placementContextKey() {
+  const game = lastRoomState?.game || null;
+  return [game?.phase, game?.subphase, game?.currentPlayerId, game?.hints?.expected, mode].join("|");
+}
+
+function renderPlacementBar() {
+  if (elPlacementBar) elPlacementBar.hidden = !pendingAction;
+  if (elPlacementBarTitle) setText(elPlacementBarTitle, pendingAction ? `${pendingAction.label} here?` : "");
+  if (elPlacementConfirmBtn) elPlacementConfirmBtn.disabled = placementSubmitting;
+  if (elPlacementCancelBtn) elPlacementCancelBtn.disabled = placementSubmitting;
+  setBoardSelection(elBoard, pendingAction?.target || null);
+}
+
+function requestPlacementConfirm(label, target, executeFn) {
+  if (placementSubmitting) return;
+  const me = lastRoomState?.players?.find((p) => p.playerId === playerId) || null;
+  pendingAction = {
+    label,
+    execute: executeFn,
+    target: { ...target, color: me?.color || "white" },
+    contextKey: placementContextKey()
+  };
   playSfx("ui_bonk", { gain: 0.4 });
-  showNotify({
-    title: `${label} here?`,
-    hint: "Tap Confirm or pick a different spot.",
-    tone: "info",
-    durationMs: 12000,
-    action: {
-      label: "Confirm",
-      callback: () => {
-        const action = pendingAction;
-        pendingAction = null;
-        clearNotify();
-        if (action) action.execute();
-      }
-    }
-  });
+  maybeHaptic("good");
+  renderPlacementBar();
 }
 
 function clearPendingAction() {
   pendingAction = null;
+  renderPlacementBar();
+}
+
+async function confirmPlacement() {
+  const action = pendingAction;
+  if (!action || placementSubmitting) return;
+  placementSubmitting = true;
+  renderPlacementBar();
+  try {
+    await action.execute();
+  } finally {
+    placementSubmitting = false;
+    if (pendingAction === action) pendingAction = null;
+    renderPlacementBar();
+  }
 }
 
 function setActionHintOverrideText(text, { durationMs = 3800 } = {}) {
@@ -1898,7 +1913,7 @@ function connectStream() {
     const prev = lastRoomState;
     lastRoomState = payload.room;
     lastYouState = payload.you;
-    clearPendingAction();
+    if (pendingAction && pendingAction.contextKey !== placementContextKey()) clearPendingAction();
     if (debugPerfEnabled && markPayloadSize && measureUtf8Bytes) markPayloadSize("phone.state", measureUtf8Bytes(raw));
     if (prev && payload.room?.roomCode !== prev.roomCode) {
       lastRenderedRoomState = null;
@@ -2063,7 +2078,6 @@ function render(room, you) {
     if (shouldShowBoardTab(room, me) && activeTab !== "board") setActiveTab("board");
     updateTabUi(room, me);
     renderBoardUi(room, prevRoom, me);
-    renderMainActions(room, me);
     renderRobberFlow(room, me, you);
     maybeShowDiscardModal(room, me);
     renderTrade(room, me, you);
@@ -2426,7 +2440,6 @@ function setPostGameUiVisible(visible) {
   if (elPostGameCard) elPostGameCard.style.display = show ? "" : "none";
   if (elResourcesBarCard) elResourcesBarCard.style.display = show ? "none" : "";
   if (elPrimaryActionCard) elPrimaryActionCard.style.display = show ? "none" : "";
-  if (elMainActions && show) elMainActions.style.display = "none";
   if (elRobberCard && show) elRobberCard.style.display = "none";
   if (elPhoneTabs) elPhoneTabs.style.display = show ? "none" : "";
   if (show) {
@@ -2521,6 +2534,12 @@ function renderPrimaryAction(room, me, you) {
 
   // Store action type in dataset for click handler
   elPrimaryBtn.dataset.action = "";
+  elPrimaryBtn.classList.remove("awaitBoard");
+  const awaitBoard = (text) => {
+    elPrimaryBtn.disabled = true;
+    elPrimaryBtn.classList.add("awaitBoard");
+    elPrimaryBtn.textContent = text;
+  };
 
   if (room.game.phase === "game_over") {
     elPrimaryBtn.disabled = true;
@@ -2537,20 +2556,29 @@ function renderPrimaryAction(room, me, you) {
   }
 
   if (expected === "MOVE_ROBBER") {
-    elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = myTurn ? "Move robber" : "Waiting…";
+    if (myTurn) awaitBoard("Tap a hex on the board");
+    else {
+      elPrimaryBtn.disabled = true;
+      elPrimaryBtn.textContent = "Robber moving…";
+    }
     return;
   }
 
   if (expected === "STEAL_CARD") {
-    elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = myTurn ? "Steal a card" : "Waiting…";
+    if (myTurn) awaitBoard("Pick who to steal from");
+    else {
+      elPrimaryBtn.disabled = true;
+      elPrimaryBtn.textContent = "Waiting…";
+    }
     return;
   }
 
   if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD") {
-    elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = myTurn ? "Road Building" : "Waiting…";
+    if (myTurn) awaitBoard("Tap a road spot on the board");
+    else {
+      elPrimaryBtn.disabled = true;
+      elPrimaryBtn.textContent = "Waiting…";
+    }
     return;
   }
 
@@ -2582,14 +2610,12 @@ function renderPrimaryAction(room, me, you) {
   }
 
   if (expected === "PLACE_SETTLEMENT") {
-    elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = "Place settlement";
+    awaitBoard("Tap a spot on the board");
     return;
   }
 
   if (expected === "PLACE_ROAD") {
-    elPrimaryBtn.disabled = true;
-    elPrimaryBtn.textContent = "Place road";
+    awaitBoard("Tap a road spot on the board");
     return;
   }
 
@@ -2603,27 +2629,12 @@ function renderPrimaryAction(room, me, you) {
   // Main phase - show End Turn button
   if (room.game.phase === "turn" && room.game.subphase === "main") {
     elPrimaryBtn.disabled = false;
-    elPrimaryBtn.textContent = "End turn";
-    elPrimaryBtn.dataset.action = "end_turn";
+    elPrimaryBtn.textContent = mode ? "Cancel build" : "End turn";
+    elPrimaryBtn.dataset.action = mode ? "cancel_build" : "end_turn";
   } else {
     elPrimaryBtn.disabled = true;
     elPrimaryBtn.textContent = "Waiting…";
   }
-}
-
-function setSoftDisabled(el, blockCode) {
-  if (!el) return;
-  el.disabled = false;
-  const code = String(blockCode || "").trim();
-  if (!code) {
-    el.classList.remove("softDisabled");
-    el.removeAttribute("aria-disabled");
-    delete el.dataset.blockCode;
-    return;
-  }
-  el.classList.add("softDisabled");
-  el.setAttribute("aria-disabled", "true");
-  el.dataset.blockCode = code;
 }
 
 function computePlacedStructures(prevStructures, nextStructures) {
@@ -2653,6 +2664,7 @@ function computePlacedStructures(prevStructures, nextStructures) {
 
 function renderBoardUi(room, prevRoom, me) {
   const myTurn = me?.playerId === room.game.currentPlayerId;
+  if (!myTurn || room.game.phase !== "turn" || room.game.subphase !== "main") mode = null;
   const hints = room.game.hints || {};
   const expected = hints.expected || null;
   const highlightMode =
@@ -2706,6 +2718,7 @@ function renderBoardUi(room, prevRoom, me) {
     selectableHexIds,
     robberHexId: room.game.robberHexId,
     highlightMode,
+    selected: pendingAction?.target || null,
     captureAllVertices: myTurn && selectableVertexIds.length > 0,
     captureAllEdges: myTurn && selectableEdgeIds.length > 0,
     captureAllHexes: myTurn && selectableHexIds.length > 0,
@@ -2726,7 +2739,7 @@ function renderBoardUi(room, prevRoom, me) {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
       if (expected === "PLACE_SETTLEMENT") {
-        requestPlacementConfirm("Place settlement", async () => {
+        requestPlacementConfirm("Place settlement", { kind: "vertex", id: vertexId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2738,7 +2751,7 @@ function renderBoardUi(room, prevRoom, me) {
         return;
       }
       if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_settlement") {
-        requestPlacementConfirm("Build settlement", async () => {
+        requestPlacementConfirm("Build settlement", { kind: "vertex", id: vertexId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2751,7 +2764,7 @@ function renderBoardUi(room, prevRoom, me) {
         return;
       }
       if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_city") {
-        requestPlacementConfirm("Upgrade to city", async () => {
+        requestPlacementConfirm("Upgrade to city", { kind: "city", id: vertexId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2767,7 +2780,7 @@ function renderBoardUi(room, prevRoom, me) {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
       if (expected === "PLACE_ROAD") {
-        requestPlacementConfirm("Place road", async () => {
+        requestPlacementConfirm("Place road", { kind: "edge", id: edgeId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2779,7 +2792,7 @@ function renderBoardUi(room, prevRoom, me) {
         return;
       }
       if (expected === "DEV_ROAD_BUILDING_PLACE_ROAD") {
-        requestPlacementConfirm("Place road", async () => {
+        requestPlacementConfirm("Place road", { kind: "edge", id: edgeId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2791,7 +2804,7 @@ function renderBoardUi(room, prevRoom, me) {
         return;
       }
       if (room.game.phase === "turn" && room.game.subphase === "main" && mode === "build_road") {
-        requestPlacementConfirm("Build road", async () => {
+        requestPlacementConfirm("Build road", { kind: "edge", id: edgeId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -2807,7 +2820,7 @@ function renderBoardUi(room, prevRoom, me) {
       if (!myTurn) return;
       const expected = room.game.hints?.expected || null;
       if (expected === "MOVE_ROBBER") {
-        requestPlacementConfirm("Move robber", async () => {
+        requestPlacementConfirm("Move robber", { kind: "hex", id: hexId }, async () => {
           try {
             await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
               method: "POST",
@@ -3083,69 +3096,30 @@ function attachBoardPanZoom() {
   window.addEventListener("pointercancel", endPointer);
 }
 
-function renderMainActions(room, me) {
-  const myTurn = me?.playerId === room.game.currentPlayerId;
-  const inMain = room.game.phase === "turn" && room.game.subphase === "main";
-  const show = !!myTurn && inMain;
+function buildBlockCodes(game, me, you) {
+  const gateCtx = { game, playerId: me?.playerId || null, you };
+  const pieces = Object.values(game?.structures?.settlements || {}).filter((s) => s?.playerId === me?.playerId);
+  const roadsBuilt = Object.values(game?.structures?.roads || {}).filter((r) => r?.playerId === me?.playerId).length;
+  const settlementsBuilt = pieces.filter((s) => s.kind === "settlement").length;
+  const citiesBuilt = pieces.filter((s) => s.kind === "city").length;
 
-  if (!show) {
-    elMainActions.style.display = "none";
-    mode = null;
-    return;
-  }
+  const blockCode = (outOfPieces, outCode, type, options) => {
+    if (outOfPieces) return outCode;
+    const gate = gateAction(gateCtx, { type });
+    if (gate) return gate.code;
+    return options.length === 0 ? "ILLEGAL_PLACEMENT" : "";
+  };
 
-  elMainActions.style.display = "flex";
-  elCancelModeBtn.style.display = mode ? "" : "none";
-
-  elBuildRoadBtn.classList.toggle("primary", mode === "build_road");
-  elBuildSettlementBtn.classList.toggle("primary", mode === "build_settlement");
-  elBuildCityBtn.classList.toggle("primary", mode === "build_city");
-
-  // Disable buttons when there are no legal placements.
-  const roadOpts = legalRoadEdges(room.game, me.playerId);
-  const settlementOpts = legalSettlementVertices(room.game, me.playerId);
-  const cityOpts = legalCityVertices(room.game, me.playerId);
-  const gateCtx = { game: room.game, playerId: me?.playerId || null, you: lastYouState };
-  const roadGate = gateAction(gateCtx, { type: "BUILD_ROAD" });
-  const settlementGate = gateAction(gateCtx, { type: "BUILD_SETTLEMENT" });
-  const cityGate = gateAction(gateCtx, { type: "BUILD_CITY" });
-
-  const roadsBuilt = Object.values(room.game.structures?.roads || {}).filter((r) => r?.playerId === me.playerId).length;
-  const settlementsBuilt = Object.values(room.game.structures?.settlements || {}).filter(
-    (s) => s?.playerId === me.playerId && s.kind === "settlement"
-  ).length;
-  const citiesBuilt = Object.values(room.game.structures?.settlements || {}).filter(
-    (s) => s?.playerId === me.playerId && s.kind === "city"
-  ).length;
-
-  const roadBlock =
-    roadsBuilt >= 15
-      ? "OUT_OF_PIECES_ROAD"
-      : roadGate
-        ? roadGate.code
-        : roadOpts.length === 0
-          ? "ILLEGAL_PLACEMENT"
-          : "";
-  const settlementBlock =
-    settlementsBuilt >= 5
-      ? "OUT_OF_PIECES_SETTLEMENT"
-      : settlementGate
-        ? settlementGate.code
-        : settlementOpts.length === 0
-          ? "ILLEGAL_PLACEMENT"
-          : "";
-  const cityBlock =
-    citiesBuilt >= 4
-      ? "OUT_OF_PIECES_CITY"
-      : cityGate
-        ? cityGate.code
-        : cityOpts.length === 0
-          ? "ILLEGAL_PLACEMENT"
-          : "";
-
-  setSoftDisabled(elBuildRoadBtn, roadBlock);
-  setSoftDisabled(elBuildSettlementBtn, settlementBlock);
-  setSoftDisabled(elBuildCityBtn, cityBlock);
+  return {
+    road: blockCode(roadsBuilt >= 15, "OUT_OF_PIECES_ROAD", "BUILD_ROAD", legalRoadEdges(game, me?.playerId)),
+    settlement: blockCode(
+      settlementsBuilt >= 5,
+      "OUT_OF_PIECES_SETTLEMENT",
+      "BUILD_SETTLEMENT",
+      legalSettlementVertices(game, me?.playerId)
+    ),
+    city: blockCode(citiesBuilt >= 4, "OUT_OF_PIECES_CITY", "BUILD_CITY", legalCityVertices(game, me?.playerId))
+  };
 }
 
 function renderRobberFlow(room, me, you) {
@@ -3157,8 +3131,9 @@ function renderRobberFlow(room, me, you) {
   }
 
   const inFlow = ["robber_discard", "robber_move", "robber_steal"].includes(game.subphase);
+  const needsCard = game.subphase === "robber_steal" && me?.playerId === game.currentPlayerId;
+  elRobberCard.style.display = needsCard ? "" : "none";
   if (!inFlow) {
-    elRobberCard.style.display = "none";
     if (elDiscardPanel) elDiscardPanel.style.display = "none";
     if (elStealPanel) elStealPanel.style.display = "none";
     if (elDiscardErr) elDiscardErr.textContent = "";
@@ -3168,7 +3143,6 @@ function renderRobberFlow(room, me, you) {
     return;
   }
 
-  elRobberCard.style.display = "";
   if (game.subphase !== "robber_steal") {
     autoStealKey = null;
     lastStealTargetsRenderKey = null;
@@ -3393,137 +3367,6 @@ function renderActionHint(room, me) {
 }
 
 // =============================================================================
-// Build Flow Overlay (Fullscreen Build Mode)
-// =============================================================================
-
-function openBuildFlowOverlay(buildMode) {
-  if (!elBuildFlowOverlay) return;
-  buildFlowActive = true;
-  buildFlowMode = buildMode;
-
-  const titles = {
-    road: "Place Road",
-    settlement: "Place Settlement",
-    city: "Upgrade to City",
-    road_building: "Road Building (2 roads)"
-  };
-
-  if (elBuildFlowTitle) elBuildFlowTitle.textContent = titles[buildMode] || "Build";
-  if (elBuildFlowHint) elBuildFlowHint.textContent = "Tap a highlighted location";
-
-  elBuildFlowOverlay.style.display = "";
-  renderBuildFlowBoard();
-}
-
-function closeBuildFlowOverlay({ success = false } = {}) {
-  if (!elBuildFlowOverlay) return;
-  buildFlowActive = false;
-  buildFlowMode = null;
-  mode = null;
-  elBuildFlowOverlay.style.display = "none";
-
-  // Re-render main board
-  if (lastRoomState) renderScheduler.schedule();
-}
-
-function renderBuildFlowBoard() {
-  if (!elBuildFlowBoardMount || !lastRoomState?.game) return;
-
-  const room = lastRoomState;
-  const game = room.game;
-  const me = room.players?.find((p) => p.playerId === playerId) || null;
-  const myTurn = me?.playerId === game.currentPlayerId;
-
-  let selectableEdgeIds = [];
-  let selectableVertexIds = [];
-
-  if (buildFlowMode === "road" && myTurn) {
-    selectableEdgeIds = legalRoadEdges(game, me?.playerId) || [];
-  } else if (buildFlowMode === "settlement" && myTurn) {
-    selectableVertexIds = legalSettlementVertices(game, me?.playerId) || [];
-  } else if (buildFlowMode === "city" && myTurn) {
-    selectableVertexIds = legalCityVertices(game, me?.playerId) || [];
-  } else if (buildFlowMode === "road_building" && myTurn) {
-    selectableEdgeIds = game.hints?.legalEdgeIds || [];
-  }
-
-  renderBoard(elBuildFlowBoardMount, game.board, {
-    players: room.players,
-    structures: game.structures,
-    robberHexId: game.robberHexId,
-    selectableEdgeIds,
-    selectableVertexIds,
-    captureAllEdges: selectableEdgeIds.length > 0,
-    captureAllVertices: selectableVertexIds.length > 0,
-    onEdgeClick: (edgeId) => {
-      if (!myTurn) return;
-      if (buildFlowMode === "road") {
-        requestPlacementConfirm("Build road", async () => {
-          try {
-            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-              method: "POST",
-              body: { playerId, type: "BUILD_ROAD", edgeId }
-            });
-            feedbackGood("build", { gain: 0.85 });
-            closeBuildFlowOverlay({ success: true });
-          } catch (e) { showErrorToast(e); }
-        });
-      } else if (buildFlowMode === "road_building") {
-        requestPlacementConfirm("Place road", async () => {
-          try {
-            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-              method: "POST",
-              body: { playerId, type: "DEV_ROAD_BUILDING_PLACE_ROAD", edgeId }
-            });
-            feedbackGood("build", { gain: 0.85 });
-            const expected = lastRoomState?.game?.hints?.expected;
-            if (expected !== "DEV_ROAD_BUILDING_PLACE_ROAD") {
-              closeBuildFlowOverlay({ success: true });
-            } else {
-              renderBuildFlowBoard();
-            }
-          } catch (e) { showErrorToast(e); }
-        });
-      }
-    },
-    onVertexClick: (vertexId) => {
-      if (!myTurn) return;
-      if (buildFlowMode === "settlement") {
-        requestPlacementConfirm("Build settlement", async () => {
-          try {
-            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-              method: "POST",
-              body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
-            });
-            feedbackGood("build", { gain: 0.85 });
-            closeBuildFlowOverlay({ success: true });
-          } catch (e) { showErrorToast(e); }
-        });
-      } else if (buildFlowMode === "city") {
-        requestPlacementConfirm("Upgrade to city", async () => {
-          try {
-            await api(`/api/rooms/${encodeURIComponent(room.roomCode)}/action`, {
-              method: "POST",
-              body: { playerId, type: "BUILD_CITY", vertexId }
-            });
-            feedbackGood("build", { gain: 0.85 });
-            closeBuildFlowOverlay({ success: true });
-          } catch (e) { showErrorToast(e); }
-        });
-      }
-      }
-    },
-    onIllegalClick: ({ kind }) => {
-      let hint = "";
-      if (kind === "edge") hint = "Tap a highlighted edge.";
-      else if (kind === "vertex") hint = "Tap a highlighted spot.";
-      playSfx("ui_bonk", { gain: 0.75 });
-      showNotify({ tone: "bad", title: "Not legal there.", hint, durationMs: 1500 });
-    }
-  });
-}
-
-// =============================================================================
 // Discard Modal (Fullscreen Discard UI)
 // =============================================================================
 
@@ -3570,6 +3413,15 @@ function updateDiscardModalUI() {
   if (elDiscardModalSubmitBtn) {
     elDiscardModalSubmitBtn.disabled = total !== required;
   }
+
+  const hand = lastYouState?.hand || {};
+  document.querySelectorAll(".discardPlusBtn").forEach((btn) => {
+    const res = btn.getAttribute("data-resource");
+    btn.disabled = total >= required || (selected[res] || 0) >= parseNonNegativeInt(hand[res] ?? 0);
+  });
+  document.querySelectorAll(".discardMinusBtn").forEach((btn) => {
+    btn.disabled = !(selected[btn.getAttribute("data-resource")] > 0);
+  });
 }
 
 function adjustDiscardAmount(resource, delta) {
@@ -3577,7 +3429,9 @@ function adjustDiscardAmount(resource, delta) {
   const hand = you?.hand || {};
   const have = parseNonNegativeInt(hand[resource] ?? 0);
   const current = discardModalState.selected[resource] || 0;
-  const newValue = Math.max(0, Math.min(have, current + delta));
+  const total = RESOURCE_TYPES.reduce((acc, r) => acc + (discardModalState.selected[r] || 0), 0);
+  const room = Math.max(0, discardModalState.required - (total - current));
+  const newValue = Math.max(0, Math.min(have, room, current + delta));
   discardModalState.selected[resource] = newValue;
 
   const valueEl = document.getElementById(`discardModal${resource.charAt(0).toUpperCase() + resource.slice(1)}Value`);
@@ -3676,7 +3530,7 @@ function checkResourceGains(currentHand) {
       tone: "good",
       title: "Resources gained",
       hint: gains.join(", "),
-      durationMs: 2800
+      durationMs: 2000
     });
   }
 }
@@ -3700,14 +3554,15 @@ function renderBuildTab(room, me, you) {
   const canAffordCity = hasEnough(hand, cityCost);
   const canAffordDevCard = hasEnough(hand, devCardCost);
 
+  const blocks = canBuild ? buildBlockCodes(game, me, you) : {};
   if (elBuildTabRoadBtn) {
-    elBuildTabRoadBtn.disabled = !canBuild || !canAffordRoad;
+    elBuildTabRoadBtn.disabled = !canBuild || !canAffordRoad || !!blocks.road;
   }
   if (elBuildTabSettlementBtn) {
-    elBuildTabSettlementBtn.disabled = !canBuild || !canAffordSettlement;
+    elBuildTabSettlementBtn.disabled = !canBuild || !canAffordSettlement || !!blocks.settlement;
   }
   if (elBuildTabCityBtn) {
-    elBuildTabCityBtn.disabled = !canBuild || !canAffordCity;
+    elBuildTabCityBtn.disabled = !canBuild || !canAffordCity || !!blocks.city;
   }
   if (elBuildTabDevCardBtn) {
     const deckSize = parseNonNegativeInt(game?.devDeckCount ?? 0);
@@ -4474,6 +4329,13 @@ elPrimaryBtn.addEventListener("click", async () => {
 
   animatePressEffect(elPrimaryBtn);
 
+  if (action === "cancel_build") {
+    mode = null;
+    clearPendingAction();
+    renderScheduler.schedule();
+    return;
+  }
+
   try {
     if (action === "roll") {
       await api(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
@@ -4491,38 +4353,6 @@ elPrimaryBtn.addEventListener("click", async () => {
   } catch (e) {
     showErrorToast(e);
   }
-});
-
-elBuildRoadBtn.addEventListener("click", () => {
-  const blockCode = elBuildRoadBtn?.dataset?.blockCode || "";
-  if (blockCode) return showErrorToast(blockCode, { title: "Can't build road" });
-  triggerPressFeedback(elBuildRoadBtn, "light");
-  mode = "build_road";
-  openBuildFlowOverlay("road");
-});
-
-elBuildSettlementBtn.addEventListener("click", () => {
-  const blockCode = elBuildSettlementBtn?.dataset?.blockCode || "";
-  if (blockCode) return showErrorToast(blockCode, { title: "Can't build settlement" });
-  triggerPressFeedback(elBuildSettlementBtn, "light");
-  mode = "build_settlement";
-  openBuildFlowOverlay("settlement");
-});
-
-elBuildCityBtn.addEventListener("click", () => {
-  const blockCode = elBuildCityBtn?.dataset?.blockCode || "";
-  if (blockCode) return showErrorToast(blockCode, { title: "Can't build city" });
-  triggerPressFeedback(elBuildCityBtn, "light");
-  mode = "build_city";
-  openBuildFlowOverlay("city");
-});
-
-elCancelModeBtn.addEventListener("click", () => {
-  closeBuildFlowOverlay();
-});
-
-elBuildFlowCancelBtn?.addEventListener("click", () => {
-  closeBuildFlowOverlay();
 });
 
 // Discard Modal Event Listeners
@@ -5068,6 +4898,9 @@ function checkHintTriggers(room, me, you) {
   const isNewPhase = phase !== hintTriggerState.lastPhase || subphase !== hintTriggerState.lastSubphase;
   const justGotResources = hasResources && !hintTriggerState.lastHasResources;
 
+  // A coach mark describes one step; once the game moves on it is just covering the board.
+  if (isNewExpected || isNewPhase) window.CatanHints.dismissCurrentHint?.();
+
   // Update state tracking
   hintTriggerState.lastExpected = expected;
   hintTriggerState.lastPhase = phase;
@@ -5173,6 +5006,15 @@ elNotifyBanner?.querySelector(".notifyContent")?.addEventListener("click", () =>
     notifyTapCallback();
     clearNotify();
   }
+});
+
+// --- Placement confirm bar ---
+elPlacementConfirmBtn?.addEventListener("click", () => {
+  confirmPlacement();
+});
+
+elPlacementCancelBtn?.addEventListener("click", () => {
+  clearPendingAction();
 });
 
 // --- Build tab buttons ---

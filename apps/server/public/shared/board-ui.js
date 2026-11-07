@@ -37,6 +37,39 @@ function toSvgPoint(svg, clientX, clientY) {
   return p.matrixTransform(inverse);
 }
 
+// Largest distance, in CSS pixels, a tap may land from a legal target and still select it.
+const TAP_SNAP_PX = 28;
+
+function svgUnitsPerCssPixel(svg) {
+  const ctm = svg.getScreenCTM();
+  const pxPerUnit = ctm ? Math.hypot(ctm.a, ctm.b) : 0;
+  return pxPerUnit > 0 ? 1 / pxPerUnit : 1;
+}
+
+function settlementPath(x, y, s) {
+  const pts = [
+    [x - s, y + s * 0.85],
+    [x - s, y - s * 0.15],
+    [x, y - s * 1.05],
+    [x + s, y - s * 0.15],
+    [x + s, y + s * 0.85]
+  ];
+  return `M ${pts.map(([px, py]) => `${fmt2(px)} ${fmt2(py)}`).join(" L ")} Z`;
+}
+
+function cityPath(x, y, s) {
+  const pts = [
+    [x - s * 1.3, y + s * 0.9],
+    [x - s * 1.3, y - s * 0.35],
+    [x - s * 0.6, y - s * 1.05],
+    [x + s * 0.1, y - s * 0.35],
+    [x + s * 0.1, y - s * 0.05],
+    [x + s * 1.3, y - s * 0.05],
+    [x + s * 1.3, y + s * 0.9]
+  ];
+  return `M ${pts.map(([px, py]) => `${fmt2(px)} ${fmt2(py)}`).join(" L ")} Z`;
+}
+
 function pointToSegmentDistanceSquared(px, py, ax, ay, bx, by) {
   const abx = bx - ax;
   const aby = by - ay;
@@ -201,6 +234,10 @@ export function createBoardView(container, board) {
   svg.appendChild(edgeLayer);
   svg.appendChild(settlementLayer);
   svg.appendChild(vertexLayer);
+  const selectionLayer = svgEl("g");
+  selectionLayer.setAttribute("class", "selection-layer");
+  selectionLayer.style.pointerEvents = "none";
+  svg.appendChild(selectionLayer);
   root.appendChild(svg);
 
   container.innerHTML = "";
@@ -497,29 +534,22 @@ export function createBoardView(container, board) {
     group.setAttribute("class", "settlement");
     group.style.display = "none";
 
-    const fillCircle = svgEl("circle");
-    setSvgAttrs(fillCircle, { cx: fmt2(v.x), cy: fmt2(v.y), r: fmt2(hexSize * 0.1), fill: "white" });
-    group.appendChild(fillCircle);
+    const fillPath = svgEl("path");
+    setSvgAttrs(fillPath, { fill: "white" });
+    group.appendChild(fillPath);
 
-    const outlineCircle = svgEl("circle");
-    setSvgAttrs(outlineCircle, {
-      cx: fmt2(v.x),
-      cy: fmt2(v.y),
-      r: fmt2(hexSize * 0.1),
+    const outlinePath = svgEl("path");
+    setSvgAttrs(outlinePath, {
       fill: "none",
-      stroke: "rgba(0,0,0,0.30)",
-      "stroke-width": "3",
+      stroke: "rgba(0,0,0,0.55)",
+      "stroke-width": "2",
+      "stroke-linejoin": "round",
       "vector-effect": "non-scaling-stroke"
     });
-    group.appendChild(outlineCircle);
-
-    const ringCircle = svgEl("circle");
-    setSvgAttrs(ringCircle, { cx: fmt2(v.x), cy: fmt2(v.y), r: fmt2(hexSize * 0.07), fill: "rgba(255,255,255,0.18)" });
-    ringCircle.style.display = "none";
-    group.appendChild(ringCircle);
+    group.appendChild(outlinePath);
 
     settlementLayer.appendChild(group);
-    settlementEls.set(v.id, { group, fillCircle, outlineCircle, ringCircle });
+    settlementEls.set(v.id, { group, fillPath, outlinePath });
   }
 
   const state = {
@@ -535,87 +565,143 @@ export function createBoardView(container, board) {
     onIllegalClick: null
   };
 
+  function nearestSelectableVertex(pt, maxDistance) {
+    let bestId = null;
+    let bestD2 = maxDistance * maxDistance;
+    for (const v of vertices) {
+      if (!state.selectableVertexSet.has(v.id)) continue;
+      const d2 = (v.x - pt.x) ** 2 + (v.y - pt.y) ** 2;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        bestId = v.id;
+      }
+    }
+    return bestId;
+  }
+
+  function nearestSelectableEdge(pt, maxDistance) {
+    let bestId = null;
+    let bestD2 = maxDistance * maxDistance;
+    for (const e of edges) {
+      if (!state.selectableEdgeSet.has(e.id)) continue;
+      const vA = verticesById.get(e.vA);
+      const vB = verticesById.get(e.vB);
+      if (!vA || !vB) continue;
+      const d2 = pointToSegmentDistanceSquared(pt.x, pt.y, vA.x, vA.y, vB.x, vB.y);
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        bestId = e.id;
+      }
+    }
+    return bestId;
+  }
+
+  // The hex under the tap, so a tap on a number token or a road still counts as that hex.
+  function hexAtPoint(pt) {
+    let bestId = null;
+    let bestD2 = hexSize * hexSize;
+    for (const h of hexes) {
+      const d2 = (Number(h.center?.x) - pt.x) ** 2 + (Number(h.center?.y) - pt.y) ** 2;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        bestId = h.id;
+      }
+    }
+    return bestId;
+  }
+
   function handleClick(ev) {
-    const target = ev.target;
-    if (!(target instanceof Element)) return;
-
-    const vertexEl = target.closest("[data-vertex-id]");
-    if (vertexEl) {
-      const vertexId = vertexEl.getAttribute("data-vertex-id");
-      if (state.onVertexClick && state.selectableVertexSet.has(vertexId)) {
-        state.onVertexClick(vertexId);
-        return;
-      }
-      if (state.canCaptureVertices && state.onIllegalClick && vertexId && !state.selectableVertexSet.has(vertexId)) {
-        state.onIllegalClick({ kind: "vertex", id: vertexId });
-        return;
-      }
-    }
-
-    const edgeEl = target.closest("[data-edge-id]");
-    if (edgeEl) {
-      const edgeId = edgeEl.getAttribute("data-edge-id");
-      if (state.onEdgeClick && state.selectableEdgeSet.has(edgeId)) {
-        state.onEdgeClick(edgeId);
-        return;
-      }
-      if (state.canCaptureEdges && state.onIllegalClick && edgeId && !state.selectableEdgeSet.has(edgeId)) {
-        state.onIllegalClick({ kind: "edge", id: edgeId });
-        return;
-      }
-    }
-
-    const hexEl = target.closest("[data-hex-id]");
-    if (hexEl) {
-      const hexId = hexEl.getAttribute("data-hex-id");
-      if (state.onHexClick && state.selectableHexSet.has(hexId)) {
-        state.onHexClick(hexId);
-        return;
-      }
-      if (state.canCaptureHexes && state.onIllegalClick && hexId && !state.selectableHexSet.has(hexId)) {
-        state.onIllegalClick({ kind: "hex", id: hexId });
-        return;
-      }
-    }
-
-    // Touch UX fallback: if a fat edge hitbox grabs the tap, snap to the nearest selectable vertex/edge.
     const pt = toSvgPoint(svg, ev.clientX, ev.clientY);
-    if (!pt) return;
+    if (pt) {
+      const maxDistance = TAP_SNAP_PX * svgUnitsPerCssPixel(svg);
 
-    if (state.onVertexClick && state.selectableVertexSet.size) {
-      let bestId = null;
-      let bestD2 = Infinity;
-      for (const v of vertices) {
-        if (!state.selectableVertexSet.has(v.id)) continue;
-        const dx = v.x - pt.x;
-        const dy = v.y - pt.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < bestD2) {
-          bestD2 = d2;
-          bestId = v.id;
+      if (state.onVertexClick && state.selectableVertexSet.size) {
+        const vertexId = nearestSelectableVertex(pt, maxDistance);
+        if (vertexId) {
+          state.onVertexClick(vertexId);
+          return;
         }
       }
-      const threshold = hexSize * 0.22;
-      if (bestId && bestD2 <= threshold * threshold) state.onVertexClick(bestId);
+
+      if (state.onEdgeClick && state.selectableEdgeSet.size) {
+        const edgeId = nearestSelectableEdge(pt, maxDistance);
+        if (edgeId) {
+          state.onEdgeClick(edgeId);
+          return;
+        }
+      }
+
+      if (state.onHexClick && state.selectableHexSet.size) {
+        const hexId = hexAtPoint(pt);
+        if (hexId && state.selectableHexSet.has(hexId)) {
+          state.onHexClick(hexId);
+          return;
+        }
+        if (hexId && state.canCaptureHexes && state.onIllegalClick) {
+          state.onIllegalClick({ kind: "hex", id: hexId });
+          return;
+        }
+      }
+    }
+
+    const target = ev.target;
+    if (!(target instanceof Element) || !state.onIllegalClick) return;
+
+    const vertexId = target.closest("[data-vertex-id]")?.getAttribute("data-vertex-id");
+    if (vertexId && state.canCaptureVertices) {
+      state.onIllegalClick({ kind: "vertex", id: vertexId });
       return;
     }
 
-    if (state.onEdgeClick && state.selectableEdgeSet.size) {
-      let bestId = null;
-      let bestD2 = Infinity;
-      for (const e of edges) {
-        if (!state.selectableEdgeSet.has(e.id)) continue;
-        const vA = verticesById.get(e.vA);
-        const vB = verticesById.get(e.vB);
-        if (!vA || !vB) continue;
-        const d2 = pointToSegmentDistanceSquared(pt.x, pt.y, vA.x, vA.y, vB.x, vB.y);
-        if (d2 < bestD2) {
-          bestD2 = d2;
-          bestId = e.id;
-        }
-      }
-      const threshold = hexSize * 0.2;
-      if (bestId && bestD2 <= threshold * threshold) state.onEdgeClick(bestId);
+    const edgeId = target.closest("[data-edge-id]")?.getAttribute("data-edge-id");
+    if (edgeId && state.canCaptureEdges) state.onIllegalClick({ kind: "edge", id: edgeId });
+  }
+
+  function renderSelection(selected) {
+    selectionLayer.replaceChildren();
+    const kind = selected?.kind;
+    const color = String(selected?.color || "white");
+
+    if (kind === "vertex" || kind === "city") {
+      const v = verticesById.get(selected.id);
+      if (!v) return;
+      const ring = svgEl("circle");
+      ring.setAttribute("class", "selection-ring");
+      setSvgAttrs(ring, { cx: fmt2(v.x), cy: fmt2(v.y), r: fmt2(hexSize * 0.34) });
+      selectionLayer.appendChild(ring);
+
+      const piece = svgEl("path");
+      piece.setAttribute("class", "selection-piece");
+      const shape = kind === "city" ? cityPath(v.x, v.y, hexSize * 0.2) : settlementPath(v.x, v.y, hexSize * 0.17);
+      setSvgAttrs(piece, { d: shape, fill: color });
+      selectionLayer.appendChild(piece);
+      return;
+    }
+
+    if (kind === "edge") {
+      const e = edges.find((edge) => edge.id === selected.id);
+      const vA = e ? verticesById.get(e.vA) : null;
+      const vB = e ? verticesById.get(e.vB) : null;
+      if (!vA || !vB) return;
+      const coords = { x1: fmt2(vA.x), y1: fmt2(vA.y), x2: fmt2(vB.x), y2: fmt2(vB.y) };
+      const halo = svgEl("line");
+      halo.setAttribute("class", "selection-edge-halo");
+      setSvgAttrs(halo, coords);
+      selectionLayer.appendChild(halo);
+      const line = svgEl("line");
+      line.setAttribute("class", "selection-edge");
+      setSvgAttrs(line, { ...coords, stroke: color });
+      selectionLayer.appendChild(line);
+      return;
+    }
+
+    if (kind === "hex") {
+      const h = hexes.find((hex) => hex.id === selected.id);
+      if (!h) return;
+      const ring = svgEl("circle");
+      ring.setAttribute("class", "selection-ring");
+      setSvgAttrs(ring, { cx: fmt2(Number(h.center?.x)), cy: fmt2(Number(h.center?.y)), r: fmt2(hexSize * 0.72) });
+      selectionLayer.appendChild(ring);
     }
   }
 
@@ -638,8 +724,11 @@ export function createBoardView(container, board) {
       onVertexClick = null,
       onEdgeClick = null,
       onHexClick = null,
-      onIllegalClick = null
+      onIllegalClick = null,
+      selected = null
     } = options || {};
+
+    renderSelection(selected);
 
     if (highlightMode) root.dataset.highlight = String(highlightMode);
     else root.removeAttribute("data-highlight");
@@ -699,9 +788,8 @@ export function createBoardView(container, board) {
       }
     }
 
-    const settlementR = hexSize * 0.1;
-    const cityR = hexSize * 0.14;
-    const cityRingR = hexSize * 0.07;
+    const settlementSize = hexSize * 0.17;
+    const citySize = hexSize * 0.2;
 
     for (const v of vertices) {
       const vEl = vertexEls.get(v.id);
@@ -725,14 +813,12 @@ export function createBoardView(container, board) {
       }
       const color = playerColorById.get(s.playerId) || "white";
       const isCity = s.kind === "city";
-      const r = isCity ? cityR : settlementR;
+      const shape = isCity ? cityPath(v.x, v.y, citySize) : settlementPath(v.x, v.y, settlementSize);
 
       sEl.group.style.display = "";
-      sEl.fillCircle.setAttribute("fill", String(color));
-      sEl.fillCircle.setAttribute("r", fmt2(r));
-      sEl.outlineCircle.setAttribute("r", fmt2(r));
-      sEl.ringCircle.style.display = isCity ? "" : "none";
-      sEl.ringCircle.setAttribute("r", fmt2(cityRingR));
+      sEl.fillPath.setAttribute("fill", String(color));
+      sEl.fillPath.setAttribute("d", shape);
+      sEl.outlinePath.setAttribute("d", shape);
       sEl.group.classList.toggle("placed", placedVertexSet.has(v.id));
     }
   }
@@ -742,7 +828,7 @@ export function createBoardView(container, board) {
     if (root.parentNode === container) container.removeChild(root);
   }
 
-  return { update, destroy };
+  return { update, destroy, renderSelection };
 }
 
 const viewByContainer = new WeakMap();
@@ -764,7 +850,8 @@ export function renderBoard(container, board, options) {
     onVertexClick = null,
     onEdgeClick = null,
     onHexClick = null,
-    onIllegalClick = null
+    onIllegalClick = null,
+    selected = null
   } = options || {};
 
   if (!board) {
@@ -800,8 +887,14 @@ export function renderBoard(container, board, options) {
     onVertexClick,
     onEdgeClick,
     onHexClick,
-    onIllegalClick
+    onIllegalClick,
+    selected
   });
+}
+
+// Updates only the "you picked this spot" marker, so a tap gets instant feedback without a full redraw.
+export function setBoardSelection(container, selected) {
+  viewByContainer.get(container)?.view?.renderSelection(selected);
 }
 
 export function edgeIdBetween(board, vA, vB) {

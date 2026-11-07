@@ -247,13 +247,6 @@
               <div id="actionHint" class="muted"></div>
             </div>
 
-            <div id="mainActions" style="display: none; gap: 10px; flex-wrap: wrap">
-              <button class="btn" id="buildRoadBtn">Build road</button>
-              <button class="btn" id="buildSettlementBtn">Build settlement</button>
-              <button class="btn" id="buildCityBtn">Build city</button>
-              <button class="btn danger" id="cancelModeBtn" style="display: none">Cancel</button>
-            </div>
-
             <div class="card" style="padding: 12px; display: none" id="robberCard">
               <h2 style="margin: 0 0 10px 0">Robber</h2>
               <div id="robberHint" class="muted" style="margin-bottom: 10px"></div>
@@ -566,19 +559,6 @@
       <div class="connectionOverlayCard">
         <div id="connectionTitle" class="connectionOverlayTitle">Rejoining…</div>
         <div id="connectionHint" class="connectionOverlayHint">Hold tight — your seat is saved.</div>
-      </div>
-    </div>
-
-    <div id="buildFlowOverlay" class="buildFlowOverlay" style="display: none">
-      <div class="buildFlowContent">
-        <div class="buildFlowHeader">
-          <span id="buildFlowTitle" class="buildFlowTitle">Place Road</span>
-          <button class="btn danger" id="buildFlowCancelBtn">Cancel</button>
-        </div>
-        <div id="buildFlowBoard" class="buildFlowBoard">
-          <div id="buildFlowBoardMount" class="boardMount"></div>
-        </div>
-        <div id="buildFlowHint" class="buildFlowHint muted">Tap a highlighted location</div>
       </div>
     </div>
 
@@ -994,6 +974,14 @@
       </div>
       <button id="notifyActionBtn" class="btn notifyActionBtn" style="display: none"></button>
       <button id="notifyDismissBtn" class="notifyDismissBtn" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <div id="placementBar" class="placementBar" role="group" aria-label="Confirm placement" hidden>
+      <div id="placementBarTitle" class="placementBarTitle" aria-live="polite"></div>
+      <div class="placementBarActions">
+        <button class="btn" id="placementCancelBtn">Cancel</button>
+        <button class="btn primary" id="placementConfirmBtn">Confirm</button>
+      </div>
     </div>
 
     <div id="hintContainer" class="hintContainer" aria-live="polite" aria-atomic="true"></div>

@@ -1,3 +1,4 @@
+import { formatRollGains, latestRollGains } from "/shared/roll-gains.js";
 import { api, qs, renderLog, setText } from "/shared/common.js";
 import {
   applyBoardMoment,
@@ -570,6 +571,7 @@ function playerRow(
       ? `<span class="tag">${escapeHtml(points)}/${escapeHtml(target)} VP</span>`
       : `<span class="tag">${escapeHtml(points)} VP</span>`;
   const winnerTag = winnerPlayerId === p.playerId ? `<span class="tag good">Winner</span>` : "";
+  const cardsTag = inGame ? cardCountTag(p) : "";
 
   // Build badges for knights and awards (in-game only)
   let badgesHtml = "";
@@ -609,7 +611,7 @@ function playerRow(
   const right =
     mode === "lobby"
       ? `<div style="display:flex; gap:8px; align-items:center;">${hostTag}${readyTag}</div>`
-      : `<div style="display:flex; gap:8px; align-items:center;">${badgesHtml}${winnerTag}${vpTag}</div>`;
+      : `<div style="display:flex; gap:8px; align-items:center;">${badgesHtml}${winnerTag}${cardsTag}${vpTag}</div>`;
   return `
     <div class="${cls.join(" ")}" data-player-id="${escapeHtml(p.playerId)}" style="--pc:${escapeHtml(p.color)};">
       <div class="name">
@@ -619,6 +621,12 @@ function playerRow(
       ${right}
     </div>
   `;
+}
+
+function cardCountTag(p) {
+  const count = Math.max(0, Math.floor(p?.cardCount ?? 0));
+  const cls = count > 7 ? "tag warn cardCount" : "tag cardCount";
+  return `<span class="${cls}" title="Cards in hand">\uD83C\uDCA0 ${escapeHtml(count)}</span>`;
 }
 
 function cssColorToRgb(color) {
@@ -672,7 +680,7 @@ function playerBarCard(
     <span class="barDot" style="background:${dotColor};"></span>
     <div class="barInfo">
       <div class="barName">${escapeHtml(p.name)}</div>
-      <div class="barVP">${escapeHtml(vpText)}</div>
+      <div class="barVP">${escapeHtml(vpText)} \u00B7 ${escapeHtml(Math.max(0, Math.floor(p.cardCount ?? 0)))} cards</div>
     </div>
     ${badgeHtml.length > 0 ? `<div class="barBadges">${badgeHtml.join("")}</div>` : ""}
     <span class="turnBadge">Turn</span>
@@ -687,10 +695,9 @@ function escapeHtml(s) {
 }
 
 function roomUrlForPhones() {
-  // Use LAN IP if available, otherwise fall back to current host
-  const host = serverLanIp
-    ? `${serverLanIp}:${location.port || (location.protocol === "https:" ? 443 : 80)}`
-    : location.host;
+  // Only a TV opened on loopback needs the LAN IP. Any other host, including a reverse proxy, already works for phones.
+  const isLoopback = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  const host = isLoopback && serverLanIp ? `${serverLanIp}:${location.port || 80}` : location.host;
   const base = `${location.protocol}//${host}`;
   return `${base}/phone?room=${encodeURIComponent(roomCode)}`;
 }
@@ -1292,24 +1299,14 @@ async function runBeat(beat) {
     // Show resources collected message (if not 7)
     if (sum && sum !== 7) {
       const room = lastRoomState;
-      const game = room?.game || null;
-      const board = game?.board || null;
-
-      if (board?.hexes) {
-        const matchingHexes = (board.hexes || []).filter(
-          (h) => h?.token === sum && h?.resource && h.resource !== "desert" && h.id !== game?.robberHexId
-        );
-
-        if (matchingHexes.length > 0) {
-          const resourceNames = [...new Set(matchingHexes.map((h) => h.resource))];
-          const resourceText = resourceNames.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
-          await show.toast({
-            title: "Resources collected",
-            subtitle: resourceText,
-            tone: "good",
-            durationMs: d(1600)
-          });
-        }
+      const gainsText = formatRollGains(latestRollGains(room?.game?.log), room?.players);
+      if (gainsText) {
+        await show.toast({
+          title: "Resources collected",
+          subtitle: gainsText,
+          tone: "good",
+          durationMs: d(3200)
+        });
       }
     }
 
@@ -3038,7 +3035,8 @@ function tvPlayersRenderKey(
         p?.ready ? "1" : "0",
         p?.isHost ? "1" : "0",
         String(points),
-        String(knights)
+        String(knights),
+        String(Math.max(0, Math.floor(p?.cardCount ?? 0)))
       ].join(",");
     })
     .join(";");

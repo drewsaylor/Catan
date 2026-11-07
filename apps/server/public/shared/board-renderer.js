@@ -1,5 +1,7 @@
 import { renderBoard as renderBoard2d } from "/shared/board-ui.js";
 
+export { setBoardSelection } from "/shared/board-ui.js";
+
 /**
  * Renders the board using the 2D renderer.
  * The 3D renderer has been removed for simplicity.

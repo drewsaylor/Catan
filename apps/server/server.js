@@ -900,7 +900,8 @@ function roomPublicSnapshot(room) {
       color: p.color,
       ready: p.ready,
       connected: p.connected,
-      isHost: p.playerId === room.hostPlayerId
+      isHost: p.playerId === room.hostPlayerId,
+      cardCount: room.game ? handTotal(room.privateByPlayerId.get(p.playerId)?.hand) : 0
     }));
 
   const gameSnap = room.game ? getPublicGameSnapshot(room.game) : null;
@@ -1497,7 +1498,10 @@ function removePlayerFromGame(room, playerId) {
     }
   }
 
-  if (game.setup && Array.isArray(game.setup.placementOrder)) {
+  // game.setup outlives the setup rounds, so only touch it while they are running;
+  // otherwise a mid-game kick looks like "placements done" and forces needs_roll.
+  const inSetupRounds = game.phase === "setup_round_1" || game.phase === "setup_round_2";
+  if (inSetupRounds && game.setup && Array.isArray(game.setup.placementOrder)) {
     const order = game.setup.placementOrder;
     const curIdx = clampNonNegativeInt(game.setup.placementIndex ?? 0);
     const wasCurrentSetupPlayer = order[curIdx] === playerId;
@@ -1999,7 +2003,8 @@ const server = http.createServer(async (req, res) => {
 
     req.on("close", () => {
       room.sseClients.delete(client);
-      if (role === "phone" && playerId && room.players.has(playerId)) {
+      const stillConnected = [...room.sseClients].some((c) => c.role === "phone" && c.playerId === playerId);
+      if (role === "phone" && playerId && room.players.has(playerId) && !stillConnected) {
         const player = room.players.get(playerId);
         player.connected = false;
         player.lastSeenAt = nowMs();

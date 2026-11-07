@@ -8,12 +8,24 @@ The format is based on **Keep a Changelog**, and this project aims to follow **S
 
 ### Added
 
-- TBD
+- TV player rows show each player's card count, highlighted above 7.
+- A confirm bar on phones for every board placement, plus a selection marker on the board.
 
 ### Changed
 
-- TBD
+- All phone building now happens on the main board. The separate build overlay and duplicate buttons are gone.
+- Board taps snap to the nearest legal spot.
+- TV moment cards and toasts moved off the board and status pills, and top bar and player text are larger.
+- The TV "Resources collected" toast names who gained what, and is skipped when nobody gained anything.
+- Settlements and cities have distinct shapes.
 
 ### Fixed
 
-- TBD
+- Kicking a player mid-game no longer resets the current turn. It used to cancel the robber or give the current player a second roll.
+- TV score pills such as "10/10 VP" stay on one line.
+- Confirm buttons could sit under the build overlay and could not be tapped.
+- A pending placement was cleared by unrelated live updates.
+- Discard selection could go past the required count, which disabled Submit with no explanation.
+- Reconnecting phones were marked disconnected when their old connection closed.
+- The join link kept a LAN IP behind a reverse proxy.
+- A stray brace in `phone.js` stopped the phone page from loading.
