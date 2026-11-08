@@ -3033,6 +3033,12 @@ function setSuppressBoardClick() {
   }, 250);
 }
 
+// How far a press may wander and still count as a tap (finger contact is ~10mm wide).
+function tapSlopPx(pointerType) {
+  if (pointerType === "mouse") return 6;
+  return 14;
+}
+
 function attachBoardPanZoom() {
   if (!elBoardFrame || boardView.attached) return;
   boardView.attached = true;
@@ -3077,7 +3083,9 @@ function attachBoardPanZoom() {
         startX: ev.clientX,
         startY: ev.clientY,
         startTx: boardView.tx,
-        startTy: boardView.ty
+        startTy: boardView.ty,
+        slopPx: tapSlopPx(ev.pointerType),
+        panning: false
       };
       return;
     }
@@ -3107,9 +3115,18 @@ function attachBoardPanZoom() {
     if (!g) return;
 
     if (g.kind === "pan" && boardView.pointers.size === 1) {
-      const dx = ev.clientX - g.startX;
-      const dy = ev.clientY - g.startY;
-      if (Math.abs(dx) + Math.abs(dy) > 6) setSuppressBoardClick();
+      let dx = ev.clientX - g.startX;
+      let dy = ev.clientY - g.startY;
+      // A finger drifts a few pixels during a normal tap; only a real drag pans (and cancels the tap).
+      if (!g.panning) {
+        if (Math.hypot(dx, dy) <= g.slopPx) return;
+        g.panning = true;
+        g.startX = ev.clientX;
+        g.startY = ev.clientY;
+        dx = 0;
+        dy = 0;
+      }
+      setSuppressBoardClick();
       boardView.tx = g.startTx + dx;
       boardView.ty = g.startTy + dy;
       applyBoardTransform();
@@ -3137,7 +3154,15 @@ function attachBoardPanZoom() {
     if (boardView.pointers.size === 1 && boardView.gesture?.kind === "pinch") {
       // Transition pinch -> pan using the remaining pointer.
       const [pt] = [...boardView.pointers.values()];
-      boardView.gesture = { kind: "pan", startX: pt.x, startY: pt.y, startTx: boardView.tx, startTy: boardView.ty };
+      boardView.gesture = {
+        kind: "pan",
+        startX: pt.x,
+        startY: pt.y,
+        startTx: boardView.tx,
+        startTy: boardView.ty,
+        slopPx: 0,
+        panning: true
+      };
     }
   }
 

@@ -405,3 +405,9 @@ body.phone[data-view="game"] .gameTopRow:has(~ #postGameCard:not([style*="none"]
 #tradeRepeatBtn {
   font-size: 0.9em;
 }
+
+/* Hints sit above the board, not over its bottom rows, so they never block a placement tap. */
+body.phone .hintContainer {
+  top: calc(max(6px, env(safe-area-inset-top)) + 8px);
+  bottom: auto;
+}
