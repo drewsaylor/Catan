@@ -1100,6 +1100,11 @@ function setActionHintOverrideText(text, { durationMs = 3800 } = {}) {
   }
 }
 
+// Giving and wanting the same resource is a no-op swap the server rejects.
+function overlapsTrade(give, want) {
+  return RESOURCE_TYPES.some((r) => (give?.[r] ?? 0) > 0 && (want?.[r] ?? 0) > 0);
+}
+
 function showErrorToast(err, { title = "Can't do that", durationMs = 3800 } = {}) {
   const hint = humanizeErrorMessage(err, { room: lastRoomState });
   showNotify({ tone: "bad", title, hint, durationMs });
@@ -2236,11 +2241,14 @@ function phoneBoardRenderKey({
   selectableVertexIds = [],
   selectableEdgeIds = [],
   selectableHexIds = [],
-  players = []
+  players = [],
+  turnKey = ""
 } = {}) {
   const s = getSettings();
   const parts = [
     `room:${stableRoomPart(roomCode)}`,
+    // Tap handlers close over the room; re-render when whose turn or what is expected changes.
+    `turn:${stableRoomPart(turnKey)}`,
     phoneBoardStaticKey(board),
     phoneStructuresKey(structures),
     `robber:${stableRoomPart(robberHexId)}`,
@@ -2734,7 +2742,8 @@ function renderBoardUi(room, prevRoom, me) {
         selectableVertexIds,
         selectableEdgeIds,
         selectableHexIds,
-        players: room.players
+        players: room.players,
+        turnKey: [room.game.currentPlayerId, room.game.phase, room.game.subphase, expected, mode].join(":")
       });
   if (!alwaysRenderEnabled && nextBoardKey === lastBoardRenderKey) {
     applyBoardTransform();
@@ -2797,7 +2806,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "BUILD_SETTLEMENT", vertexId }
             });
             feedbackGood("build", { gain: 0.85 });
+            // The room update usually lands before the POST resolves, so re-render to drop "Cancel build".
             mode = null;
+            renderScheduler.schedule();
           } catch (e) {
             showErrorToast(e);
           }
@@ -2812,7 +2823,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "BUILD_CITY", vertexId }
             });
             feedbackGood("build", { gain: 0.85 });
+            // The room update usually lands before the POST resolves, so re-render to drop "Cancel build".
             mode = null;
+            renderScheduler.schedule();
           } catch (e) {
             showErrorToast(e);
           }
@@ -2858,7 +2871,9 @@ function renderBoardUi(room, prevRoom, me) {
               body: { playerId, type: "BUILD_ROAD", edgeId }
             });
             feedbackGood("build", { gain: 0.85 });
+            // The room update usually lands before the POST resolves, so re-render to drop "Cancel build".
             mode = null;
+            renderScheduler.schedule();
           } catch (e) {
             showErrorToast(e);
           }
@@ -3744,7 +3759,8 @@ function renderTrade(room, me, you) {
 
   const give = countsFromInputs(tradeGiveInputs);
   const want = countsFromInputs(tradeWantInputs);
-  const valid = canCreate && hasAnyResources(give) && hasAnyResources(want) && hasEnough(hand, give);
+  const valid =
+    canCreate && hasAnyResources(give) && hasAnyResources(want) && hasEnough(hand, give) && !overlapsTrade(give, want);
   elTradeSendBtn.disabled = !valid;
   if (elTradeRepeatBtn) elTradeRepeatBtn.disabled = !canCreate || !lastSentTradeOffer;
   if (elTradeSuggestBtn) elTradeSuggestBtn.disabled = !canCreate || !hasAnyResources(hand);
@@ -4589,6 +4605,7 @@ elTradeSendBtn?.addEventListener("click", async () => {
 
   const hand = lastYouState?.hand || {};
   if (!hasEnough(hand, give)) return (elTradeErr.textContent = "You don't have those resources to give.");
+  if (overlapsTrade(give, want)) return (elTradeErr.textContent = "You can't give and want the same resource.");
 
   const to = elTradeToSelect?.value || "all";
   animatePressEffect(elTradeSendBtn);

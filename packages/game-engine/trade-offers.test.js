@@ -33,6 +33,10 @@ test("TRADE_OFFER_CREATE: validates recipient and resource shapes", () => {
   assert.deepEqual(applyAction(game, { type: "TRADE_OFFER_CREATE", to: "B", give: { wood: 1 }, want: {} }, "A"), {
     error: { code: "BAD_TRADE" }
   });
+  assert.deepEqual(
+    applyAction(game, { type: "TRADE_OFFER_CREATE", to: "B", give: { wood: 1 }, want: { wood: 1, ore: 1 } }, "A"),
+    { error: { code: "BAD_TRADE" } }
+  );
 
   const ok = applyAction(game, { type: "TRADE_OFFER_CREATE", to: "B", give: { wood: 1 }, want: { brick: 1 } }, "A");
   assert.ok(ok.game);

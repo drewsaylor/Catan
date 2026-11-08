@@ -159,7 +159,8 @@ export async function api(path, { method = "GET", body = null } = {}) {
 
   if (signature) {
     inFlightActionBySignature.set(signature, promise);
-    promise.finally(() => inFlightActionBySignature.delete(signature));
+    // .finally() returns a new promise; swallow its copy of the rejection so callers own error handling.
+    promise.finally(() => inFlightActionBySignature.delete(signature)).catch(() => {});
   }
 
   return promise;

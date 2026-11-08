@@ -1374,6 +1374,8 @@ export function applyAction(game, action, actorPlayerId) {
       const give = normalizeResourceCounts(action.give);
       const want = normalizeResourceCounts(action.want);
       if (!hasAnyResources(give) || !hasAnyResources(want)) return { error: { code: "BAD_TRADE" } };
+      // Giving and wanting the same resource is a no-op swap; it is always a mis-tap.
+      if (RESOURCE_TYPES.some((r) => give[r] > 0 && want[r] > 0)) return { error: { code: "BAD_TRADE" } };
 
       const offer = {
         id: crypto.randomUUID(),
